@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seamline Marker</title>
+<style>
+  :root{
+    --bg:#12151c; --panel:#1a1f2a; --panel2:#161a23; --edge:#2a3140;
+    --ink:#e8ecf4; --mut:#8b94a7; --acc:#4fd1c5; --acc2:#f28f6b;
+    --good:#4caf7d; --warn:#e0a83c; --bad:#e05c5c;
+    --fabric:#ece7db; --fabric-edge:#c9c2b2;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:13px/1.45 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+  }
+  button{font:inherit; color:inherit; background:none; border:none; cursor:pointer}
+  input,select{font:inherit}
+
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; gap:14px; padding:8px 14px;
+    background:var(--panel); border-bottom:1px solid var(--edge); flex:none;
+  }
+  .logo{display:flex; align-items:center; gap:9px}
+  .logo svg{display:block}
+  .wordmark{font-size:17px; font-weight:700; letter-spacing:.04em}
+  .wordmark em{font-style:normal; color:var(--acc)}
+  .modtag{
+    font-size:10px; font-weight:700; letter-spacing:.14em; color:var(--bg);
+    background:var(--acc); border-radius:3px; padding:2px 6px; margin-left:2px;
+  }
+  #markerName{
+    background:var(--panel2); border:1px solid var(--edge); border-radius:6px;
+    color:var(--ink); padding:4px 10px; width:190px; font-weight:600;
+  }
+  #markerName:focus{outline:1px solid var(--acc)}
+  #orderSummary{color:var(--mut); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1}
+  .chips{display:flex; gap:8px; align-items:center}
+  .chip{
+    background:var(--panel2); border:1px solid var(--edge); border-radius:14px;
+    padding:3px 11px; font-size:12px; white-space:nowrap;
+  }
+  .chip b{color:var(--acc); font-variant-numeric:tabular-nums}
+  #statusChip{font-weight:700; letter-spacing:.06em; font-size:11px}
+  #statusChip.made{background:#173525; border-color:#2b6647; color:#7fe0ae}
+  #statusChip.partial{background:#38300f; border-color:#7a6624; color:#f0cf6b}
+  #statusChip.unmade{background:var(--panel2); color:var(--mut)}
+
+  /* ---------- toolbar ---------- */
+  #toolbar{
+    display:flex; align-items:stretch; gap:4px; padding:6px 10px;
+    background:var(--panel2); border-bottom:1px solid var(--edge);
+    overflow-x:auto; flex:none;
+  }
+  .tgroup{
+    display:flex; flex-direction:column; border-right:1px solid var(--edge);
+    padding:0 10px 0 6px; gap:3px;
+  }
+  .tgroup:last-child{border-right:none}
+  .tgroup .row{display:flex; gap:3px}
+  .tgroup .cap{font-size:9.5px; letter-spacing:.1em; color:var(--mut); text-align:center; text-transform:uppercase}
+  .tb{
+    display:flex; align-items:center; gap:5px; padding:5px 9px; border-radius:6px;
+    border:1px solid transparent; color:var(--ink); font-size:12px; white-space:nowrap;
+  }
+  .tb:hover{background:#222937; border-color:var(--edge)}
+  .tb:active{background:#2a3346}
+  .tb .ic{font-size:14px; line-height:1; color:var(--acc); width:16px; text-align:center}
+  .tb.primary{background:var(--acc); color:#0c2523; font-weight:700}
+  .tb.primary .ic{color:#0c2523}
+  .tb.primary:hover{background:#63e0d4}
+  .tb.tgl.on{background:#123833; border-color:#2c6b62; color:var(--acc)}
+  .tb.tgl.on .ic{color:var(--acc)}
+  .sliderwrap{display:flex; align-items:center; gap:7px; padding:4px 6px; font-size:11.5px; color:var(--mut)}
+  .sliderwrap input[type=range]{width:90px; accent-color:var(--acc)}
+  .sliderwrap b{color:var(--ink); width:22px; text-align:right; font-variant-numeric:tabular-nums}
+  .mini-sel{
+    background:var(--panel); border:1px solid var(--edge); color:var(--ink);
+    border-radius:5px; padding:3px 5px; font-size:11.5px;
+  }
+
+  /* ---------- piece tray ---------- */
+  #tray{
+    flex:none; background:var(--panel); border-bottom:1px solid var(--edge);
+    display:flex; align-items:center; min-height:96px;
+  }
+  #trayLabel{
+    writing-mode:vertical-rl; transform:rotate(180deg); text-align:center;
+    font-size:9.5px; letter-spacing:.18em; color:var(--mut); padding:4px 2px;
+    border-right:1px solid var(--edge); align-self:stretch; display:flex; align-items:center;
+  }
+  #trayItems{
+    display:flex; gap:8px; padding:8px 12px; overflow-x:auto; overflow-y:hidden;
+    align-items:stretch; flex:1;
+  }
+  #trayItems::-webkit-scrollbar{height:8px}
+  #trayItems::-webkit-scrollbar-thumb{background:var(--edge); border-radius:4px}
+  .thumb{
+    flex:none; width:86px; background:var(--panel2); border:1px solid var(--edge);
+    border-radius:8px; padding:5px 5px 4px; display:flex; flex-direction:column;
+    align-items:center; gap:2px; cursor:grab; position:relative;
+  }
+  .thumb:hover{border-color:var(--acc)}
+  .thumb.carrying{border-color:var(--acc); box-shadow:0 0 0 1px var(--acc)}
+  .thumb svg{width:72px; height:46px; display:block}
+  .thumb .nm{font-size:10px; font-weight:600; max-width:78px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .thumb .sz{font-size:9.5px; font-weight:700; border-radius:3px; padding:0 5px; color:#20242e}
+  .thumb .cnt{
+    position:absolute; top:-6px; right:-6px; background:var(--acc2); color:#2b1408;
+    font-size:10px; font-weight:700; border-radius:9px; min-width:18px; height:18px;
+    display:flex; align-items:center; justify-content:center; padding:0 4px;
+  }
+  #trayEmpty{color:var(--mut); font-size:12px; padding:0 16px}
+
+  /* ---------- stage ---------- */
+  #stage{flex:1; position:relative; overflow:hidden; background:#0d1016}
+  #cv{width:100%; height:100%; display:block; touch-action:none}
+  #cv.panning{cursor:grabbing}
+  #cv.carrying{cursor:copy}
+  .pc path{stroke:#232838; stroke-width:1.1px; vector-effect:non-scaling-stroke; fill-opacity:.82}
+  .pc:hover path{stroke:#000}
+  .pc.sel path{stroke:#0da79a; stroke-width:2.2px; fill-opacity:.95}
+  .pc.bad path{fill:#e05c5c !important; fill-opacity:.75}
+  .pc text{pointer-events:none; fill:#20242e; font-weight:600}
+  .pc .grain{stroke:#20242e; stroke-width:.8px; vector-effect:non-scaling-stroke; opacity:.45; pointer-events:none}
+  #ghost path{stroke-width:1.6px; vector-effect:non-scaling-stroke; fill-opacity:.55; pointer-events:none}
+  #ghost.ok path{fill:#4caf7d; stroke:#2b6647}
+  #ghost.no path{fill:#e05c5c; stroke:#8f3030}
+  #hintOverlay{
+    position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+    background:rgba(18,21,28,.86); border:1px solid var(--edge); border-radius:12px;
+    padding:18px 26px; text-align:center; color:var(--mut); font-size:13px;
+    pointer-events:none; max-width:420px;
+  }
+  #hintOverlay b{color:var(--ink)}
+  #hintOverlay .k{color:var(--acc)}
+
+  /* ---------- status bar ---------- */
+  footer{
+    flex:none; display:flex; align-items:center; gap:16px; padding:4px 14px;
+    background:var(--panel); border-top:1px solid var(--edge);
+    font-size:11.5px; color:var(--mut);
+  }
+  footer #hint{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  footer #selInfo{color:var(--ink)}
+  footer #coords{font-variant-numeric:tabular-nums; width:170px; text-align:right}
+
+  /* ---------- dialogs ---------- */
+  dialog{
+    background:var(--panel); color:var(--ink); border:1px solid var(--edge);
+    border-radius:12px; padding:0; max-width:520px; width:92vw;
+    box-shadow:0 18px 60px rgba(0,0,0,.55);
+  }
+  dialog::backdrop{background:rgba(5,7,10,.6)}
+  .dlg-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 18px; border-bottom:1px solid var(--edge); font-weight:700;
+  }
+  .dlg-head .x{color:var(--mut); font-size:16px; padding:2px 6px; border-radius:5px}
+  .dlg-head .x:hover{background:#242b3a; color:var(--ink)}
+  .dlg-body{padding:16px 18px; -webkit-user-select:text; user-select:text}
+  .dlg-foot{display:flex; justify-content:flex-end; gap:8px; padding:12px 18px; border-top:1px solid var(--edge)}
+  .btn{
+    padding:7px 16px; border-radius:7px; border:1px solid var(--edge);
+    background:var(--panel2); font-weight:600;
+  }
+  .btn:hover{border-color:var(--mut)}
+  .btn.primary{background:var(--acc); color:#0c2523; border-color:transparent}
+  .btn.primary:hover{background:#63e0d4}
+  .frow{display:flex; align-items:center; gap:10px; margin-bottom:12px}
+  .frow label{width:110px; color:var(--mut); flex:none}
+  .frow input[type=text],.frow input[type=number],.frow select{
+    background:var(--panel2); border:1px solid var(--edge); border-radius:6px;
+    color:var(--ink); padding:6px 9px; flex:1; min-width:0;
+  }
+  #sizeGrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; flex:1}
+  .szcell{display:flex; flex-direction:column; align-items:center; gap:3px}
+  .szcell .t{font-size:10.5px; font-weight:700; border-radius:3px; padding:0 6px; color:#20242e}
+  .szcell input{
+    width:100%; text-align:center; background:var(--panel2);
+    border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 2px;
+  }
+  #orderPreview{color:var(--mut); font-size:12px; margin-top:2px}
+  #orderPreview b{color:var(--acc)}
+  .note{font-size:11.5px; color:var(--mut); margin-top:10px}
+
+  /* nest progress */
+  #nestBar{height:8px; background:var(--panel2); border:1px solid var(--edge); border-radius:5px; overflow:hidden; margin:12px 0 6px}
+  #nestFill{height:100%; width:0%; background:var(--acc); transition:width .12s}
+  #nestMsg{font-size:12px; color:var(--mut)}
+
+  /* help */
+  #dlgHelp .dlg-body{max-height:64vh; overflow:auto}
+  #dlgHelp h4{margin:14px 0 6px; color:var(--acc); font-size:12.5px; letter-spacing:.05em}
+  #dlgHelp h4:first-child{margin-top:0}
+  #dlgHelp p, #dlgHelp li{color:#c6cddb; font-size:12.5px; margin-bottom:4px}
+  #dlgHelp ol,#dlgHelp ul{padding-left:20px}
+  kbd{
+    background:var(--panel2); border:1px solid var(--edge); border-bottom-width:2px;
+    border-radius:4px; padding:0 5px; font:11px ui-monospace,Menlo,monospace;
+  }
+  table.keys{border-collapse:collapse; width:100%}
+  table.keys td{padding:3px 6px; border-bottom:1px solid var(--edge); font-size:12px}
+
+  /* toast */
+  #toasts{position:fixed; bottom:44px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:6px; z-index:99; pointer-events:none}
+  .toast{
+    background:#242b3a; border:1px solid var(--edge); border-left:3px solid var(--acc);
+    color:var(--ink); border-radius:7px; padding:8px 16px; font-size:12.5px;
+    box-shadow:0 6px 24px rgba(0,0,0,.4); animation:tin .18s ease-out;
+  }
+  .toast.warn{border-left-color:var(--warn)}
+  .toast.bad{border-left-color:var(--bad)}
+  @keyframes tin{from{opacity:0; transform:translateY(8px)}to{opacity:1}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 26 26">
+      <rect x="1" y="1" width="24" height="24" rx="6" fill="#4fd1c5"/>
+      <path d="M5 17 C9 17 9 9 13 9 C17 9 17 17 21 17" fill="none" stroke="#12151c" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3.2 2.6"/>
+    </svg>
+    <span class="wordmark">seam<em>line</em></span>
+    <span class="modtag">MARKER</span>
+  </div>
+  <input id="markerName" title="Marker name" value="MARKER-01" spellcheck="false">
+  <div id="orderSummary">—</div>
+  <div class="chips">
+    <div class="chip" title="Marker length used">len <b id="stLen">0.0</b> cm</div>
+    <div class="chip" title="Fabric utilization (piece area ÷ marker area)">util <b id="stUtil">—</b></div>
+    <div class="chip" title="Pieces placed / total"><b id="stPieces">0/0</b> pcs</div>
+    <div class="chip unmade" id="statusChip">UNMADE</div>
+  </div>
+</header>
+
+<div id="toolbar">
+  <div class="tgroup">
+    <div class="row">
+      <button class="tb" id="bNew" title="New order — model, sizes, fabric (N)"><span class="ic">▤</span>New Order</button>
+      <button class="tb" id="bOpen" title="Open a saved marker (.json)"><span class="ic">⌂</span>Open</button>
+      <button class="tb" id="bSave" title="Save marker to a .json file (Ctrl+S)"><span class="ic">⬇</span>Save</button>
+      <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
+      <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
+    </div>
+    <div class="cap">file</div>
+  </div>
+
+  <div class="tgroup">
+    <div class="row">
+      <button class="tb primary" id="bNest" title="Automatically place all unplaced pieces (AutoMark)"><span class="ic">⚡</span>Auto-Nest</button>
+      <div class="sliderwrap" title="Nesting effort — higher tries more rotations and packs tighter">
+        effort <input type="range" id="effort" min="0" max="100" value="60"><b id="effortVal">60</b>
+      </div>
+      <button class="tb" id="bCompact" title="Slide every placed piece left, then up — tighten the marker"><span class="ic">⇤</span>Compact</button>
+      <button class="tb" id="bClear" title="Return all pieces to the tray"><span class="ic">⟲</span>Return All</button>
+    </div>
+    <div class="cap">marker</div>
+  </div>
+
+  <div class="tgroup">
+    <div class="row">
+      <button class="tb" id="bRotL" title="Rotate counter-clockwise (Shift+R)"><span class="ic">⟲</span></button>
+      <button class="tb" id="bRotR" title="Rotate clockwise (R)"><span class="ic">⟳</span></button>
+      <button class="tb" id="bFlipX" title="Flip horizontally (F)"><span class="ic">⇋</span></button>
+      <button class="tb" id="bFlipY" title="Flip vertically (Shift+F)"><span class="ic">⇵</span></button>
+      <button class="tb" id="bSlideL" title="Slide selected piece left until it butts (L)"><span class="ic">←</span>Butt</button>
+      <button class="tb" id="bSlideU" title="Slide selected piece up until it butts (U)"><span class="ic">↑</span></button>
+      <button class="tb" id="bUnplace" title="Return selected piece to the tray (Del)"><span class="ic">✕</span></button>
+    </div>
+    <div class="cap">piece</div>
+  </div>
+
+  <div class="tgroup">
+    <div class="row">
+      <select class="mini-sel" id="layRule" title="Lay rule — which rotations pieces allow.&#10;Strict: each piece follows its own rule (one-way fabric)&#10;Relaxed: all pieces may turn 90°&#10;Free: any angle (no nap/direction)">
+        <option value="strict">Lay: strict</option>
+        <option value="relaxed">Lay: 90° ok</option>
+        <option value="free">Lay: free</option>
+      </select>
+      <button class="tb tgl on" id="tGrid" title="Show 10 cm grid"><span class="ic">▦</span>Grid</button>
+      <button class="tb tgl on" id="tSnap" title="Snap positions to 0.5 cm"><span class="ic">⌗</span>Snap</button>
+      <button class="tb tgl" id="tButt" title="Auto-butt: after you drop a piece, slide it left then up until it touches"><span class="ic">⇱</span>Auto-butt</button>
+    </div>
+    <div class="cap">rules · view</div>
+  </div>
+
+  <div class="tgroup">
+    <div class="row">
+      <button class="tb" id="bZoomFit" title="Zoom to fit marker (0)"><span class="ic">⛶</span>Fit</button>
+      <button class="tb" id="bZoomIn" title="Zoom in (+)"><span class="ic">＋</span></button>
+      <button class="tb" id="bZoomOut" title="Zoom out (−)"><span class="ic">－</span></button>
+      <button class="tb" id="bUndo" title="Undo (Ctrl+Z)"><span class="ic">↶</span></button>
+      <button class="tb" id="bRedo" title="Redo (Ctrl+Y)"><span class="ic">↷</span></button>
+      <button class="tb" id="bHelp" title="Quick start & shortcuts (?)"><span class="ic">?</span>Help</button>
+    </div>
+    <div class="cap">view</div>
+  </div>
+</div>
+
+<div id="tray">
+  <div id="trayLabel">UNPLACED</div>
+  <div id="trayItems"></div>
+</div>
+
+<div id="stage">
+  <svg id="cv" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
+    <g id="gFab"></g>
+    <g id="gGrid"></g>
+    <g id="gPieces"></g>
+    <g id="gOverlay"></g>
+    <g id="gRulers"></g>
+    <g id="ghost"></g>
+  </svg>
+  <div id="hintOverlay" hidden>
+    <b>Place your first piece</b><br><br>
+    Click a piece in the tray, then click the fabric to drop it —<br>
+    or press <span class="k">⚡ Auto-Nest</span> and let Seamline pack the marker for you.<br><br>
+    Drag to move · <span class="k">R</span> rotate · <span class="k">F</span> flip · scroll to zoom
+  </div>
+</div>
+
+<footer>
+  <span id="hint">Ready.</span>
+  <span id="selInfo"></span>
+  <span id="coords"></span>
+</footer>
+
+<!-- ---------- New Order dialog ---------- -->
+<dialog id="dlgOrder">
+  <div class="dlg-head">New Order <button class="x" data-close="dlgOrder">✕</button></div>
+  <div class="dlg-body">
+    <div class="frow"><label>Marker name</label><input type="text" id="oName" spellcheck="false"></div>
+    <div class="frow"><label>Model</label>
+      <select id="oModel"></select>
+    </div>
+    <div class="frow" style="align-items:flex-start"><label style="padding-top:14px">Sizes × qty</label>
+      <div id="sizeGrid"></div>
+    </div>
+    <div class="frow"><label>Fabric width</label><input type="number" id="oWidth" min="90" max="300" step="1" value="160"> <span style="color:var(--mut)">cm</span></div>
+    <div class="frow"><label>Buffer</label>
+      <select id="oBuffer">
+        <option value="0">none — pieces may butt</option>
+        <option value="0.3">0.3 cm</option>
+        <option value="0.5">0.5 cm</option>
+        <option value="1">1.0 cm</option>
+      </select>
+    </div>
+    <div id="orderPreview"></div>
+    <div class="note">Creating an order builds one bundle per garment and fills the tray with every piece. It replaces the current marker.</div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgOrder">Cancel</button>
+    <button class="btn primary" id="oCreate">Create order</button>
+  </div>
+</dialog>
+
+<!-- ---------- Nest progress ---------- -->
+<dialog id="dlgNest">
+  <div class="dlg-head">Auto-Nest</div>
+  <div class="dlg-body">
+    <div id="nestMsg">Preparing…</div>
+    <div id="nestBar"><div id="nestFill"></div></div>
+  </div>
+  <div class="dlg-foot"><button class="btn" id="nestCancel">Cancel</button></div>
+</dialog>
+
+<!-- ---------- Help ---------- -->
+<dialog id="dlgHelp">
+  <div class="dlg-head">Seamline Marker — quick start <button class="x" data-close="dlgHelp">✕</button></div>
+  <div class="dlg-body">
+    <h4>WORKFLOW</h4>
+    <ol>
+      <li><b>New Order</b> — pick a model, size quantities, fabric width and buffer. Every piece of every bundle lands in the tray.</li>
+      <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
+      <li><b>Refine</b> — drag pieces, rotate/flip, <b>Butt</b> slides a piece left until it touches its neighbour, <b>Compact</b> tightens the whole marker.</li>
+      <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
+    </ol>
+    <h4>RULES</h4>
+    <ul>
+      <li>Pieces can never overlap — an invalid drop bounces back.</li>
+      <li>Each piece carries a lay rule: body pieces are two-way (0/180°), small parts turn 90°, bindings are free. The <b>Lay</b> selector can relax this for non-directional fabric.</li>
+      <li><b>Buffer</b> keeps a minimum gap between pieces for the cutter.</li>
+      <li>Status: <b>MADE</b> = all placed · <b>PARTIAL</b> = some · <b>UNMADE</b> = none.</li>
+    </ul>
+    <h4>KEYBOARD</h4>
+    <table class="keys">
+      <tr><td><kbd>R</kbd> / <kbd>Shift R</kbd></td><td>rotate selected (or carried) piece cw / ccw</td></tr>
+      <tr><td><kbd>F</kbd> / <kbd>Shift F</kbd></td><td>flip horizontally / vertically</td></tr>
+      <tr><td><kbd>← ↑ → ↓</kbd></td><td>nudge 1 cm (with <kbd>Shift</kbd>: 0.1 cm)</td></tr>
+      <tr><td><kbd>L</kbd> / <kbd>U</kbd></td><td>butt-slide left / up</td></tr>
+      <tr><td><kbd>Del</kbd></td><td>return piece to tray</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>cancel carry / deselect</td></tr>
+      <tr><td><kbd>Ctrl Z</kbd> / <kbd>Ctrl Y</kbd></td><td>undo / redo</td></tr>
+      <tr><td><kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd></td><td>zoom in / out / fit</td></tr>
+      <tr><td>scroll / drag background</td><td>zoom / pan</td></tr>
+    </table>
+    <p style="margin-top:14px; color:var(--mut)">Part of the <b>Seamline</b> apparel suite · workflow modeled on the classic marker pipeline: order → placement → status → plot/cut.</p>
+  </div>
+  <div class="dlg-foot"><button class="btn primary" data-close="dlgHelp">Got it</button></div>
+</dialog>
+
+<div id="toasts"></div>
+<input type="file" id="fileIn" accept=".json,application/json" hidden>
+
+<script>
+'use strict';
+/* =====================================================================
+   Seamline Marker — interactive marker making
+   Part of the Seamline apparel software bundle.
+   Units: centimetres. Fabric runs left→right; width is vertical.
+   ===================================================================== */
+
+/* ---------------- constants ---------------- */
+const MAXLEN = 3000;                       // cm, hard table length
+const SIZES  = ['XS','S','M','L','XL','XXL'];
+const SIZE_F = [0.92, 0.96, 1.0, 1.045, 1.09, 1.14];
+const SIZE_C = ['#5aa9e6','#67b26f','#f2c14e','#f78154','#b565d9','#e05c7a'];
+
+/* ---------------- piece geometry helpers ---------------- */
+const T    = pts => pts.map(p => [p[1], p[0]]);            // transpose: garment length runs along fabric
+const norm = pts => {
+  let mx = Infinity, my = Infinity;
+  for (const p of pts){ if (p[0] < mx) mx = p[0]; if (p[1] < my) my = p[1]; }
+  return pts.map(p => [ +(p[0]-mx).toFixed(2), +(p[1]-my).toFixed(2) ]);
+};
+// mirror a half-outline (first & last points on the centre line x≈0) into a closed symmetric polygon
+const mir = half => {
+  const left = half.filter(p => p[0] > 0.01).map(p => [-p[0], p[1]]).reverse();
+  return half.concat(left);
+};
+
+/* ---------------- piece library ----------------
+   rot: 'two' = 0/180 (directional fabric) · 'four' = 90° steps · 'free'
+   pair: second/fourth instance is cut mirrored (L/R pieces)          */
+const MODELS = [
+ { id:'tshirt', name:'T-Shirt', pieces:[
+   { key:'FRONT',  name:'Front',      qty:1, rot:'two',
+     pts:[[0,8],[4,7],[7,4.6],[8.6,1.4],[9.6,0],[21,3.4],[22.6,7],[23.6,11],[24.8,15],[26.6,19.4],[28,23],[27.4,46],[27,72],[0,72]], sym:true },
+   { key:'BACK',   name:'Back',       qty:1, rot:'two',
+     pts:[[0,2.2],[4.5,1.7],[7.5,1],[9.6,0],[21,3.4],[22.6,7],[23.6,11],[24.8,15],[26.6,19.4],[28,23],[27.4,46],[27,74],[0,74]], sym:true },
+   { key:'SLEEVE', name:'Sleeve',     qty:2, rot:'two',
+     pts:[[0,0],[5,1],[10,3.2],[15,6.6],[18.6,9.4],[20,11.2],[19.2,22.2],[12,22.8],[0,23.2]], sym:true },
+   { key:'NECKBD', name:'Neck band',  qty:1, rot:'free',
+     pts:[[0,0],[64,0],[64,3.6],[0,3.6]] },
+ ]},
+ { id:'shirt', name:'Shirt (long sleeve)', pieces:[
+   { key:'FRONT',  name:'Front',      qty:2, rot:'two', pair:true,
+     pts:[[0,7.5],[2,5.4],[4.6,3],[8,1.1],[11.4,0],[23.4,3],[24.4,6.6],[25.2,10.4],[26.6,14.4],[28.6,17.6],[30.6,19.8],[30,45],[30.4,74],[0,74]] },
+   { key:'BACK',   name:'Back',       qty:1, rot:'two',
+     pts:[[0,0],[26,0],[27.6,2.6],[29,6.4],[30.4,10.4],[31,13],[30.2,40],[30.4,62],[0,62]], sym:true },
+   { key:'YOKE',   name:'Yoke',       qty:2, rot:'two',
+     pts:[[0,2.4],[5,1.8],[8,0.8],[10,0],[24.4,3.2],[26.4,5.2],[27.6,7.6],[28.2,10.6],[0,10.6]], sym:true },
+   { key:'SLEEVE', name:'Sleeve',     qty:2, rot:'two', pair:true,
+     pts:[[0,0],[7,1.2],[13,4],[19,8.6],[24,12.6],[26,14.8],[21,36],[17.6,57],[10,58.6],[0,59.2]], sym:true },
+   { key:'CUFF',   name:'Cuff',       qty:4, rot:'four',
+     pts:[[1,0],[24,0],[25,1],[25,6],[24,7],[1,7],[0,6],[0,1]] },
+   { key:'COLLAR', name:'Collar',     qty:2, rot:'four',
+     pts:[[0,0],[14,.4],[20,1.2],[23.6,2.8],[21.6,6.2],[16,7.8],[9,8.6],[0,9]], sym:true },
+   { key:'STAND',  name:'Collar stand', qty:2, rot:'four',
+     pts:[[0,0],[16,.3],[20.6,1],[22.4,2.4],[21.6,3.8],[16,4.4],[0,4.6]], sym:true },
+   { key:'POCKET', name:'Pocket',     qty:1, rot:'four',
+     pts:[[0,0],[14,0],[14,12],[7,16],[0,12]] },
+ ]},
+ { id:'trouser', name:'Trousers', pieces:[
+   { key:'FRONT',  name:'Front leg',  qty:2, rot:'two', pair:true,
+     pts:[[6.5,0],[30.5,1],[32,10],[33.5,18],[32.5,32],[31,46],[30,64],[29.5,102],[11,102],[10.4,78],[9.6,58],[7,40],[3,30],[0,23.6],[2.2,17],[4.6,9]] },
+   { key:'BACK',   name:'Back leg',   qty:2, rot:'two', pair:true,
+     pts:[[9,0],[35,2],[37,10],[38.5,19],[37.5,33],[36,47],[35,64],[34.5,104],[13,104],[12.4,80],[11.4,58],[8.6,40],[4,29],[0,25.4],[3,17],[6.4,8]] },
+   { key:'WAISTBD',name:'Waistband',  qty:1, rot:'two',
+     pts:[[0,0],[86,0],[86,5],[0,5]] },
+   { key:'PKTBAG', name:'Pocket bag', qty:2, rot:'four',
+     pts:[[4,0],[24,0],[28,4],[28,20],[24,26],[14,30],[6,28],[0,20],[0,6]] },
+   { key:'FLY',    name:'Fly shield', qty:2, rot:'four',
+     pts:[[0,0],[6,0],[6,16],[4.6,19],[1.4,19],[0,16]] },
+ ]},
+];
+// finalize geometry: mirror symmetric halves, transpose so garment length runs along x, normalize
+for (const m of MODELS) for (const d of m.pieces){
+  let pts = d.sym ? mir(d.pts) : d.pts;
+  d.base = norm(T(pts));
+  d.key0 = m.id + '/' + d.key;
+}
+const defByKey = {};
+for (const m of MODELS) for (const d of m.pieces) defByKey[d.key0] = d;
+
+/* ---------------- geometry core ---------------- */
+function shoelace(p){ let a=0; for (let i=0,n=p.length;i<n;i++){ const q=p[(i+1)%n]; a += p[i][0]*q[1]-q[0]*p[i][1]; } return Math.abs(a)/2; }
+function centroid(p){
+  let a=0,cx=0,cy=0;
+  for (let i=0,n=p.length;i<n;i++){ const q=p[(i+1)%n], c=p[i][0]*q[1]-q[0]*p[i][1]; a+=c; cx+=(p[i][0]+q[0])*c; cy+=(p[i][1]+q[1])*c; }
+  if (Math.abs(a)<1e-6){ let sx=0,sy=0; for(const t of p){sx+=t[0];sy+=t[1];} return [sx/p.length, sy/p.length]; }
+  return [cx/(3*a), cy/(3*a)];
+}
+function bboxOf(p){ let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9; for(const t of p){ if(t[0]<x1)x1=t[0]; if(t[0]>x2)x2=t[0]; if(t[1]<y1)y1=t[1]; if(t[1]>y2)y2=t[1]; } return {x1,y1,x2,y2,w:x2-x1,h:y2-y1}; }
+const orient2 = (a,b,c) => (b[0]-a[0])*(c[1]-a[1]) - (b[1]-a[1])*(c[0]-a[0]);
+function segCross(p1,p2,p3,p4){
+  const d1=orient2(p3,p4,p1), d2=orient2(p3,p4,p2), d3=orient2(p1,p2,p3), d4=orient2(p1,p2,p4);
+  return ((d1>1e-9&&d2<-1e-9)||(d1<-1e-9&&d2>1e-9)) && ((d3>1e-9&&d4<-1e-9)||(d3<-1e-9&&d4>1e-9));
+}
+function pip(pt,poly){ // point in polygon, even-odd
+  let inside=false; const [x,y]=pt;
+  for (let i=0,n=poly.length,j=n-1;i<n;j=i++){
+    const [xi,yi]=poly[i],[xj,yj]=poly[j];
+    if ((yi>y)!==(yj>y) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) inside=!inside;
+  }
+  return inside;
+}
+function polysOverlap(a,b){
+  for (let i=0;i<a.length;i++){ const a2=a[(i+1)%a.length];
+    for (let j=0;j<b.length;j++){ if (segCross(a[i],a2,b[j],b[(j+1)%b.length])) return true; } }
+  // no strict edge crossings — check containment. Vertices may sit exactly ON the
+  // other outline (exact butting is legal), so test every vertex nudged a hair
+  // toward its own centroid: catches interior overlap, ignores shared edges.
+  const ca=centroid(a), cb=centroid(b), E=1e-4;
+  if (pip(ca,b) || pip(cb,a)) return true;
+  for (const p of a) if (pip([p[0]+(ca[0]-p[0])*E, p[1]+(ca[1]-p[1])*E], b)) return true;
+  for (const p of b) if (pip([p[0]+(cb[0]-p[0])*E, p[1]+(cb[1]-p[1])*E], a)) return true;
+  return false;
+}
+function d2PointSeg(p,a,b){
+  const vx=b[0]-a[0], vy=b[1]-a[1], wx=p[0]-a[0], wy=p[1]-a[1];
+  const L2=vx*vx+vy*vy; let t = L2>0 ? (wx*vx+wy*vy)/L2 : 0; t=Math.max(0,Math.min(1,t));
+  const dx=p[0]-(a[0]+t*vx), dy=p[1]-(a[1]+t*vy); return dx*dx+dy*dy;
+}
+function tooClose(a,b,gap){ // true if polys overlap or come nearer than gap
+  if (polysOverlap(a,b)) return true;
+  if (gap<=0) return false;
+  const g2=gap*gap;
+  for (let i=0;i<a.length;i++){ const a2=a[(i+1)%a.length];
+    for (let j=0;j<b.length;j++){ const b2=b[(j+1)%b.length];
+      if (d2PointSeg(a[i],b[j],b2)<g2 || d2PointSeg(a2,b[j],b2)<g2 ||
+          d2PointSeg(b[j],a[i],a2)<g2 || d2PointSeg(b2,a[i],a2)<g2) return true;
+    } }
+  return false;
+}
+
+/* ---------------- transformed-polygon cache ---------------- */
+const CACHE = new Map();
+function shapeOf(defKey, sizeIdx, rot, fx, fy){
+  const k = defKey+'|'+sizeIdx+'|'+rot+'|'+(fx?1:0)+(fy?1:0);
+  let s = CACHE.get(k);
+  if (s) return s;
+  const def = defByKey[defKey], f = SIZE_F[sizeIdx];
+  const sx = 1+(f-1)*0.5, sy = f;                 // length grades half as fast as girth
+  const rad = rot*Math.PI/180, cos=Math.cos(rad), sin=Math.sin(rad);
+  let pts = def.base.map(([x,y])=>{
+    x*=sx; y*=sy;
+    if (fx) x=-x; if (fy) y=-y;
+    return [x*cos - y*sin, x*sin + y*cos];
+  });
+  pts = norm(pts);
+  s = { pts, bb:bboxOf(pts), area:shoelace(pts), c:centroid(pts) };
+  CACHE.set(k,s);
+  return s;
+}
+const instShape = i => shapeOf(i.defKey, i.sizeIdx, i.rot, i.fx, i.fy);
+const instPoly  = (i,x=i.x,y=i.y) => instShape(i).pts.map(p=>[p[0]+x, p[1]+y]);
+
+/* ---------------- state ---------------- */
+let S = null;
+let uidSeq = 1;
+const UI = {
+  sel:null, carry:null,
+  drag:null, pan:null,
+  undo:[], redo:[],
+  vb:{x:-30,y:-30,w:600,h:280},
+  grid:true, snap:true, autobutt:false,
+  layRule:'strict', effort:60,
+  nestAbort:false,
+};
+const $ = id => document.getElementById(id);
+const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
+      gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost');
+
+function newOrder(modelId, name, sizesQty, width, buffer){
+  const model = MODELS.find(m=>m.id===modelId);
+  S = { name, modelId, width, buffer, sizesQty, pieces:[] };
+  for (let si=0; si<SIZES.length; si++){
+    const q = sizesQty[SIZES[si]]|0;
+    for (let b=1;b<=q;b++)
+      for (const d of model.pieces)
+        for (let k=0;k<d.qty;k++)
+          S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b,
+                          placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
+  }
+  UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
+  $('markerName').value = name;
+  renderAll(); fitView(); persist();
+}
+
+/* ---------------- validity ---------------- */
+function inBounds(poly){
+  for (const p of poly){
+    if (p[0] < -0.01 || p[0] > MAXLEN) return false;
+    if (p[1] < -0.01 || p[1] > S.width+0.01) return false;
+  }
+  return true;
+}
+function canPlaceAt(inst, x, y){
+  const sh = instShape(inst), bb = sh.bb, buf = S.buffer;
+  if (x < -0.01 || y < -0.01 || y+bb.h > S.width+0.01 || x+bb.w > MAXLEN) return false;
+  const poly = sh.pts.map(p=>[p[0]+x, p[1]+y]);
+  // 0.05 mm tolerance on the buffer: candidates butted at exactly `buf` distance
+  // must not be rejected over binary floating-point noise (e.g. 0.3 cm).
+  const tol = buf>0 ? buf-0.005 : 0;
+  for (const o of S.pieces){
+    if (!o.placed || o.uid===inst.uid) continue;
+    const ob = instShape(o).bb;
+    if (o.x+ob.w+buf < x-0.005 || x+bb.w+buf < o.x-0.005 ||
+        o.y+ob.h+buf < y-0.005 || y+bb.h+buf < o.y-0.005) continue;
+    if (tooClose(poly, instPoly(o), tol)) return false;
+  }
+  return true;
+}
+function slideDir(inst, dx, dy){
+  let step=32, moved=0;
+  while (step>=0.02){
+    while (moved+step<=MAXLEN && canPlaceAt(inst, inst.x+dx*step, inst.y+dy*step)){
+      inst.x+=dx*step; inst.y+=dy*step; moved+=step;
+    }
+    step/=2;
+  }
+  inst.x=+inst.x.toFixed(2); inst.y=+inst.y.toFixed(2);
+  return moved>0.02;
+}
+
+/* ---------------- undo ---------------- */
+const snapPieces = () => JSON.stringify(S.pieces.map(p=>[p.uid,p.placed?1:0,p.x,p.y,p.rot,p.fx?1:0,p.fy?1:0]));
+function pushUndo(){ UI.undo.push(snapPieces()); if (UI.undo.length>100) UI.undo.shift(); UI.redo=[]; }
+function applySnap(s){
+  const map = new Map(JSON.parse(s).map(r=>[r[0],r]));
+  for (const p of S.pieces){ const r=map.get(p.uid); if(!r) continue;
+    p.placed=!!r[1]; p.x=r[2]; p.y=r[3]; p.rot=r[4]; p.fx=!!r[5]; p.fy=!!r[6]; }
+}
+function undo(){ if(!UI.undo.length) return toast('Nothing to undo','warn');
+  UI.redo.push(snapPieces()); applySnap(UI.undo.pop()); UI.sel=null; renderAll(); persist(); }
+function redo(){ if(!UI.redo.length) return toast('Nothing to redo','warn');
+  UI.undo.push(snapPieces()); applySnap(UI.redo.pop()); UI.sel=null; renderAll(); persist(); }
+
+/* ---------------- rotation rules ---------------- */
+function rotStep(inst){
+  const r = defByKey[inst.defKey].rot;
+  if (UI.layRule==='free') return 15;
+  if (UI.layRule==='relaxed') return 90;
+  return r==='two' ? 180 : r==='four' ? 90 : 15;
+}
+function nestRotations(inst){
+  const r = defByKey[inst.defKey].rot, e = UI.effort;
+  let base;
+  if (UI.layRule==='free') base=[0,45,90,135,180,225,270,315];
+  else if (UI.layRule==='relaxed') base=[0,90,180,270];
+  else base = r==='two' ? [0,180] : r==='four' ? [0,90,180,270] : [0,45,90,135,180,225,270,315];
+  if (e<34 && base.length>4) base=[0,90,180,270];
+  if (e<34 && base.length>2 && r==='two') base=[0,180];
+  return base;
+}
+
+/* ---------------- stats / status ---------------- */
+function markerStats(){
+  let len=0, area=0, placed=0;
+  for (const p of S.pieces){
+    if (!p.placed) continue;
+    placed++;
+    const sh=instShape(p);
+    len = Math.max(len, p.x+sh.bb.w);
+    area += sh.area;
+  }
+  const util = len>0 ? area/(len*S.width) : 0;
+  return { len, util, placed, total:S.pieces.length };
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+const fmtPoly = pts => 'M'+pts.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join('L')+'Z';
+
+function renderFabric(len){
+  const W=S.width, L=Math.max(400, len+140);
+  let h = `<rect x="0" y="0" width="${L}" height="${W}" fill="var(--fabric)"/>`;
+  h += `<rect x="0" y="0" width="${L}" height="${W}" fill="none" stroke="var(--fabric-edge)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+  h += `<line x1="0" y1="1.2" x2="${L}" y2="1.2" stroke="#b8ae99" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="6 4"/>`;
+  h += `<line x1="0" y1="${W-1.2}" x2="${L}" y2="${W-1.2}" stroke="#b8ae99" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="6 4"/>`;
+  gFab.innerHTML = h;
+
+  let g='';
+  if (UI.grid){
+    for (let x=10;x<L;x+=10) g+=`<line x1="${x}" y1="0" x2="${x}" y2="${W}" stroke="#00000012" stroke-width="${x%50?0.5:1}" vector-effect="non-scaling-stroke"/>`;
+    for (let y=10;y<W;y+=10) g+=`<line x1="0" y1="${y}" x2="${L}" y2="${y}" stroke="#00000012" stroke-width="${y%50?0.5:1}" vector-effect="non-scaling-stroke"/>`;
+  }
+  gGrid.innerHTML = g;
+
+  // rulers
+  let r='';
+  for (let x=0;x<=L;x+=10){
+    const major = x%50===0;
+    r+=`<line x1="${x}" y1="${-(major?7:4)}" x2="${x}" y2="0" stroke="#8b94a7" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    if (major) r+=`<text x="${x}" y="-10" font-size="7" fill="#8b94a7" text-anchor="middle">${x}</text>`;
+  }
+  for (let y=0;y<=W;y+=10){
+    const major = y%50===0;
+    r+=`<line x1="${-(major?7:4)}" y1="${y}" x2="0" y2="${y}" stroke="#8b94a7" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    if (major) r+=`<text x="-10" y="${y+2.4}" font-size="7" fill="#8b94a7" text-anchor="end">${y}</text>`;
+  }
+  r+=`<text x="${L/2}" y="${W+13}" font-size="8" fill="#5a6274" text-anchor="middle">fabric width ${W} cm · selvage to selvage</text>`;
+  gRulers.innerHTML = r;
+}
+
+function pieceMarkup(inst, cls){
+  const def=defByKey[inst.defKey], sh=instShape(inst), bb=sh.bb, c=sh.c;
+  const fs = Math.max(2, Math.min(5, Math.min(bb.w,bb.h)/5));
+  const vert = bb.h > bb.w*1.4;
+  const rotT = vert ? ` transform="rotate(-90 ${c[0]} ${c[1]})"` : '';
+  const gl = Math.min(bb.w,60)*0.35;
+  return `<g class="pc ${cls||''}" data-uid="${inst.uid}" transform="translate(${inst.x},${inst.y})">`+
+    `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[inst.sizeIdx]}"/>`+
+    `<line class="grain" x1="${c[0]-gl}" y1="${c[1]}" x2="${c[0]+gl}" y2="${c[1]}"/>`+
+    `<text${rotT} x="${c[0]}" y="${c[1]-fs*0.25}" font-size="${fs}" text-anchor="middle">${def.name.toUpperCase()}</text>`+
+    `<text${rotT} x="${c[0]}" y="${c[1]+fs*1.05}" font-size="${fs*0.85}" text-anchor="middle">${SIZES[inst.sizeIdx]}-${inst.bundle}</text>`+
+  `</g>`;
+}
+
+function renderPieces(){
+  let h='';
+  for (const p of S.pieces) if (p.placed) h += pieceMarkup(p, p.uid===UI.sel?'sel':'');
+  gPieces.innerHTML = h;
+}
+
+function renderOverlay(len){
+  let h='';
+  if (len>0){
+    h+=`<line x1="${len}" y1="-4" x2="${len}" y2="${S.width+4}" stroke="var(--acc2)" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-dasharray="5 4"/>`;
+    h+=`<text x="${len}" y="${S.width+11}" font-size="7.5" fill="var(--acc2)" text-anchor="middle" font-weight="700">${len.toFixed(1)} cm</text>`;
+  }
+  gOverlay.innerHTML = h;
+}
+
+function thumbMarkup(inst, count){
+  const def=defByKey[inst.defKey];
+  const sh=shapeOf(inst.defKey, inst.sizeIdx, 0, inst.fx, false), bb=sh.bb;
+  const pad=Math.max(bb.w,bb.h)*0.05;
+  return `<div class="thumb${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${def.name} · size ${SIZES[inst.sizeIdx]} — click, then click the fabric to place">`+
+    (count>1?`<div class="cnt">×${count}</div>`:'')+
+    `<svg viewBox="${bb.x1-pad} ${bb.y1-pad} ${bb.w+2*pad} ${bb.h+2*pad}" preserveAspectRatio="xMidYMid meet">`+
+      `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[inst.sizeIdx]}" fill-opacity=".85" stroke="#20242e" stroke-width="1" vector-effect="non-scaling-stroke"/>`+
+    `</svg>`+
+    `<div class="nm">${def.name}</div>`+
+    `<div class="sz" style="background:${SIZE_C[inst.sizeIdx]}">${SIZES[inst.sizeIdx]}</div>`+
+  `</div>`;
+}
+
+function renderTray(){
+  const groups = new Map();
+  for (const p of S.pieces){
+    if (p.placed || p.uid===UI.carry) continue;
+    const k = p.defKey+'|'+p.sizeIdx;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(p);
+  }
+  const list=[...groups.values()].sort((a,b)=> a[0].sizeIdx-b[0].sizeIdx || a[0].defKey.localeCompare(b[0].defKey));
+  $('trayItems').innerHTML = list.length
+    ? list.map(g=>thumbMarkup(g[0], g.length)).join('')
+    : `<div id="trayEmpty">All pieces placed ✓</div>`;
+}
+
+function renderStats(){
+  const st = markerStats();
+  $('stLen').textContent = st.len.toFixed(1);
+  $('stUtil').textContent = st.placed ? (st.util*100).toFixed(1)+'%' : '—';
+  $('stPieces').textContent = st.placed+'/'+st.total;
+  const chip=$('statusChip');
+  const cls = st.total&&st.placed===st.total ? 'made' : st.placed>0 ? 'partial' : 'unmade';
+  chip.className = 'chip '+cls;
+  chip.textContent = cls.toUpperCase();
+  const model = MODELS.find(m=>m.id===S.modelId);
+  const sz = SIZES.map((s,i)=> (S.sizesQty[s]|0)>0 ? `${s}×${S.sizesQty[s]}`:null).filter(Boolean).join(' ');
+  $('orderSummary').textContent = `${model.name} · ${sz||'no sizes'} · ${S.width} cm · buffer ${S.buffer} cm`;
+  $('hintOverlay').hidden = st.placed>0 || st.total===0;
+  return st;
+}
+
+function renderAll(){
+  const st = renderStats();
+  renderFabric(st.len);
+  renderPieces();
+  renderOverlay(st.len);
+  renderTray();
+  renderHint();
+}
+
+function renderHint(){
+  const h=$('hint'), si=$('selInfo');
+  if (UI.carry!=null){
+    const p = byUid(UI.carry), def=defByKey[p.defKey];
+    h.textContent = `Carrying ${def.name.toUpperCase()} ${SIZES[p.sizeIdx]} — click the fabric to place · R rotate · F flip · Esc cancel`;
+    si.textContent='';
+  } else if (UI.sel!=null){
+    const p = byUid(UI.sel);
+    if (p){ const def=defByKey[p.defKey], sh=instShape(p);
+      h.textContent = 'Drag to move · R rotate · F flip · L butt left · Del return to tray';
+      si.textContent = `${def.name.toUpperCase()} · ${SIZES[p.sizeIdx]}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · rot ${p.rot}°${p.fx?' · flipped':''}`;
+    } else si.textContent='';
+  } else {
+    h.textContent = 'Select a piece from the tray and click the fabric — or press ⚡ Auto-Nest.';
+    si.textContent='';
+  }
+}
+const byUid = uid => S.pieces.find(p=>p.uid===uid);
+
+/* =====================================================================
+   VIEW (zoom / pan)
+   ===================================================================== */
+function setVB(){ cv.setAttribute('viewBox', `${UI.vb.x} ${UI.vb.y} ${UI.vb.w} ${UI.vb.h}`); }
+function fitView(){
+  const cw=cv.clientWidth, ch=cv.clientHeight;
+  if (cw<50 || ch<50){ setTimeout(fitView,120); return; }   // pane not laid out yet
+  const st=markerStats();
+  const L=Math.max(320, st.len+120), W=S.width;
+  const pad=34;
+  const ar = cw/ch;
+  let w=L+2*pad, h=W+2*pad+18;
+  if (w/h < ar) w = h*ar; else h = w/ar;
+  UI.vb={x:-pad-((w-(L+2*pad))/2)+ (0), y:-pad-14, w, h};
+  setVB();
+}
+function zoomAt(mx,my,k){
+  const v=UI.vb;
+  const nw=Math.max(40, Math.min(4000, v.w*k)); const kk=nw/v.w;
+  v.x = mx-(mx-v.x)*kk; v.y = my-(my-v.y)*kk; v.w=nw; v.h*=kk;
+  setVB();
+}
+function worldPt(e){
+  const pt=cv.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
+  const m=cv.getScreenCTM(); if(!m) return {x:0,y:0};
+  const p=pt.matrixTransform(m.inverse()); return {x:p.x,y:p.y};
+}
+
+/* =====================================================================
+   INTERACTION
+   ===================================================================== */
+function select(uid){
+  UI.sel=uid;
+  for (const g of gPieces.children) g.classList.toggle('sel', +g.dataset.uid===uid);
+  renderHint();
+}
+function snapv(v){ return UI.snap ? Math.round(v*2)/2 : +v.toFixed(2); }
+
+function capturePtr(e){ if (e.pointerId!==undefined){ try{ cv.setPointerCapture(e.pointerId); }catch{} } }
+function onDown(e){
+  if (e.button===1 || e.button===2){ startPan(e); return; }
+  if (e.button!==0) return;
+  const w = worldPt(e);
+
+  if (UI.carry!=null){ tryDropCarry(w); return; }
+
+  const g = e.target.closest && e.target.closest('g.pc');
+  if (g){
+    const uid=+g.dataset.uid, inst=byUid(uid);
+    select(uid);
+    UI.drag={ uid, offX:w.x-inst.x, offY:w.y-inst.y, sx:inst.x, sy:inst.y, moved:false, el:g, valid:true };
+    capturePtr(e);
+  } else {
+    select(null);
+    startPan(e);
+  }
+}
+function startPan(e){
+  UI.pan={ mx:e.clientX, my:e.clientY, vx:UI.vb.x, vy:UI.vb.y };
+  cv.classList.add('panning');
+  capturePtr(e);
+}
+function onMove(e){
+  const w=worldPt(e);
+  $('coords').textContent = `x ${w.x.toFixed(1)}  y ${w.y.toFixed(1)} cm`;
+  if (UI.pan){
+    const scale = UI.vb.w/cv.clientWidth;
+    UI.vb.x = UI.pan.vx - (e.clientX-UI.pan.mx)*scale;
+    UI.vb.y = UI.pan.vy - (e.clientY-UI.pan.my)*scale;
+    setVB(); return;
+  }
+  if (UI.drag){
+    const d=UI.drag, inst=byUid(d.uid);
+    inst.x = snapv(w.x-d.offX); inst.y = snapv(w.y-d.offY);
+    d.moved=true;
+    d.el.setAttribute('transform',`translate(${inst.x},${inst.y})`);
+    d.valid = canPlaceAt(inst, inst.x, inst.y);
+    d.el.classList.toggle('bad', !d.valid);
+    return;
+  }
+  if (UI.carry!=null) updateGhost(w);
+}
+function onUp(e){
+  if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); return; }
+  if (UI.drag){
+    const d=UI.drag, inst=byUid(d.uid); UI.drag=null;
+    if (!d.moved){ renderHint(); return; }
+    if (!d.valid){
+      inst.x=d.sx; inst.y=d.sy;
+      toast('Overlap — piece bounced back','bad');
+      renderAll();
+      select(d.uid);
+      return;
+    }
+    // commit
+    const nx=inst.x, ny=inst.y; inst.x=d.sx; inst.y=d.sy;
+    pushUndo(); inst.x=nx; inst.y=ny;
+    if (UI.autobutt){ slideDir(inst,-1,0); slideDir(inst,0,-1); }
+    renderAll(); select(d.uid); persist();
+  }
+}
+// Register for pointer events (real input) AND mouse events (fallback for
+// environments that synthesize only mouse input). Mouse-down is suppressed
+// right after a pointer-down so real browsers don't double-fire; move/up
+// handlers are idempotent, so duplicates are harmless.
+let lastPtrDown=0;
+cv.addEventListener('pointerdown', e=>{ lastPtrDown=performance.now(); onDown(e); });
+cv.addEventListener('mousedown',  e=>{ if (performance.now()-lastPtrDown<500) return; onDown(e); });
+cv.addEventListener('pointermove', onMove);
+cv.addEventListener('mousemove', onMove);
+cv.addEventListener('pointerup', onUp);
+cv.addEventListener('mouseup', onUp);
+cv.addEventListener('contextmenu', e=>{
+  e.preventDefault();
+  const g = e.target.closest && e.target.closest('g.pc');
+  if (g) unplace(+g.dataset.uid);
+});
+cv.addEventListener('dblclick', e=>{
+  const g = e.target.closest && e.target.closest('g.pc');
+  if (g){ select(+g.dataset.uid); rotateSel(1); }
+});
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const w=worldPt(e);
+  zoomAt(w.x, w.y, e.deltaY>0 ? 1.12 : 1/1.12);
+},{passive:false});
+
+/* ---- carry (tray → fabric) ---- */
+$('trayItems').addEventListener('click', e=>{
+  const t=e.target.closest('.thumb'); if(!t) return;
+  UI.carry = +t.dataset.uid; UI.sel=null;
+  cv.classList.add('carrying');
+  renderTray(); renderHint();
+});
+function updateGhost(w){
+  const inst=byUid(UI.carry); if(!inst){ gGhost.innerHTML=''; return; }
+  const sh=instShape(inst), bb=sh.bb;
+  const x=snapv(w.x-bb.w/2), y=snapv(w.y-bb.h/2);
+  inst._gx=x; inst._gy=y;
+  const ok = canPlaceAt(inst,x,y);
+  gGhost.setAttribute('class', ok?'ok':'no');
+  gGhost.innerHTML = `<g transform="translate(${x},${y})"><path d="${fmtPoly(sh.pts)}"/></g>`;
+}
+function tryDropCarry(w){
+  const inst=byUid(UI.carry); if(!inst) return cancelCarry();
+  const sh=instShape(inst), bb=sh.bb;
+  const x=snapv(w.x-bb.w/2), y=snapv(w.y-bb.h/2);
+  if (!canPlaceAt(inst,x,y)){ toast('Can’t place here — overlap or outside fabric','bad'); return; }
+  pushUndo();
+  inst.placed=true; inst.x=x; inst.y=y;
+  if (UI.autobutt){ slideDir(inst,-1,0); slideDir(inst,0,-1); }
+  const nextSame = S.pieces.find(p=>!p.placed && p.uid!==inst.uid && p.defKey===inst.defKey && p.sizeIdx===inst.sizeIdx);
+  UI.carry = null; gGhost.innerHTML=''; cv.classList.remove('carrying');
+  renderAll(); select(inst.uid); persist();
+  if (nextSame){ UI.carry=nextSame.uid; cv.classList.add('carrying'); renderTray(); renderHint(); }
+}
+function cancelCarry(){
+  UI.carry=null; gGhost.innerHTML=''; cv.classList.remove('carrying');
+  renderTray(); renderHint();
+}
+
+/* ---- piece ops ---- */
+function withSel(fn){
+  const uid = UI.carry!=null ? UI.carry : UI.sel;
+  if (uid==null) return toast('Select a piece first','warn');
+  const inst=byUid(uid); if (!inst) return;
+  fn(inst, UI.carry!=null);
+}
+function rotateSel(dir){
+  withSel((inst, carrying)=>{
+    const step=rotStep(inst)*dir;
+    const old=inst.rot;
+    inst.rot=((inst.rot+step)%360+360)%360;
+    if (carrying){ if(inst._gx!=null) updateGhost({x:inst._gx+instShape(inst).bb.w/2, y:inst._gy+instShape(inst).bb.h/2}); renderHint(); return; }
+    if (!inst.placed) return;
+    if (!canPlaceAt(inst,inst.x,inst.y)){ inst.rot=old; return toast('No room to rotate here','warn'); }
+    pushUndo(); renderAll(); select(inst.uid); persist();
+  });
+}
+function flipSel(axis){
+  withSel((inst, carrying)=>{
+    const k = axis==='x'?'fx':'fy', old=inst[k];
+    inst[k]=!old;
+    if (carrying){ renderHint(); return; }
+    if (!inst.placed) return;
+    if (!canPlaceAt(inst,inst.x,inst.y)){ inst[k]=old; return toast('No room to flip here','warn'); }
+    pushUndo(); renderAll(); select(inst.uid); persist();
+  });
+}
+function buttSel(dx,dy){
+  withSel(inst=>{
+    if (!inst.placed) return;
+    pushUndo();
+    if (!slideDir(inst,dx,dy)) UI.undo.pop();
+    renderAll(); select(inst.uid); persist();
+  });
+}
+function unplace(uid){
+  const inst=byUid(uid); if(!inst||!inst.placed) return;
+  pushUndo(); inst.placed=false;
+  if (UI.sel===uid) UI.sel=null;
+  renderAll(); persist();
+}
+function nudgeSel(dx,dy){
+  withSel(inst=>{
+    if (!inst.placed) return;
+    const nx=+(inst.x+dx).toFixed(2), ny=+(inst.y+dy).toFixed(2);
+    if (!canPlaceAt(inst,nx,ny)) return;
+    inst.x=nx; inst.y=ny;
+    renderAll(); select(inst.uid); persistSoon();
+  });
+}
+
+/* =====================================================================
+   AUTO-NEST  (bottom-left candidate placement + butt compaction)
+   ===================================================================== */
+function bestSpotFor(inst, curLen){
+  const rots = nestRotations(inst);
+  const buf=S.buffer;
+  let best=null;
+  const placed = S.pieces.filter(p=>p.placed && p.uid!==inst.uid);
+  for (const rot of rots){
+    const saveRot=inst.rot; inst.rot=rot;
+    const bb=instShape(inst).bb;
+    if (bb.h > S.width){ inst.rot=saveRot; continue; }
+    // candidates: origin, butted against every placed piece, and — as a
+    // guaranteed fallback — fresh fabric just past the current marker end.
+    const xs=new Set([0, +(curLen+buf+0.01).toFixed(2)]), ys=new Set([0]);
+    for (const o of placed){
+      const ob=instShape(o).bb;
+      xs.add(+(o.x+ob.w+buf).toFixed(2));
+      const xl=+(o.x-bb.w-buf).toFixed(2); if (xl>0) xs.add(xl);
+      ys.add(+(o.y+ob.h+buf).toFixed(2));
+      const yl=+(o.y-bb.h-buf).toFixed(2); if (yl>0) ys.add(yl);
+    }
+    const xa=[...xs].filter(x=>x>=0&&x+bb.w<=MAXLEN).sort((a,b)=>a-b);
+    const ya=[...ys].filter(y=>y>=0&&y+bb.h<=S.width).sort((a,b)=>a-b);
+    let found=null;
+    outer:
+    for (const x of xa){
+      const s1=Math.max(curLen, x+bb.w);
+      if (best && s1 > best.s1+1e-6) break;
+      for (const y of ya){
+        if (canPlaceAt(inst,x,y)){ found={x,y,s1,rot}; break outer; }
+      }
+    }
+    inst.rot=saveRot;
+    if (found && (!best || found.s1<best.s1-1e-6 || (Math.abs(found.s1-best.s1)<1e-6 && found.x<best.x)))
+      best=found;
+  }
+  return best;
+}
+async function autoNest(){
+  const queue = S.pieces.filter(p=>!p.placed)
+    .sort((a,b)=> instShape(b).area - instShape(a).area);
+  if (!queue.length) return toast('Nothing to nest — tray is empty','warn');
+  cancelCarry();
+  pushUndo();
+  UI.nestAbort=false;
+  const dlg=$('dlgNest'); dlg.showModal();
+  const t0=performance.now();
+  let failed=[];
+  for (let i=0;i<queue.length;i++){
+    if (UI.nestAbort) break;
+    const inst=queue[i], def=defByKey[inst.defKey];
+    $('nestMsg').textContent = `Placing ${i+1}/${queue.length} — ${def.name.toUpperCase()} ${SIZES[inst.sizeIdx]}-${inst.bundle}`;
+    $('nestFill').style.width = ((i)/queue.length*100).toFixed(1)+'%';
+    await new Promise(r=>setTimeout(r,0));
+    const curLen = markerStats().len;
+    const spot = bestSpotFor(inst, curLen);
+    if (!spot){ failed.push(def.name); continue; }
+    inst.rot=spot.rot; inst.x=spot.x; inst.y=spot.y; inst.placed=true;
+    slideDir(inst,-1,0); slideDir(inst,0,-1);
+    if (UI.effort>=50){ slideDir(inst,-1,0); }
+    if (i%3===2) { renderPieces(); renderOverlay(markerStats().len); }
+  }
+  $('nestFill').style.width='100%';
+  dlg.close();
+  renderAll(); persist();
+  const st=markerStats();
+  const secs=((performance.now()-t0)/1000).toFixed(1);
+  if (UI.nestAbort) toast('Nest cancelled — placed so far kept','warn');
+  else if (failed.length) toast(`${failed.length} piece(s) didn’t fit: ${[...new Set(failed)].join(', ')}`,'warn');
+  else toast(`Marker made in ${secs}s — ${(st.util*100).toFixed(1)}% utilization, ${st.len.toFixed(1)} cm`);
+}
+function compact(){
+  const placed=S.pieces.filter(p=>p.placed).sort((a,b)=>a.x-b.x);
+  if (!placed.length) return toast('Nothing to compact','warn');
+  pushUndo();
+  for (let pass=0; pass<2; pass++)
+    for (const p of placed){ slideDir(p,-1,0); slideDir(p,0,-1); }
+  renderAll(); persist();
+  toast(`Compacted — ${markerStats().len.toFixed(1)} cm`);
+}
+function returnAll(){
+  if (!S.pieces.some(p=>p.placed)) return;
+  pushUndo();
+  for (const p of S.pieces) p.placed=false;
+  UI.sel=null; renderAll(); persist();
+}
+
+/* =====================================================================
+   FILE I/O
+   ===================================================================== */
+function download(name, mime, data){
+  const a=document.createElement('a');
+  a.href = data instanceof Blob ? URL.createObjectURL(data) : data;
+  a.download=name; a.click();
+  if (data instanceof Blob) setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+function saveJSON(){
+  S.name = $('markerName').value.trim() || S.name;
+  const doc={ app:'seamline-marker', version:1, saved:new Date().toISOString(), marker:S };
+  download((S.name||'marker')+'.seamline.json','application/json',
+    new Blob([JSON.stringify(doc,null,1)],{type:'application/json'}));
+  toast('Marker saved');
+}
+function openJSON(file){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const doc=JSON.parse(rd.result);
+      if (doc.app!=='seamline-marker' || !doc.marker) throw 0;
+      S=doc.marker;
+      for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+      UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
+      $('markerName').value=S.name;
+      renderAll(); fitView(); persist();
+      toast('Marker loaded: '+S.name);
+    }catch{ toast('Not a Seamline marker file','bad'); }
+  };
+  rd.readAsText(file);
+}
+function plotSVGString(){
+  const st=markerStats(), W=S.width, L=Math.max(st.len, 50);
+  let body='';
+  for (const p of S.pieces){
+    if (!p.placed) continue;
+    const def=defByKey[p.defKey], sh=instShape(p), c=sh.c, bb=sh.bb;
+    const fs=Math.max(2,Math.min(5,Math.min(bb.w,bb.h)/5));
+    const vert=bb.h>bb.w*1.4;
+    const rt=vert?` transform="rotate(-90 ${c[0]} ${c[1]})"`:'';
+    body+=`<g transform="translate(${p.x},${p.y})">`+
+      `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[p.sizeIdx]}" fill-opacity=".55" stroke="#111" stroke-width="0.12"/>`+
+      `<text${rt} x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle" font-family="Helvetica,Arial" fill="#111">${def.name.toUpperCase()} ${SIZES[p.sizeIdx]}-${p.bundle}</text>`+
+    `</g>`;
+  }
+  let ticks='';
+  for (let x=0;x<=L;x+=50) ticks+=`<line x1="${x}" y1="${W}" x2="${x}" y2="${W+3}" stroke="#333" stroke-width="0.15"/><text x="${x}" y="${W+7}" font-size="3.5" text-anchor="middle" font-family="Helvetica,Arial" fill="#333">${x}</text>`;
+  const model=MODELS.find(m=>m.id===S.modelId);
+  const title=`${S.name} · ${model.name} · width ${W} cm · length ${st.len.toFixed(1)} cm · util ${(st.util*100).toFixed(1)}% · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*4}" height="${(W+24)*4}">`+
+    `<rect x="-4" y="-12" width="${L+12}" height="${W+24}" fill="#fff"/>`+
+    `<text x="0" y="-5" font-size="4.5" font-family="Helvetica,Arial" fill="#111" font-weight="bold">${title}</text>`+
+    `<rect x="0" y="0" width="${L+4}" height="${W}" fill="#f7f4ec" stroke="#555" stroke-width="0.2"/>`+
+    body+ticks+
+    `<line x1="${st.len}" y1="-2" x2="${st.len}" y2="${W+2}" stroke="#d33" stroke-width="0.25" stroke-dasharray="2 1.5"/>`+
+  `</svg>`;
+}
+function exportSVG(){
+  S.name=$('markerName').value.trim()||S.name;
+  download((S.name||'marker')+'.svg','image/svg+xml',
+    new Blob([plotSVGString()],{type:'image/svg+xml'}));
+  toast('Plot exported (SVG · 1 unit = 1 cm)');
+}
+function exportPNG(){
+  S.name=$('markerName').value.trim()||S.name;
+  const svg=plotSVGString();
+  const img=new Image();
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  img.onload=()=>{
+    const c=document.createElement('canvas');
+    c.width=img.width; c.height=img.height;
+    c.getContext('2d').drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    c.toBlob(b=>{ download((S.name||'marker')+'.png','image/png',b); toast('PNG exported'); });
+  };
+  img.src=url;
+}
+
+/* ---- autosave ---- */
+let persistT=null;
+function persist(){
+  try{
+    S.name=$('markerName').value.trim()||S.name;
+    localStorage.setItem('seamline-marker-autosave', JSON.stringify({marker:S}));
+  }catch{}
+}
+function persistSoon(){ clearTimeout(persistT); persistT=setTimeout(persist,400); }
+
+/* =====================================================================
+   DIALOGS / TOOLBAR
+   ===================================================================== */
+function toast(msg, kind){
+  const t=document.createElement('div');
+  t.className='toast'+(kind?' '+kind:'');
+  t.textContent=msg;
+  $('toasts').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),320); }, 2600);
+}
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).close()));
+
+function openOrderDialog(){
+  const sel=$('oModel');
+  sel.innerHTML=MODELS.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  sel.value=S?S.modelId:'tshirt';
+  $('oName').value = suggestName(sel.value);
+  $('oWidth').value = S?S.width:160;
+  $('oBuffer').value = S?String(S.buffer):'0';
+  const grid=$('sizeGrid');
+  grid.innerHTML=SIZES.map((s,i)=>`<div class="szcell"><div class="t" style="background:${SIZE_C[i]}">${s}</div><input type="number" min="0" max="9" value="${S&&S.sizesQty[s]?S.sizesQty[s]:0}" data-size="${s}"></div>`).join('');
+  updateOrderPreview();
+  $('dlgOrder').showModal();
+}
+function suggestName(modelId){
+  const d=new Date();
+  return modelId.toUpperCase()+'-'+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+}
+function updateOrderPreview(){
+  const model=MODELS.find(m=>m.id===$('oModel').value);
+  const per=model.pieces.reduce((a,p)=>a+p.qty,0);
+  let garments=0;
+  document.querySelectorAll('#sizeGrid input').forEach(i=>garments+=(+i.value||0));
+  $('orderPreview').innerHTML = `${model.pieces.length} piece styles · ${per} pieces per garment · <b>${garments} garment${garments===1?'':'s'} = ${garments*per} pieces</b>`;
+}
+$('oModel').addEventListener('change', ()=>{ $('oName').value=suggestName($('oModel').value); updateOrderPreview(); });
+$('sizeGrid').addEventListener('input', updateOrderPreview);
+$('oCreate').addEventListener('click', ()=>{
+  const sq={}; let total=0;
+  document.querySelectorAll('#sizeGrid input').forEach(i=>{ sq[i.dataset.size]=+i.value||0; total+=sq[i.dataset.size]; });
+  if (!total) return toast('Enter a quantity for at least one size','warn');
+  const model=MODELS.find(m=>m.id===$('oModel').value);
+  const per=model.pieces.reduce((a,p)=>a+p.qty,0);
+  if (total*per>240) return toast('Order too large for one marker (max ~240 pieces) — reduce quantities','warn');
+  const w=Math.max(90,Math.min(300,+$('oWidth').value||160));
+  $('dlgOrder').close();
+  newOrder($('oModel').value, $('oName').value.trim()||suggestName($('oModel').value), sq, w, +$('oBuffer').value);
+  toast(`Order created — ${total*per} pieces in the tray`);
+});
+
+/* toolbar wiring */
+$('bNew').onclick=openOrderDialog;
+$('bOpen').onclick=()=>$('fileIn').click();
+$('fileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSON(e.target.files[0]); e.target.value=''; });
+$('bSave').onclick=saveJSON;
+$('bExport').onclick=exportSVG;
+$('bPng').onclick=exportPNG;
+$('bNest').onclick=autoNest;
+$('bCompact').onclick=compact;
+$('bClear').onclick=returnAll;
+$('bRotL').onclick=()=>rotateSel(-1);
+$('bRotR').onclick=()=>rotateSel(1);
+$('bFlipX').onclick=()=>flipSel('x');
+$('bFlipY').onclick=()=>flipSel('y');
+$('bSlideL').onclick=()=>buttSel(-1,0);
+$('bSlideU').onclick=()=>buttSel(0,-1);
+$('bUnplace').onclick=()=>{ if(UI.sel!=null) unplace(UI.sel); else toast('Select a piece first','warn'); };
+$('bZoomFit').onclick=fitView;
+$('bZoomIn').onclick=()=>zoomAt(UI.vb.x+UI.vb.w/2, UI.vb.y+UI.vb.h/2, 1/1.25);
+$('bZoomOut').onclick=()=>zoomAt(UI.vb.x+UI.vb.w/2, UI.vb.y+UI.vb.h/2, 1.25);
+$('bUndo').onclick=undo;
+$('bRedo').onclick=redo;
+$('bHelp').onclick=()=>$('dlgHelp').showModal();
+$('nestCancel').onclick=()=>{ UI.nestAbort=true; };
+$('effort').addEventListener('input',e=>{ UI.effort=+e.target.value; $('effortVal').textContent=UI.effort; });
+$('layRule').addEventListener('change',e=>{ UI.layRule=e.target.value; });
+for (const [id,key] of [['tGrid','grid'],['tSnap','snap'],['tButt','autobutt']]){
+  $(id).addEventListener('click',()=>{
+    UI[key]=!UI[key]; $(id).classList.toggle('on',UI[key]);
+    if (key==='grid') renderFabric(markerStats().len);
+  });
+}
+$('markerName').addEventListener('change',()=>{ S.name=$('markerName').value.trim()||S.name; persist(); });
+
+/* keyboard */
+window.addEventListener('keydown', e=>{
+  const tag=(e.target.tagName||'').toLowerCase();
+  if (tag==='input'||tag==='select'||tag==='textarea') return;
+  if (document.querySelector('dialog[open]')) return;   // dialogs handle their own keys
+  const k=e.key;
+  if ((e.ctrlKey||e.metaKey) && k.toLowerCase()==='z'){ e.preventDefault(); e.shiftKey?redo():undo(); return; }
+  if ((e.ctrlKey||e.metaKey) && k.toLowerCase()==='y'){ e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey||e.metaKey) && k.toLowerCase()==='s'){ e.preventDefault(); saveJSON(); return; }
+  if (e.ctrlKey||e.metaKey) return;
+  switch(k){
+    case 'r': rotateSel(1); break;
+    case 'R': rotateSel(-1); break;
+    case 'f': flipSel('x'); break;
+    case 'F': flipSel('y'); break;
+    case 'l': case 'L': buttSel(-1,0); break;
+    case 'u': case 'U': buttSel(0,-1); break;
+    case 'Delete': case 'Backspace': if(UI.sel!=null) unplace(UI.sel); break;
+    case 'Escape': if(UI.carry!=null) cancelCarry(); else select(null); break;
+    case 'ArrowLeft':  e.preventDefault(); nudgeSel(e.shiftKey?-0.1:-1,0); break;
+    case 'ArrowRight': e.preventDefault(); nudgeSel(e.shiftKey?0.1:1,0); break;
+    case 'ArrowUp':    e.preventDefault(); nudgeSel(0,e.shiftKey?-0.1:-1); break;
+    case 'ArrowDown':  e.preventDefault(); nudgeSel(0,e.shiftKey?0.1:1); break;
+    case '+': case '=': zoomAt(UI.vb.x+UI.vb.w/2,UI.vb.y+UI.vb.h/2,1/1.25); break;
+    case '-': zoomAt(UI.vb.x+UI.vb.w/2,UI.vb.y+UI.vb.h/2,1.25); break;
+    case '0': fitView(); break;
+    case 'n': case 'N': openOrderDialog(); break;
+    case '?': $('dlgHelp').showModal(); break;
+  }
+});
+window.addEventListener('resize', ()=>setVB());
+
+/* =====================================================================
+   BOOT
+   ===================================================================== */
+(function boot(){
+  let restored=false;
+  try{
+    const raw=localStorage.getItem('seamline-marker-autosave');
+    if (raw){
+      const doc=JSON.parse(raw);
+      if (doc.marker && doc.marker.pieces){
+        S=doc.marker;
+        for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+        $('markerName').value=S.name;
+        restored=true;
+      }
+    }
+  }catch{}
+  if (!restored){
+    newOrder('tshirt', 'TSHIRT-DEMO', {XS:0,S:1,M:2,L:1,XL:0,XXL:0}, 160, 0);
+  } else {
+    renderAll();
+  }
+  fitView();
+  setTimeout(fitView, 60);   // after fonts/layout settle
+})();
+</script>
+</body>
+</html>
