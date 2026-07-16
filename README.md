@@ -9,6 +9,7 @@ One self-contained file — **double-click `SeamlineMarker.html`** to run it in 
 2. **Place** — click a tray piece then click the fabric (green ghost = valid, red = blocked), or press **⚡ Auto-Nest** to pack the whole marker automatically (effort slider trades speed for tightness).
 3. **Refine** — drag pieces (overlaps bounce back), rotate/flip under lay-rule constraints, **Butt** slides a piece until it touches its neighbour, **Compact** tightens the whole marker. Length, **utilization %** and piece counts update live; status chip = MADE / PARTIAL / UNMADE.
 4. **Output** — **Save** the marker as JSON (re-open later with **Open**), export the plot as **SVG** (1 unit = 1 cm, with title block) or **PNG**.
+5. **Cut Plan** (Easy Plan analog) — for bulk production: enter demand per **colour × size** plus ply limits (min/max ply, max garments per marker), hit **Calculate markers**, and the demand is split into a marker set with spreads (colour × plies) — proportional demand collapses into one shared ratio marker; residuals are cleared exactly by per-colour cleanup markers, with below-min-ply spreads flagged. Open any plan row as a marker order, or export the cut tickets as CSV.
 
 ## Rules engine
 

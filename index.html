@@ -217,6 +217,26 @@
   table.wsum th,table.wsum td{padding:5px 8px; border-bottom:1px solid var(--edge); text-align:left}
   table.wsum td:nth-child(n+3),table.wsum th:nth-child(n+3){text-align:right}
 
+  /* Cut Plan */
+  #dlgPlan{max-width:780px}
+  #dlgPlan .dlg-body{max-height:62vh; overflow:auto; min-height:220px}
+  .crow{display:flex; align-items:center; gap:6px; margin-bottom:6px}
+  .crow .cname{width:110px; flex:none; background:var(--panel2); border:1px solid var(--edge);
+               border-radius:6px; color:var(--ink); padding:5px 8px}
+  .crow input[type=number]{width:100%; min-width:0; text-align:center; background:var(--panel2);
+               border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 2px}
+  .crow .qcell{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px}
+  .crow .qcell .t{font-size:9.5px; font-weight:700; border-radius:3px; padding:0 5px; color:#20242e}
+  .crow .x{color:var(--mut); padding:2px 7px; border-radius:4px; flex:none}
+  .crow .x:hover{background:#3a2026; color:var(--bad)}
+  .setrow{display:flex; gap:14px; flex-wrap:wrap}
+  .setrow .set{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--mut)}
+  .setrow .set input{width:86px; background:var(--panel2); border:1px solid var(--edge);
+                     border-radius:6px; color:var(--ink); padding:5px 8px}
+  .lowply{color:var(--warn); font-weight:700}
+  .sprd{white-space:nowrap}
+  table.wsum td .btn.mini{padding:2px 10px}
+
   .szgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px}
   .szcell{display:flex; flex-direction:column; align-items:center; gap:3px}
   .szcell .t{font-size:10.5px; font-weight:700; border-radius:3px; padding:0 6px; color:#20242e}
@@ -289,6 +309,13 @@
       <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
     </div>
     <div class="cap">file</div>
+  </div>
+
+  <div class="tgroup">
+    <div class="row">
+      <button class="tb" id="bPlan" title="Cut planning — bulk demand per color × plies → marker set (P)"><span class="ic">⚏</span>Cut Plan</button>
+    </div>
+    <div class="cap">plan</div>
   </div>
 
   <div class="tgroup">
@@ -385,6 +412,18 @@
   </div>
 </dialog>
 
+<!-- ---------- Cut Plan (Easy Plan) ---------- -->
+<dialog id="dlgPlan">
+  <div class="dlg-head">Cut Plan — Easy Plan <button class="x" data-close="dlgPlan">✕</button></div>
+  <div class="dlg-body" id="planBody"></div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgPlan">Close</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="pCsv">Export cut tickets (CSV)</button>
+    <button class="btn primary" id="pCalc">⚡ Calculate markers</button>
+  </div>
+</dialog>
+
 <!-- ---------- Nest progress ---------- -->
 <dialog id="dlgNest">
   <div class="dlg-head">Auto-Nest</div>
@@ -405,6 +444,7 @@
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Refine</b> — drag pieces, rotate/flip, <b>Butt</b> slides a piece left until it touches its neighbour, <b>Compact</b> tightens the whole marker.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
+      <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
     <h4>RULES</h4>
     <ul>
@@ -1421,6 +1461,174 @@ function wizCreate(nest){
 $('wCreate').onclick=()=>wizCreate(false);
 $('wCreateNest').onclick=()=>wizCreate(true);
 
+/* ---- Cut Plan (Easy Plan): bulk demand × ply limits → marker set ----
+   A marker is a size mix cut on spreads of fabric; a spread of colour c
+   at p plies yields mix[s]×p garments of every size s in the mix.      */
+let CP=null;
+const garArea = si => { const f=SIZE_F[si], k=(1+(f-1)*0.5)*f;
+  return modelById(CP.modelId).pieces.reduce((a,d)=>a+d.area0*d.qty,0)*k; };
+const mixLabel = mix => SIZES.map((s,i)=>mix[i]?`${s}×${mix[i]}`:null).filter(Boolean).join(' ');
+const mixGar   = mix => mix.reduce((a,v)=>a+v,0);
+const mixLen   = mix => mix.reduce((a,v,si)=>a+v*garArea(si),0)/(CP.width*0.80);
+
+function openPlanDialog(){
+  if (!CP) CP={ modelId:(S&&S.lines[0].modelId)||'tshirt',
+    colors:[ {name:'Navy',  qty:{S:60,M:120,L:60}},
+             {name:'White', qty:{S:30,M:60, L:30}} ],
+    minPly:10, maxPly:60, maxG:8, width:(S?S.width:160), prefix:'PLAN', result:null };
+  renderPlan(); $('dlgPlan').showModal();
+}
+function renderPlan(){
+  const model=modelById(CP.modelId);
+  const b=$('planBody');
+  b.innerHTML =
+    `<div class="wcap">Bulk demand is split into <b>markers</b> (size mixes) and <b>spreads</b> (plies per colour): one cut of a spread at <i>p</i> plies yields <i>p</i> garments per mix unit.</div>
+     <fieldset class="lineset"><legend>Demand</legend>
+       <div class="frow"><label>Model</label><select id="pModel">${MODELS.map(m=>`<option value="${m.id}"${m.id===CP.modelId?' selected':''}>${m.name}</option>`).join('')}</select></div>`+
+    CP.colors.map((c,ci)=>`<div class="crow">
+        <input class="cname" data-pc="${ci}" value="${c.name}" placeholder="colour" spellcheck="false">`+
+        SIZES.map((s,i)=>`<div class="qcell"><div class="t" style="background:${SIZE_C[i]}">${s}</div><input type="number" min="0" max="9999" value="${c.qty[s]|0}" data-pq="${ci}" data-size="${s}"></div>`).join('')+
+        `<button class="x" data-pdel="${ci}" title="Remove colour">✕</button></div>`).join('')+
+    `<button class="btn mini" id="pAddColor">+ Add colour</button>
+     </fieldset>
+     <fieldset class="lineset"><legend>Settings</legend><div class="setrow">
+       <div class="set">min ply<input type="number" id="pMinPly" min="1" max="200" value="${CP.minPly}"></div>
+       <div class="set">max ply<input type="number" id="pMaxPly" min="1" max="500" value="${CP.maxPly}"></div>
+       <div class="set">max garments / marker<input type="number" id="pMaxG" min="1" max="24" value="${CP.maxG}"></div>
+       <div class="set">fabric width (cm)<input type="number" id="pWidth" min="90" max="300" value="${CP.width}"></div>
+       <div class="set">marker prefix<input type="text" id="pPrefix" value="${CP.prefix}" spellcheck="false"></div>
+     </div></fieldset>`+
+    (CP.result ? planResultHTML() : `<div class="wcap">Enter demand, then hit <b>⚡ Calculate markers</b>.</div>`);
+}
+function planResultHTML(){
+  const R=CP.result;
+  const rows=R.markers.map((mk,i)=>{
+    const plies=mk.spreads.reduce((a,s)=>a+s.ply,0);
+    const len=mixLen(mk.mix);
+    const spreads=mk.spreads.map(s=>`<span class="sprd${s.low?' lowply':''}">${s.color}×${s.ply}${s.low?'⚠':''}</span>`).join(', ');
+    return `<tr><td>${CP.prefix||'PLAN'}-M${i+1}</td><td>${mixLabel(mk.mix)}</td><td>${mixGar(mk.mix)}</td>
+      <td>${spreads}</td><td>${plies}</td><td>${mixGar(mk.mix)*plies}</td>
+      <td>≈${len.toFixed(0)} cm</td><td>≈${(len*plies/100).toFixed(1)} m</td>
+      <td><button class="btn mini" data-popen="${i}">Open →</button></td></tr>`;
+  }).join('');
+  const totGar=R.markers.reduce((a,mk)=>a+mixGar(mk.mix)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
+  const totFab=R.markers.reduce((a,mk)=>a+mixLen(mk.mix)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
+  const totSpreads=R.markers.reduce((a,mk)=>a+mk.spreads.length,0);
+  return `<fieldset class="lineset"><legend>Cut plan results</legend>
+    <table class="wsum"><tr><th>Marker</th><th>Size mix</th><th>G/ply</th><th>Spreads (colour×ply)</th><th>Plies</th><th>Garments</th><th>Marker len</th><th>Fabric</th><th></th></tr>
+    ${rows}</table>
+    <div class="wcap">${R.markers.length} marker${R.markers.length===1?'':'s'} · ${totSpreads} spread${totSpreads===1?'':'s'} · <b>${totGar}</b> garments (ordered ${R.ordered}) · fabric ≈ <b style="color:var(--acc)">${(totFab/100).toFixed(1)} m</b> at 80% utilization.
+    ${R.exact?' <b style="color:var(--good)">✓ demand met exactly</b>':' <b class="lowply">⚠ residual left — raise max ply / marker size</b>'}
+    ${R.lowPly?' · <span class="lowply">⚠ some spreads fall below min ply</span>':''}</div>
+    <div class="note">“Open →” loads that marker's size mix into the marker room as a one-bundle-per-garment order — nest it, and every spread of that marker is cut from the same plot.</div>
+  </fieldset>`;
+}
+function calcCutPlan(){
+  const colors=CP.colors.filter(c=>c.name.trim() && SIZES.some(s=>(c.qty[s]|0)>0));
+  if (!colors.length) return toast('Enter at least one colour with quantities','warn');
+  const {minPly,maxPly,maxG}=CP;
+  const rem=colors.map(c=>SIZES.map(s=>c.qty[s]|0));
+  const ordered=rem.reduce((a,r)=>a+r.reduce((x,v)=>x+v,0),0);
+  const markers=[];
+  const gcd=(a,b)=>b?gcd(b,a%b):a;
+  let lowPly=false;
+
+  const spreadOut=(mk,ci,p)=>{           // split p plies into spreads ≤ maxPly, avoiding tiny tails
+    let total=p;
+    while (total>0){
+      let take=Math.min(maxPly,total);
+      if (total-take>0 && total-take<minPly && take===maxPly) take=Math.ceil(total/2);
+      if (take<minPly) lowPly=true;
+      mk.spreads.push({color:colors[ci].name, ply:take, low:take<minPly});
+      mk.mix.forEach((m,si)=>rem[ci][si]-=m*take);
+      total-=take;
+    }
+  };
+
+  // 1 · ratio pass — one shared marker from the total size curve
+  for (let guard=0; guard<4; guard++){
+    const tot=SIZES.map((_,si)=>rem.reduce((a,r)=>a+r[si],0));
+    if (!tot.some(v=>v>0)) break;
+    const g=tot.filter(v=>v>0).reduce((a,v)=>gcd(a,v));
+    let mix=tot.map(v=>v/g);
+    let sum=mixGar(mix);
+    if (sum>maxG){ const k=Math.ceil(sum/maxG); mix=mix.map(v=>Math.floor(v/k)); sum=mixGar(mix); }
+    if (sum>0 && sum<=maxG){ const f=Math.floor(maxG/sum); if (f>1) mix=mix.map(v=>v*f); }
+    if (!mix.some(v=>v>0) || mixGar(mix)>maxG) break;
+    const mk={mix:[...mix], spreads:[]};
+    colors.forEach((c,ci)=>{
+      let p=Infinity;
+      mix.forEach((m,si)=>{ if (m>0) p=Math.min(p, Math.floor(rem[ci][si]/m)); });
+      if (isFinite(p) && p>0) spreadOut(mk,ci,p);
+    });
+    if (!mk.spreads.length) break;
+    markers.push(mk);
+  }
+  // 2 · per-colour cleanup — clear every residual exactly
+  colors.forEach((c,ci)=>{
+    let guard=0;
+    while (rem[ci].some(v=>v>0) && guard++<60){
+      const p=Math.min(maxPly, Math.min(...rem[ci].filter(v=>v>0)));
+      let room=maxG;
+      const mix=rem[ci].map(v=>{ const m=Math.min(Math.floor(v/p), room); room-=m; return m; });
+      if (!mix.some(v=>v>0)) break;
+      const key=mix.join(',');
+      let mk=markers.find(m=>m.mix.join(',')===key);
+      if (!mk){ mk={mix, spreads:[]}; markers.push(mk); }
+      if (p<minPly) lowPly=true;
+      mk.spreads.push({color:c.name, ply:p, low:p<minPly});
+      mix.forEach((m,si)=>rem[ci][si]-=m*p);
+    }
+  });
+  const exact=!rem.some(r=>r.some(v=>v>0));
+  CP.result={markers, ordered, exact, lowPly};
+  renderPlan();
+  toast(`Cut plan: ${markers.length} marker${markers.length===1?'':'s'}${exact?' — demand met exactly':' — residual left'}`, exact?undefined:'warn');
+}
+function planCSV(){
+  if (!CP.result) return toast('Calculate the plan first','warn');
+  const rows=[['marker','size mix','garments/ply','colour','ply','garments','est marker len cm','est fabric m']];
+  CP.result.markers.forEach((mk,i)=>{
+    const len=mixLen(mk.mix);
+    mk.spreads.forEach(s=>rows.push([`${CP.prefix||'PLAN'}-M${i+1}`, mixLabel(mk.mix), mixGar(mk.mix),
+      s.color, s.ply, mixGar(mk.mix)*s.ply, len.toFixed(0), (len*s.ply/100).toFixed(1)]));
+  });
+  download((CP.prefix||'PLAN')+'-cutplan.csv','text/csv',
+    new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
+  toast('Cut tickets exported');
+}
+$('planBody').addEventListener('input', e=>{
+  const t=e.target;
+  if (t.dataset.pc!=null) CP.colors[+t.dataset.pc].name=t.value;
+  else if (t.dataset.pq!=null) CP.colors[+t.dataset.pq].qty[t.dataset.size]=Math.max(0,Math.min(9999,+t.value||0));
+  else if (t.id==='pModel'){ CP.modelId=t.value; CP.result=null; renderPlan(); }
+  else if (t.id==='pMinPly') CP.minPly=Math.max(1,+t.value||1);
+  else if (t.id==='pMaxPly') CP.maxPly=Math.max(1,+t.value||1);
+  else if (t.id==='pMaxG')   CP.maxG=Math.max(1,Math.min(24,+t.value||8));
+  else if (t.id==='pWidth')  CP.width=Math.max(90,Math.min(300,+t.value||160));
+  else if (t.id==='pPrefix') CP.prefix=t.value;
+});
+$('planBody').addEventListener('click', e=>{
+  if (e.target.id==='pAddColor'){
+    if (CP.colors.length>=8) return toast('Max 8 colours','warn');
+    CP.colors.push({name:'Colour '+(CP.colors.length+1), qty:{}}); renderPlan(); return;
+  }
+  const del=e.target.closest('[data-pdel]');
+  if (del){ CP.colors.splice(+del.dataset.pdel,1); renderPlan(); return; }
+  const open=e.target.closest('[data-popen]');
+  if (open){
+    const mk=CP.result.markers[+open.dataset.popen];
+    const sizesQty={}; SIZES.forEach((s,si)=>{ if (mk.mix[si]) sizesQty[s]=mk.mix[si]; });
+    $('dlgPlan').close();
+    newOrder([{modelId:CP.modelId, sizesQty, excl:[], dir:{}}],
+             `${CP.prefix||'PLAN'}-M${+open.dataset.popen+1}`, CP.width, S?S.buffer:0);
+    toast('Marker order loaded — nest it, then cut every spread from this plot');
+  }
+});
+$('pCalc').onclick=calcCutPlan;
+$('pCsv').onclick=planCSV;
+$('bPlan').onclick=openPlanDialog;
+
 /* toolbar wiring */
 $('bNew').onclick=openOrderDialog;
 $('bOpen').onclick=()=>$('fileIn').click();
@@ -1482,6 +1690,7 @@ window.addEventListener('keydown', e=>{
     case '-': zoomAt(UI.vb.x+UI.vb.w/2,UI.vb.y+UI.vb.h/2,1.25); break;
     case '0': fitView(); break;
     case 'n': case 'N': openOrderDialog(); break;
+    case 'p': case 'P': openPlanDialog(); break;
     case '?': $('dlgHelp').showModal(); break;
   }
 });
