@@ -1475,6 +1475,7 @@ let CP=null;
 const garArea = si => { const f=SIZE_F[si], k=(1+(f-1)*0.5)*f;
   return modelById(CP.modelId).pieces.reduce((a,d)=>a+d.area0*d.qty,0)*k; };
 const mixLabel = mix => SIZES.map((s,i)=>mix[i]?`${s}×${mix[i]}`:null).filter(Boolean).join(' ');
+const mixChips = mix => SIZES.map((s,i)=>mix[i]?`<span class="rchip" style="background:${SIZE_C[i]}">${s}${mix[i]}</span>`:'').join('');
 const mixGar   = mix => mix.reduce((a,v)=>a+v,0);
 const mixLen   = mix => mix.reduce((a,v,si)=>a+v*garArea(si),0)/(CP.width*0.80);
 
@@ -1513,7 +1514,7 @@ function planResultHTML(){
     const plies=mk.spreads.reduce((a,s)=>a+s.ply,0);
     const len=mixLen(mk.mix);
     const spreads=mk.spreads.map(s=>`<span class="sprd${s.low?' lowply':''}">${s.color}×${s.ply}${s.low?'⚠':''}</span>`).join(', ');
-    return `<tr><td>${CP.prefix||'PLAN'}-M${i+1}</td><td>${mixLabel(mk.mix)}</td><td>${mixGar(mk.mix)}</td>
+    return `<tr><td>${CP.prefix||'PLAN'}-M${i+1}</td><td style="white-space:nowrap">${mixChips(mk.mix)}</td><td>${mixGar(mk.mix)}</td>
       <td>${spreads}</td><td>${plies}</td><td>${mixGar(mk.mix)*plies}</td>
       <td>≈${len.toFixed(0)} cm</td><td>≈${(len*plies/100).toFixed(1)} m</td>
       <td><button class="btn mini" data-popen="${i}">Open →</button></td></tr>`;
@@ -1522,7 +1523,7 @@ function planResultHTML(){
   const totFab=R.markers.reduce((a,mk)=>a+mixLen(mk.mix)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
   const totSpreads=R.markers.reduce((a,mk)=>a+mk.spreads.length,0);
   return `<fieldset class="lineset"><legend>Cut plan results</legend>
-    <table class="wsum"><tr><th>Marker</th><th>Size mix</th><th>G/ply</th><th>Spreads (colour×ply)</th><th>Plies</th><th>Garments</th><th>Marker len</th><th>Fabric</th><th></th></tr>
+    <table class="wsum"><tr><th>Marker</th><th>Ratio</th><th>G/ply</th><th>Spreads (colour×ply)</th><th>Plies</th><th>Garments</th><th>Marker len</th><th>Fabric</th><th></th></tr>
     ${rows}</table>
     <div class="wcap">${R.markers.length} marker${R.markers.length===1?'':'s'} · ${totSpreads} spread${totSpreads===1?'':'s'} · <b>${totGar}</b> garments (ordered ${R.ordered}) · fabric ≈ <b style="color:var(--acc)">${(totFab/100).toFixed(1)} m</b> at 80% utilization.
     ${R.exact?' <b style="color:var(--good)">✓ demand met exactly</b>':' <b class="lowply">⚠ residual left — raise max ply / marker size</b>'}
