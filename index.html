@@ -226,12 +226,17 @@
   #dlgPlan{max-width:780px}
   #dlgPlan .dlg-body{max-height:62vh; overflow:auto; min-height:220px}
   .crow{display:flex; align-items:center; gap:6px; margin-bottom:6px}
-  .crow .cname{width:110px; flex:none; background:var(--panel2); border:1px solid var(--edge);
+  .crow .cname{width:110px; flex:none; align-self:flex-start; margin-top:14px;
+               background:var(--panel2); border:1px solid var(--edge);
                border-radius:6px; color:var(--ink); padding:5px 8px}
+  /* auto-fit: 6 alpha sizes stretch across one row; 24 bra sizes wrap compactly */
+  .crow .cqty{flex:1; min-width:0; display:grid; gap:4px;
+              grid-template-columns:repeat(auto-fit,minmax(44px,1fr))}
   .crow input[type=number]{width:100%; min-width:0; text-align:center; background:var(--panel2);
                border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 2px}
-  .crow .qcell{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px}
+  .crow .qcell{display:flex; flex-direction:column; align-items:center; gap:2px}
   .crow .qcell .t{font-size:9.5px; font-weight:700; border-radius:3px; padding:0 5px; color:#20242e}
+  .crow .x{align-self:flex-start; margin-top:16px}
   .crow .x{color:var(--mut); padding:2px 7px; border-radius:4px; flex:none}
   .crow .x:hover{background:#3a2026; color:var(--bad)}
   .setrow{display:flex; gap:14px; flex-wrap:wrap}
@@ -487,9 +492,48 @@
 
 /* ---------------- constants ---------------- */
 const MAXLEN = 3000;                       // cm, hard table length
-const SIZES  = ['XS','S','M','L','XL','XXL'];
-const SIZE_F = [0.92, 0.96, 1.0, 1.045, 1.09, 1.14];
-const SIZE_C = ['#5aa9e6','#67b26f','#f2c14e','#f78154','#b565d9','#e05c7a'];
+/* ---------------- size scales ----------------
+   Each model names its scale and sizes are indexed within that scale, so a
+   bra (32A–42D) and a t-shirt (XS–XXL) can sit in the same marker.
+   factors(sizeIdx, def) → [sx, sy] : sx grades the garment-length axis, sy the
+   girth axis (piece outlines are transposed by T() when the library is built). */
+const shade=(hex,t)=>{                       // t<0 darken · t>0 lighten
+  const n=parseInt(hex.slice(1),16), m=t<0?0:255, a=Math.abs(t);
+  const ch=[n>>16,(n>>8)&255,n&255].map(v=>Math.round(v+(m-v)*a));
+  return '#'+((1<<24)|(ch[0]<<16)|(ch[1]<<8)|ch[2]).toString(16).slice(1);
+};
+const ALPHA_F=[0.92,0.96,1.0,1.045,1.09,1.14];
+const BANDS=[32,34,36,38,40,42], CUPS=['A','B','C','D'];
+const CUP_C=['#5aa9e6','#67b26f','#f2c14e','#f78154'];   // hue = cup, shade = band
+const BRA_NAMES=[], BRA_C=[];
+for (let bi=0;bi<BANDS.length;bi++) for (let ci=0;ci<CUPS.length;ci++){
+  BRA_NAMES.push(BANDS[bi]+CUPS[ci]);
+  BRA_C.push(shade(CUP_C[ci],(bi-2.5)/5*0.5+0.08));
+}
+const SCALES={
+  alpha:{ names:['XS','S','M','L','XL','XXL'],
+          colors:['#5aa9e6','#67b26f','#f2c14e','#f78154','#b565d9','#e05c7a'],
+          cols:6, base:'M', demo:{S:60,M:120,L:60},
+          factors:si=>{ const f=ALPHA_F[si]; return [1+(f-1)*0.5, f]; } },
+  // 32A–42D: band drives girth, cup letter drives the cup panels
+  bra:{   names:BRA_NAMES, colors:BRA_C, cols:4, base:'36B',
+          demo:{'34B':40,'36B':90,'36C':70,'38C':40},
+          factors:(si,def)=>{
+            const bi=Math.floor(si/4), ci=si%4;
+            const b=1+(bi-2)*0.05;                       // band, 36 = base
+            const c=(1+(ci-1)*0.09)*(1+(bi-2)*0.02);     // cup, 36B = base
+            switch(def.grade){
+              case 'cup':  return [c, c];                // cups grow both ways
+              case 'band': return [1+(bi-2)*0.015, b];   // wings/band: span with band
+              case 'trim': return [b, 1];                // straps: length only
+              default:     return [b, b];
+            }
+          } }
+};
+const scaleOf    = mid => SCALES[modelById(mid).scale||'alpha'];
+const pieceScale = p => SCALES[defByKey[p.defKey].scaleId];
+const sizeNm     = p => pieceScale(p).names[p.sizeIdx];
+const sizeCol    = p => pieceScale(p).colors[p.sizeIdx];
 
 /* ---------------- piece geometry helpers ---------------- */
 const T    = pts => pts.map(p => [p[1], p[0]]);            // transpose: garment length runs along fabric
@@ -548,12 +592,38 @@ const MODELS = [
    { key:'FLY',    name:'Fly shield', qty:2, rot:'four',
      pts:[[0,0],[6,0],[6,16],[4.6,19],[1.4,19],[0,16]] },
  ]},
+ // ---- lingerie demo · 36B / M base ----
+ { id:'bra', name:'Bra (32A–42D)', tag:'BRA', scale:'bra', pieces:[
+   { key:'CUPL',   name:'Lower cup',  qty:2, rot:'two', pair:true, grade:'cup',
+     pts:[[0,11.4],[1.4,7.6],[3.6,4.4],[6.8,2],[10.6,0.5],[14.8,0],[15.9,3.4],[15.3,6.6],[13,9.2],[9.6,11],[5,11.8],[1.8,11.8]] },
+   { key:'CUPU',   name:'Upper cup',  qty:2, rot:'two', pair:true, grade:'cup',
+     pts:[[0,5.2],[3,4.4],[6.6,3.2],[10.4,1.6],[14,0],[15.6,2.2],[12.4,4.6],[8.6,6.6],[4.6,7.8],[1,8.2]] },
+   { key:'WING',   name:'Wing',       qty:2, rot:'two', pair:true, grade:'band',
+     pts:[[0,0],[15.6,2.4],[18.2,4],[18.4,8.8],[15.8,10.2],[0,11.6]] },
+   { key:'BRIDGE', name:'Centre gore',qty:1, rot:'four', grade:'cup',
+     pts:[[0,0],[3.8,0.4],[4.4,3],[4.2,5.6],[0.2,5.6]] },
+   { key:'STRAP',  name:'Strap',      qty:2, rot:'two', grade:'trim',
+     pts:[[0,0],[1.6,0],[1.6,38],[0,38]] },
+   { key:'BAND',   name:'Under band', qty:1, rot:'two', grade:'band',
+     pts:[[0,0],[68,0],[68,2.6],[0,2.6]] },
+ ]},
+ { id:'panty', name:'Panty', tag:'PTY', pieces:[
+   { key:'FRONT',  name:'Front',      qty:1, rot:'two',
+     pts:[[0,0],[13.6,0.6],[15,3],[14.4,8],[12,13],[8,17.4],[4.4,20.6],[3,23.4],[0,23.8]], sym:true },
+   { key:'BACK',   name:'Back',       qty:1, rot:'two',
+     pts:[[0,0],[14.6,0.8],[16.2,3.6],[16,9.2],[13.6,14.8],[9.4,19.6],[5,23],[3.2,25.8],[0,26.2]], sym:true },
+   { key:'GUSSET', name:'Gusset',     qty:2, rot:'four',
+     pts:[[0,0],[3.2,0.4],[3.4,5],[2.8,11.6],[0,12]], sym:true },
+   { key:'WAIST',  name:'Waist elastic', qty:1, rot:'two',
+     pts:[[0,0],[78,0],[78,2.6],[0,2.6]] },
+ ]},
 ];
 // finalize geometry: mirror symmetric halves, transpose so garment length runs along x, normalize
 for (const m of MODELS) for (const d of m.pieces){
   let pts = d.sym ? mir(d.pts) : d.pts;
   d.base = norm(T(pts));
   d.key0 = m.id + '/' + d.key;
+  d.scaleId = m.scale || 'alpha';
   d.area0 = shoelace(d.base);          // for order-form length estimates
 }
 const defByKey = {};
@@ -617,8 +687,8 @@ function shapeOf(defKey, sizeIdx, rot, fx, fy){
   const k = defKey+'|'+sizeIdx+'|'+rot+'|'+(fx?1:0)+(fy?1:0);
   let s = CACHE.get(k);
   if (s) return s;
-  const def = defByKey[defKey], f = SIZE_F[sizeIdx];
-  const sx = 1+(f-1)*0.5, sy = f;                 // length grades half as fast as girth
+  const def = defByKey[defKey];
+  const [sx, sy] = SCALES[def.scaleId].factors(sizeIdx, def);
   const rad = rot*Math.PI/180, cos=Math.cos(rad), sin=Math.sin(rad);
   let pts = def.base.map(([x,y])=>{
     x*=sx; y*=sy;
@@ -656,9 +726,9 @@ function newOrder(lines, name, width, buffer){
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
                                excl:[...(L.excl||[])], dir:{...(L.dir||{})} })) };
   S.lines.forEach((L, li)=>{
-    const model = modelById(L.modelId);
-    for (let si=0; si<SIZES.length; si++){
-      const q = L.sizesQty[SIZES[si]]|0;
+    const model = modelById(L.modelId), sc = scaleOf(L.modelId);
+    for (let si=0; si<sc.names.length; si++){
+      const q = L.sizesQty[sc.names[si]]|0;
       for (let b=1;b<=q;b++)
         for (const d of model.pieces){
           if (L.excl.includes(d.key0)) continue;
@@ -816,10 +886,10 @@ function pieceMarkup(inst, cls){
   const rotT = vert ? ` transform="rotate(-90 ${c[0]} ${c[1]})"` : '';
   const gl = Math.min(bb.w,60)*0.35;
   return `<g class="pc ${cls||''}" data-uid="${inst.uid}" transform="translate(${inst.x},${inst.y})">`+
-    `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[inst.sizeIdx]}"/>`+
+    `<path d="${fmtPoly(sh.pts)}" fill="${sizeCol(inst)}"/>`+
     `<line class="grain" x1="${c[0]-gl}" y1="${c[1]}" x2="${c[0]+gl}" y2="${c[1]}"/>`+
     `<text${rotT} x="${c[0]}" y="${c[1]-fs*0.25}" font-size="${fs}" text-anchor="middle">${def.name.toUpperCase()}</text>`+
-    `<text${rotT} x="${c[0]}" y="${c[1]+fs*1.05}" font-size="${fs*0.85}" text-anchor="middle">${lineTag(inst.line)?lineTag(inst.line)+'·':''}${SIZES[inst.sizeIdx]}-${inst.bundle}</text>`+
+    `<text${rotT} x="${c[0]}" y="${c[1]+fs*1.05}" font-size="${fs*0.85}" text-anchor="middle">${lineTag(inst.line)?lineTag(inst.line)+'·':''}${sizeNm(inst)}-${inst.bundle}</text>`+
   `</g>`;
 }
 
@@ -842,13 +912,13 @@ function thumbMarkup(inst, count){
   const def=defByKey[inst.defKey], mdl=modelById(S.lines[inst.line].modelId), tag=lineTag(inst.line);
   const sh=shapeOf(inst.defKey, inst.sizeIdx, 0, inst.fx, false), bb=sh.bb;
   const pad=Math.max(bb.w,bb.h)*0.05;
-  return `<div class="thumb${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${mdl.name} ${def.name} · size ${SIZES[inst.sizeIdx]} — click, then click the fabric to place">`+
+  return `<div class="thumb${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${mdl.name} ${def.name} · size ${sizeNm(inst)} — click, then click the fabric to place">`+
     (count>1?`<div class="cnt">×${count}</div>`:'')+
     `<svg viewBox="${bb.x1-pad} ${bb.y1-pad} ${bb.w+2*pad} ${bb.h+2*pad}" preserveAspectRatio="xMidYMid meet">`+
-      `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[inst.sizeIdx]}" fill-opacity=".85" stroke="#20242e" stroke-width="1" vector-effect="non-scaling-stroke"/>`+
+      `<path d="${fmtPoly(sh.pts)}" fill="${sizeCol(inst)}" fill-opacity=".85" stroke="#20242e" stroke-width="1" vector-effect="non-scaling-stroke"/>`+
     `</svg>`+
     `<div class="nm">${tag?`<span style="color:var(--mut)">${tag}·</span>`:''}${def.name}</div>`+
-    `<div class="sz" style="background:${SIZE_C[inst.sizeIdx]}">${SIZES[inst.sizeIdx]}</div>`+
+    `<div class="sz" style="background:${sizeCol(inst)}">${sizeNm(inst)}</div>`+
   `</div>`;
 }
 
@@ -876,8 +946,9 @@ function renderStats(){
   chip.className = 'chip '+cls;
   chip.textContent = cls.toUpperCase();
   const parts = S.lines.map(L=>{
-    const ratio = SIZES.map((s,i)=> (L.sizesQty[s]|0)>0
-      ? `<span class="rchip" style="background:${SIZE_C[i]}">${s}${L.sizesQty[s]}</span>` : '').join('');
+    const sc = scaleOf(L.modelId);
+    const ratio = sc.names.map((s,i)=> (L.sizesQty[s]|0)>0
+      ? `<span class="rchip" style="background:${sc.colors[i]}">${s}${L.sizesQty[s]}</span>` : '').join('');
     return `<span class="mdl">${modelById(L.modelId).name}</span> ${ratio}`;
   });
   $('orderSummary').innerHTML = `${parts.join(' + ')} · ${S.width} cm · buffer ${S.buffer} cm`;
@@ -898,13 +969,13 @@ function renderHint(){
   const h=$('hint'), si=$('selInfo');
   if (UI.carry!=null){
     const p = byUid(UI.carry), def=defByKey[p.defKey];
-    h.textContent = `Carrying ${def.name.toUpperCase()} ${SIZES[p.sizeIdx]} — click the fabric to place · R rotate · F flip · Esc cancel`;
+    h.textContent = `Carrying ${def.name.toUpperCase()} ${sizeNm(p)} — click the fabric to place · R rotate · F flip · Esc cancel`;
     si.textContent='';
   } else if (UI.sel!=null){
     const p = byUid(UI.sel);
     if (p){ const def=defByKey[p.defKey], sh=instShape(p), tag=lineTag(p.line);
       h.textContent = 'Drag to move · R rotate · F flip · L butt left · Del return to tray';
-      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${SIZES[p.sizeIdx]}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · ${dirLabel(pieceDir(p))} · rot ${p.rot}°${p.fx?' · flipped':''}`;
+      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${sizeNm(p)}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · ${dirLabel(pieceDir(p))} · rot ${p.rot}°${p.fx?' · flipped':''}`;
     } else si.textContent='';
   } else {
     h.textContent = 'Select a piece from the tray and click the fabric — or press ⚡ Auto-Nest.';
@@ -1178,7 +1249,7 @@ async function autoNest(quiet){
   for (let i=0;i<queue.length;i++){
     if (UI.nestAbort) break;
     const inst=queue[i], def=defByKey[inst.defKey];
-    $('nestMsg').textContent = `Placing ${i+1}/${queue.length} — ${def.name.toUpperCase()} ${SIZES[inst.sizeIdx]}-${inst.bundle}`;
+    $('nestMsg').textContent = `Placing ${i+1}/${queue.length} — ${def.name.toUpperCase()} ${sizeNm(inst)}-${inst.bundle}`;
     $('nestFill').style.width = ((i)/queue.length*100).toFixed(1)+'%';
     await new Promise(r=>setTimeout(r,0));
     const curLen = markerStats().len;
@@ -1256,13 +1327,13 @@ function plotSVGString(){
     const vert=bb.h>bb.w*1.4;
     const rt=vert?` transform="rotate(-90 ${c[0]} ${c[1]})"`:'';
     body+=`<g transform="translate(${p.x},${p.y})">`+
-      `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[p.sizeIdx]}" fill-opacity=".55" stroke="#111" stroke-width="0.12"/>`+
-      `<text${rt} x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle" font-family="Helvetica,Arial" fill="#111">${def.name.toUpperCase()} ${lineTag(p.line)?lineTag(p.line)+'·':''}${SIZES[p.sizeIdx]}-${p.bundle}</text>`+
+      `<path d="${fmtPoly(sh.pts)}" fill="${sizeCol(p)}" fill-opacity=".55" stroke="#111" stroke-width="0.12"/>`+
+      `<text${rt} x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle" font-family="Helvetica,Arial" fill="#111">${def.name.toUpperCase()} ${lineTag(p.line)?lineTag(p.line)+'·':''}${sizeNm(p)}-${p.bundle}</text>`+
     `</g>`;
   }
   let ticks='';
   for (let x=0;x<=L;x+=50) ticks+=`<line x1="${x}" y1="${W}" x2="${x}" y2="${W+3}" stroke="#333" stroke-width="0.15"/><text x="${x}" y="${W+7}" font-size="3.5" text-anchor="middle" font-family="Helvetica,Arial" fill="#333">${x}</text>`;
-  const ratioOf = L => SIZES.map(s=> (L.sizesQty[s]|0)>0 ? `${s}${L.sizesQty[s]}` : null).filter(Boolean).join('/');
+  const ratioOf = L => scaleOf(L.modelId).names.map(s=> (L.sizesQty[s]|0)>0 ? `${s}${L.sizesQty[s]}` : null).filter(Boolean).join('/');
   const modelNames=S.lines.map(L=>`${modelById(L.modelId).name} ${ratioOf(L)}`).join(' + ');
   const title=`${S.name} · ${modelNames} · width ${W} cm · length ${st.len.toFixed(1)} cm · util ${(st.util*100).toFixed(1)}% · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*4}" height="${(W+24)*4}">`+
@@ -1322,7 +1393,7 @@ const LETTERS='ABCDEFGH';
 const DIRS=[['two','two-way'],['four','four-way'],['free','free']];
 const dirLabel = d => (DIRS.find(o=>o[0]===d)||DIRS[0])[1];
 let W=null;
-const lineGarments = L => SIZES.reduce((a,s)=>a+(L.sizesQty[s]|0),0);
+const lineGarments = L => scaleOf(L.modelId).names.reduce((a,s)=>a+(L.sizesQty[s]|0),0);
 const linePcsPerGarment = L => modelById(L.modelId).pieces.filter(d=>!L.excl.has(d.key0)).reduce((a,d)=>a+d.qty,0);
 const wTotalPieces = () => W.lines.reduce((a,L)=>a+lineGarments(L)*linePcsPerGarment(L),0);
 const wTotalGarments = () => W.lines.reduce((a,L)=>a+lineGarments(L),0);
@@ -1352,7 +1423,8 @@ function renderWizard(){
     b.innerHTML =
       `<div class="wcap">Add one or more models — pieces from every model nest together in one combined marker.</div>
        <div class="mcards">`+
-      MODELS.map(m=>`<div class="mcard"><b>${m.name}</b><span class="mc-sub">${m.pieces.length} piece styles · ${m.pieces.reduce((a,p)=>a+p.qty,0)} pcs/garment</span><button class="btn mini" data-add="${m.id}">+ Add to order</button></div>`).join('')+
+      MODELS.map(m=>{ const sc=scaleOf(m.id);
+        return `<div class="mcard"><b>${m.name}</b><span class="mc-sub">${m.pieces.length} piece styles · ${m.pieces.reduce((a,p)=>a+p.qty,0)} pcs/garment</span><span class="mc-sub">${sc.names.length} sizes ${sc.names[0]}–${sc.names[sc.names.length-1]}</span><button class="btn mini" data-add="${m.id}">+ Add to order</button></div>`;}).join('')+
       `</div><div class="wcap" style="margin-bottom:6px">Order lines</div><div class="olines">`+
       (W.lines.length
         ? W.lines.map((L,i)=>{const g=lineGarments(L);
@@ -1362,10 +1434,11 @@ function renderWizard(){
   }
   else if (W.step===2){
     b.innerHTML = `<div class="wcap">Garment quantities per size — one bundle per garment.</div>`+
-      W.lines.map((L,li)=>`<fieldset class="lineset"><legend>${LETTERS[li]} · ${modelById(L.modelId).name}</legend>
-        <div class="szgrid">`+
-        SIZES.map((s,i)=>`<div class="szcell"><div class="t" style="background:${SIZE_C[i]}">${s}</div><input type="number" min="0" max="9" value="${L.sizesQty[s]|0}" data-line="${li}" data-size="${s}"></div>`).join('')+
-        `</div></fieldset>`).join('')+
+      W.lines.map((L,li)=>{ const sc=scaleOf(L.modelId);
+        return `<fieldset class="lineset"><legend>${LETTERS[li]} · ${modelById(L.modelId).name}</legend>
+        <div class="szgrid" style="grid-template-columns:repeat(${sc.cols},1fr)">`+
+        sc.names.map((s,i)=>`<div class="szcell"><div class="t" style="background:${sc.colors[i]}">${s}</div><input type="number" min="0" max="9" value="${L.sizesQty[s]|0}" data-line="${li}" data-size="${s}"></div>`).join('')+
+        `</div></fieldset>`;}).join('')+
       `<div class="wcap" id="wTot2"></div>`;
     updWTotals();
   }
@@ -1422,7 +1495,7 @@ $('wizBody').addEventListener('click', e=>{
   const add=e.target.closest('[data-add]');
   if (add){
     if (W.lines.length>=8) return toast('Max 8 order lines','warn');
-    W.lines.push({modelId:add.dataset.add, sizesQty:{M:1}, excl:new Set(), dir:{}});
+    W.lines.push({modelId:add.dataset.add, sizesQty:{[scaleOf(add.dataset.add).base]:1}, excl:new Set(), dir:{}});
     renderWizard(); return;
   }
   const del=e.target.closest('[data-del]');
@@ -1471,18 +1544,27 @@ $('wCreateNest').onclick=()=>wizCreate(true);
    A marker is a size mix cut on spreads of fabric; a spread of colour c
    at p plies yields mix[s]×p garments of every size s in the mix.      */
 let CP=null;
-const garArea = si => { const f=SIZE_F[si], k=(1+(f-1)*0.5)*f;
-  return modelById(CP.modelId).pieces.reduce((a,d)=>a+d.area0*d.qty,0)*k; };
-const mixLabel = mix => SIZES.map((s,i)=>mix[i]?`${s}×${mix[i]}`:null).filter(Boolean).join(' ');
-const mixChips = mix => SIZES.map((s,i)=>mix[i]?`<span class="rchip" style="background:${SIZE_C[i]}">${s}${mix[i]}</span>`:'').join('');
+// demand seeded from the scale's demo curve — a second colour at half the run
+const seedColors = mid => { const d=scaleOf(mid).demo, half={};
+  for (const k in d) half[k]=Math.round(d[k]/2);
+  return [{name:'Navy', qty:{...d}}, {name:'White', qty:half}]; };
+const cpScale  = () => scaleOf(CP.modelId);
+const cpSizes  = () => cpScale().names;
+const garArea = si => { const sc=cpScale();
+  return modelById(CP.modelId).pieces.reduce((a,d)=>{
+    const [sx,sy]=sc.factors(si,d); return a+d.area0*d.qty*sx*sy; },0); };
+const mixLabel = mix => cpSizes().map((s,i)=>mix[i]?`${s}×${mix[i]}`:null).filter(Boolean).join(' ');
+const mixChips = mix => { const sc=cpScale();
+  return sc.names.map((s,i)=>mix[i]?`<span class="rchip" style="background:${sc.colors[i]}">${s}${mix[i]}</span>`:'').join(''); };
 const mixGar   = mix => mix.reduce((a,v)=>a+v,0);
 const mixLen   = mix => mix.reduce((a,v,si)=>a+v*garArea(si),0)/(CP.width*0.80);
 
 function openPlanDialog(){
-  if (!CP) CP={ modelId:(S&&S.lines[0].modelId)||'tshirt',
-    colors:[ {name:'Navy',  qty:{S:60,M:120,L:60}},
-             {name:'White', qty:{S:30,M:60, L:30}} ],
-    minPly:10, maxPly:60, maxG:8, width:(S?S.width:160), prefix:'PLAN', result:null };
+  if (!CP){
+    const mid=(S&&S.lines[0].modelId)||'tshirt';
+    CP={ modelId:mid, colors:seedColors(mid),
+      minPly:10, maxPly:60, maxG:8, width:(S?S.width:160), prefix:'PLAN', result:null };
+  }
   renderPlan(); $('dlgPlan').showModal();
 }
 function renderPlan(){
@@ -1492,10 +1574,12 @@ function renderPlan(){
     `<div class="wcap">Bulk demand is split into <b>markers</b> (size mixes) and <b>spreads</b> (plies per colour): one cut of a spread at <i>p</i> plies yields <i>p</i> garments per mix unit.</div>
      <fieldset class="lineset"><legend>Demand</legend>
        <div class="frow"><label>Model</label><select id="pModel">${MODELS.map(m=>`<option value="${m.id}"${m.id===CP.modelId?' selected':''}>${m.name}</option>`).join('')}</select></div>`+
-    CP.colors.map((c,ci)=>`<div class="crow">
-        <input class="cname" data-pc="${ci}" value="${c.name}" placeholder="colour" spellcheck="false">`+
-        SIZES.map((s,i)=>`<div class="qcell"><div class="t" style="background:${SIZE_C[i]}">${s}</div><input type="number" min="0" max="9999" value="${c.qty[s]|0}" data-pq="${ci}" data-size="${s}"></div>`).join('')+
-        `<button class="x" data-pdel="${ci}" title="Remove colour">✕</button></div>`).join('')+
+    CP.colors.map((c,ci)=>{ const sc=cpScale();
+      return `<div class="crow">
+        <input class="cname" data-pc="${ci}" value="${c.name}" placeholder="colour" spellcheck="false">
+        <div class="cqty">`+
+        sc.names.map((s,i)=>`<div class="qcell"><div class="t" style="background:${sc.colors[i]}">${s}</div><input type="number" min="0" max="9999" value="${c.qty[s]|0}" data-pq="${ci}" data-size="${s}"></div>`).join('')+
+        `</div><button class="x" data-pdel="${ci}" title="Remove colour">✕</button></div>`;}).join('')+
     `<button class="btn mini" id="pAddColor">+ Add colour</button>
      </fieldset>
      <fieldset class="lineset"><legend>Settings</legend><div class="setrow">
@@ -1541,10 +1625,11 @@ function planResultHTML(){
   </fieldset>`;
 }
 function calcCutPlan(){
-  const colors=CP.colors.filter(c=>c.name.trim() && SIZES.some(s=>(c.qty[s]|0)>0));
+  const SZ=cpSizes();
+  const colors=CP.colors.filter(c=>c.name.trim() && SZ.some(s=>(c.qty[s]|0)>0));
   if (!colors.length) return toast('Enter at least one colour with quantities','warn');
   const {minPly,maxPly,maxG}=CP;
-  const rem=colors.map(c=>SIZES.map(s=>c.qty[s]|0));
+  const rem=colors.map(c=>SZ.map(s=>c.qty[s]|0));
   const ordered=rem.reduce((a,r)=>a+r.reduce((x,v)=>x+v,0),0);
   const markers=[];
   const gcd=(a,b)=>b?gcd(b,a%b):a;
@@ -1564,7 +1649,7 @@ function calcCutPlan(){
 
   // 1 · ratio pass — one shared marker from the total size curve
   for (let guard=0; guard<4; guard++){
-    const tot=SIZES.map((_,si)=>rem.reduce((a,r)=>a+r[si],0));
+    const tot=SZ.map((_,si)=>rem.reduce((a,r)=>a+r[si],0));
     if (!tot.some(v=>v>0)) break;
     const g=tot.filter(v=>v>0).reduce((a,v)=>gcd(a,v));
     let mix=tot.map(v=>v/g);
@@ -1626,7 +1711,7 @@ async function nestAllPlan(){
   $('dlgPlan').close();
   for (let i=0;i<n;i++){
     const mk=CP.result.markers[i];
-    const sizesQty={}; SIZES.forEach((s,si)=>{ if (mk.mix[si]) sizesQty[s]=mk.mix[si]; });
+    const sizesQty={}; cpSizes().forEach((s,si)=>{ if (mk.mix[si]) sizesQty[s]=mk.mix[si]; });
     const name=`${CP.prefix||'PLAN'}-M${i+1}`;
     head.textContent=`Auto-Nest — ${name} (${i+1}/${n})`;
     newOrder([{modelId:CP.modelId, sizesQty, excl:[], dir:{}}], name, CP.width, buf);
@@ -1634,8 +1719,8 @@ async function nestAllPlan(){
     const st=markerStats();
     mk.nest={ name, len:st.len, util:st.util, placed:st.placed, total:st.total,
       width:S.width, buffer:S.buffer,
-      pieces:S.pieces.filter(p=>p.placed).map(p=>({ poly:instPoly(p), sizeIdx:p.sizeIdx,
-        nm:defByKey[p.defKey].name.toUpperCase(), sub:`${SIZES[p.sizeIdx]}-${p.bundle}` })) };
+      pieces:S.pieces.filter(p=>p.placed).map(p=>({ poly:instPoly(p), col:sizeCol(p),
+        nm:defByKey[p.defKey].name.toUpperCase(), sub:`${sizeNm(p)}-${p.bundle}` })) };
   }
   head.textContent='Auto-Nest';
   S=migrateMarker(JSON.parse(saved));
@@ -1680,7 +1765,7 @@ function pdfMarkerPage(mk,i,total){
   c+=`0.955 0.945 0.915 rg 0.72 0.69 0.62 RG 0.8 w ${X(0).toFixed(1)} ${Y(n.width).toFixed(1)} ${(fabLen*sc).toFixed(1)} ${(n.width*sc).toFixed(1)} re B\n`;
   for (const p of n.pieces){
     const path=p.poly.map((pt,k)=>`${X(pt[0]).toFixed(2)} ${Y(pt[1]).toFixed(2)} ${k?'l':'m'}`).join(' ')+' h';
-    c+=`${pdfRGB(SIZE_C[p.sizeIdx])} rg 0.13 0.15 0.20 RG 0.4 w ${path} B\n`;
+    c+=`${pdfRGB(p.col)} rg 0.13 0.15 0.20 RG 0.4 w ${path} B\n`;
   }
   for (const p of n.pieces){
     const xs=p.poly.map(q=>q[0]), ys=p.poly.map(q=>q[1]);
@@ -1714,15 +1799,19 @@ function pdfSummaryPage(total){
   c+=pdfTxt(PDFM,y,10,`Model: ${modelById(CP.modelId).name}     Date: ${new Date().toISOString().slice(0,10)}     Prefix: ${CP.prefix||'PLAN'}`); y-=15;
   c+=pdfTxt(PDFM,y,10,`Settings: min ply ${CP.minPly}   -   max ply ${CP.maxPly}   -   max garments/marker ${CP.maxG}   -   fabric width ${CP.width} cm`); y-=26;
   c+=pdfTxt(PDFM,y,11,'Demand',{bold:1}); y-=15;
-  const dx=[PDFM,PDFM+120]; SIZES.forEach((s,i)=>dx.push(PDFM+120+55*(i+1)));
-  c+=pdfTxt(dx[0],y,8.5,'COLOUR',{bold:1,rgb:'0.45 0.48 0.55'});
-  SIZES.forEach((s,i)=>{ c+=pdfTxt(dx[1]+55*i,y,8.5,s,{bold:1,rgb:'0.45 0.48 0.55'}); });
-  c+=pdfTxt(dx[1]+55*6,y,8.5,'TOTAL',{bold:1,rgb:'0.45 0.48 0.55'}); y-=13;
+  // only sizes actually ordered get a column, and the column width shrinks to
+  // fit — a 24-size bra range would never fit at a fixed pitch.
+  const act=cpSizes().filter(s=>CP.colors.some(c=>(c.qty[s]|0)>0));
+  const x0=PDFM, xs=PDFM+120, cw=Math.min(55,(PDFW-PDFM-xs-52)/Math.max(1,act.length));
+  const fs=cw<34?7:8.5;
+  c+=pdfTxt(x0,y,8.5,'COLOUR',{bold:1,rgb:'0.45 0.48 0.55'});
+  act.forEach((s,i)=>{ c+=pdfTxt(xs+cw*i,y,fs,s,{bold:1,rgb:'0.45 0.48 0.55'}); });
+  c+=pdfTxt(xs+cw*act.length,y,8.5,'TOTAL',{bold:1,rgb:'0.45 0.48 0.55'}); y-=13;
   for (const col of CP.colors){
-    if (!col.name.trim() || !SIZES.some(s=>(col.qty[s]|0)>0)) continue;
-    c+=pdfTxt(dx[0],y,9,col.name);
-    let t=0; SIZES.forEach((s,i)=>{ const q=col.qty[s]|0; t+=q; c+=pdfTxt(dx[1]+55*i,y,9,q?String(q):'-'); });
-    c+=pdfTxt(dx[1]+55*6,y,9,String(t),{bold:1}); y-=13;
+    if (!col.name.trim() || !act.some(s=>(col.qty[s]|0)>0)) continue;
+    c+=pdfTxt(x0,y,9,col.name);
+    let t=0; act.forEach((s,i)=>{ const q=col.qty[s]|0; t+=q; c+=pdfTxt(xs+cw*i,y,fs,q?String(q):'-'); });
+    c+=pdfTxt(xs+cw*act.length,y,9,String(t),{bold:1}); y-=13;
   }
   y-=16;
   c+=pdfTxt(PDFM,y,11,'Markers',{bold:1}); y-=15;
@@ -1784,7 +1873,8 @@ $('planBody').addEventListener('input', e=>{
   const t=e.target;
   if (t.dataset.pc!=null) CP.colors[+t.dataset.pc].name=t.value;
   else if (t.dataset.pq!=null) CP.colors[+t.dataset.pq].qty[t.dataset.size]=Math.max(0,Math.min(9999,+t.value||0));
-  else if (t.id==='pModel'){ CP.modelId=t.value; CP.result=null; renderPlan(); }
+  else if (t.id==='pModel'){   // size names differ per scale — reseed the demand
+    CP.modelId=t.value; CP.colors=seedColors(t.value); CP.result=null; renderPlan(); }
   else if (t.id==='pMinPly') CP.minPly=Math.max(1,+t.value||1);
   else if (t.id==='pMaxPly') CP.maxPly=Math.max(1,+t.value||1);
   else if (t.id==='pMaxG')   CP.maxG=Math.max(1,Math.min(24,+t.value||8));
@@ -1804,7 +1894,7 @@ $('planBody').addEventListener('click', e=>{
   const open=e.target.closest('[data-popen]');
   if (open){
     const mk=CP.result.markers[+open.dataset.popen];
-    const sizesQty={}; SIZES.forEach((s,si)=>{ if (mk.mix[si]) sizesQty[s]=mk.mix[si]; });
+    const sizesQty={}; cpSizes().forEach((s,si)=>{ if (mk.mix[si]) sizesQty[s]=mk.mix[si]; });
     $('dlgPlan').close();
     newOrder([{modelId:CP.modelId, sizesQty, excl:[], dir:{}}],
              `${CP.prefix||'PLAN'}-M${+open.dataset.popen+1}`, CP.width, S?S.buffer:0);
