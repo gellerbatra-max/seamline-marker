@@ -202,10 +202,16 @@
   .oline .x:hover{background:#3a2026; color:var(--bad)}
   fieldset.lineset{border:1px solid var(--edge); border-radius:8px; padding:10px 12px; margin-bottom:12px}
   fieldset.lineset legend{font-size:11.5px; color:var(--acc); padding:0 6px; font-weight:700}
-  .pchk{display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; font-size:12.5px}
-  .pchk label{display:flex; gap:7px; align-items:center; color:#c6cddb}
-  .pchk input{accent-color:var(--acc)}
-  .pchk .sub{color:var(--mut); font-size:11px}
+  .pchk{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:12.5px}
+  .pchk .prow{display:flex; align-items:center; gap:8px}
+  .pchk label{display:flex; gap:7px; align-items:center; color:#c6cddb; flex:1; min-width:0}
+  .pchk label .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .pchk input[type=checkbox]{accent-color:var(--acc); flex:none}
+  .pchk .sub{color:var(--mut); font-size:11px; flex:none}
+  .dirsel{background:var(--panel); border:1px solid var(--edge); color:var(--ink);
+          border-radius:5px; padding:2px 5px; font-size:11px; flex:none}
+  .dirsel:disabled{opacity:.3}
+  .dirsel.override{border-color:var(--acc); color:var(--acc)}
   table.wsum{border-collapse:collapse; width:100%; font-size:12.5px; margin-bottom:12px}
   table.wsum th{color:var(--mut); font-weight:600; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase}
   table.wsum th,table.wsum td{padding:5px 8px; border-bottom:1px solid var(--edge); text-align:left}
@@ -599,10 +605,12 @@ const $ = id => document.getElementById(id);
 const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
       gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost');
 
-// lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…]}] — one order line per model
+// lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…], dir:{pieceKey0:'two'|'four'|'free'}}]
+// dir overrides a piece's lay direction for this order; absent = the piece's natural default.
 function newOrder(lines, name, width, buffer){
   S = { name, width, buffer, pieces:[],
-        lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...(L.excl||[])] })) };
+        lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
+                               excl:[...(L.excl||[])], dir:{...(L.dir||{})} })) };
   S.lines.forEach((L, li)=>{
     const model = modelById(L.modelId);
     for (let si=0; si<SIZES.length; si++){
@@ -610,8 +618,9 @@ function newOrder(lines, name, width, buffer){
       for (let b=1;b<=q;b++)
         for (const d of model.pieces){
           if (L.excl.includes(d.key0)) continue;
+          const dir = L.dir[d.key0] || d.rot;
           for (let k=0;k<d.qty;k++)
-            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li,
+            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir,
                             placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
         }
     }
@@ -620,15 +629,21 @@ function newOrder(lines, name, width, buffer){
   $('markerName').value = name;
   renderAll(); fitView(); persist();
 }
-// markers saved before multi-model orders carry modelId/sizesQty at the top level
+// markers saved before multi-model orders carry modelId/sizesQty at the top level;
+// markers saved before per-piece direction lack line.dir / piece.dir.
 function migrateMarker(m){
   if (!m.lines){
     m.lines=[{ modelId:m.modelId||'tshirt', sizesQty:m.sizesQty||{}, excl:[] }];
     delete m.modelId; delete m.sizesQty;
   }
-  for (const p of m.pieces) if (p.line==null) p.line=0;
+  for (const L of m.lines) if (!L.dir) L.dir={};
+  for (const p of m.pieces){
+    if (p.line==null) p.line=0;
+    if (!p.dir) p.dir = (defByKey[p.defKey]||{}).rot || 'two';
+  }
   return m;
 }
+const pieceDir = inst => inst.dir || (defByKey[inst.defKey]||{}).rot || 'two';
 const lineTag = li => S.lines.length>1 ? modelById(S.lines[li].modelId).tag : '';
 
 /* ---------------- validity ---------------- */
@@ -681,20 +696,22 @@ function redo(){ if(!UI.redo.length) return toast('Nothing to redo','warn');
   UI.undo.push(snapPieces()); applySnap(UI.redo.pop()); UI.sel=null; renderAll(); persist(); }
 
 /* ---------------- rotation rules ---------------- */
+// The global lay rule can only relax a piece's direction, never tighten it:
+// a piece marked 'free' in the order stays free even under a 'strict' lay rule.
+function effDir(inst){
+  const r = pieceDir(inst);
+  if (UI.layRule==='free') return 'free';
+  if (UI.layRule==='relaxed') return r==='free' ? 'free' : 'four';
+  return r;
+}
 function rotStep(inst){
-  const r = defByKey[inst.defKey].rot;
-  if (UI.layRule==='free') return 15;
-  if (UI.layRule==='relaxed') return 90;
+  const r = effDir(inst);
   return r==='two' ? 180 : r==='four' ? 90 : 15;
 }
 function nestRotations(inst){
-  const r = defByKey[inst.defKey].rot, e = UI.effort;
-  let base;
-  if (UI.layRule==='free') base=[0,45,90,135,180,225,270,315];
-  else if (UI.layRule==='relaxed') base=[0,90,180,270];
-  else base = r==='two' ? [0,180] : r==='four' ? [0,90,180,270] : [0,45,90,135,180,225,270,315];
-  if (e<34 && base.length>4) base=[0,90,180,270];
-  if (e<34 && base.length>2 && r==='two') base=[0,180];
+  const r = effDir(inst), e = UI.effort;
+  let base = r==='two' ? [0,180] : r==='four' ? [0,90,180,270] : [0,45,90,135,180,225,270,315];
+  if (e<34 && base.length>4) base=[0,90,180,270];   // low effort: skip 45° angles
   return base;
 }
 
@@ -842,7 +859,7 @@ function renderHint(){
     const p = byUid(UI.sel);
     if (p){ const def=defByKey[p.defKey], sh=instShape(p), tag=lineTag(p.line);
       h.textContent = 'Drag to move · R rotate · F flip · L butt left · Del return to tray';
-      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${SIZES[p.sizeIdx]}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · rot ${p.rot}°${p.fx?' · flipped':''}`;
+      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${SIZES[p.sizeIdx]}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · ${dirLabel(pieceDir(p))} · rot ${p.rot}°${p.fx?' · flipped':''}`;
     } else si.textContent='';
   } else {
     h.textContent = 'Select a piece from the tray and click the fabric — or press ⚡ Auto-Nest.';
@@ -1256,6 +1273,8 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 /* ---- Easy Order wizard: 1 Models · 2 Sizes · 3 Pieces · 4 Fabric · 5 Finish ---- */
 const STEP_NAMES=['Models','Sizes','Pieces','Fabric','Finish'];
 const LETTERS='ABCDEFGH';
+const DIRS=[['two','two-way'],['four','four-way'],['free','free']];
+const dirLabel = d => (DIRS.find(o=>o[0]===d)||DIRS[0])[1];
 let W=null;
 const lineGarments = L => SIZES.reduce((a,s)=>a+(L.sizesQty[s]|0),0);
 const linePcsPerGarment = L => modelById(L.modelId).pieces.filter(d=>!L.excl.has(d.key0)).reduce((a,d)=>a+d.qty,0);
@@ -1264,7 +1283,8 @@ const wTotalGarments = () => W.lines.reduce((a,L)=>a+lineGarments(L),0);
 
 function openOrderDialog(){
   W={ step:1, prefix:'',
-      lines: S && S.lines ? S.lines.map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:new Set(L.excl||[])})) : [],
+      lines: S && S.lines ? S.lines.map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty},
+              excl:new Set(L.excl||[]), dir:{...(L.dir||{})}})) : [],
       width: S?S.width:160, buffer: S?S.buffer:0 };
   renderWizard();
   $('dlgOrder').showModal();
@@ -1304,10 +1324,18 @@ function renderWizard(){
     updWTotals();
   }
   else if (W.step===3){
-    b.innerHTML = `<div class="wcap">Untick pieces to leave them out of this marker (cut elsewhere, fused separately…).</div>`+
+    b.innerHTML = `<div class="wcap">Untick pieces to exclude them from this marker. Set each piece's <b>lay direction</b> — two-way (0°/180°) is the default; four-way allows 90° turns, free allows any angle.</div>`+
       W.lines.map((L,li)=>{const m=modelById(L.modelId);
         return `<fieldset class="lineset"><legend>${LETTERS[li]} · ${m.name}</legend><div class="pchk">`+
-          m.pieces.map(d=>`<label><input type="checkbox" data-line="${li}" data-key="${d.key0}"${L.excl.has(d.key0)?'':' checked'}> ${d.name} <span class="sub">×${d.qty} · ${d.rot==='two'?'two-way':d.rot==='four'?'four-way':'free'}</span></label>`).join('')+
+          m.pieces.map(d=>{
+            const inc=!L.excl.has(d.key0), cur=L.dir[d.key0]||d.rot, over=cur!==d.rot;
+            return `<div class="prow">`+
+              `<label><input type="checkbox" data-line="${li}" data-key="${d.key0}"${inc?' checked':''}> `+
+              `<span class="nm">${d.name}</span> <span class="sub">×${d.qty}</span></label>`+
+              `<select class="dirsel${over?' override':''}" data-line="${li}" data-dir="${d.key0}"${inc?'':' disabled'} title="Lay direction — default ${dirLabel(d.rot)}">`+
+                DIRS.map(o=>`<option value="${o[0]}"${cur===o[0]?' selected':''}>${o[1]}</option>`).join('')+
+              `</select></div>`;
+          }).join('')+
           `</div></fieldset>`;}).join('');
   }
   else if (W.step===4){
@@ -1348,7 +1376,7 @@ $('wizBody').addEventListener('click', e=>{
   const add=e.target.closest('[data-add]');
   if (add){
     if (W.lines.length>=8) return toast('Max 8 order lines','warn');
-    W.lines.push({modelId:add.dataset.add, sizesQty:{M:1}, excl:new Set()});
+    W.lines.push({modelId:add.dataset.add, sizesQty:{M:1}, excl:new Set(), dir:{}});
     renderWizard(); return;
   }
   const del=e.target.closest('[data-del]');
@@ -1357,7 +1385,15 @@ $('wizBody').addEventListener('click', e=>{
 $('wizBody').addEventListener('input', e=>{
   const t=e.target;
   if (t.dataset.size!=null){ W.lines[+t.dataset.line].sizesQty[t.dataset.size]=Math.max(0,Math.min(9,+t.value||0)); updWTotals(); }
-  else if (t.dataset.key){ const L=W.lines[+t.dataset.line]; t.checked ? L.excl.delete(t.dataset.key) : L.excl.add(t.dataset.key); }
+  else if (t.dataset.dir){
+    const L=W.lines[+t.dataset.line]; L.dir[t.dataset.dir]=t.value;
+    t.classList.toggle('override', t.value!==defByKey[t.dataset.dir].rot);
+  }
+  else if (t.dataset.key){
+    const L=W.lines[+t.dataset.line];
+    t.checked ? L.excl.delete(t.dataset.key) : L.excl.add(t.dataset.key);
+    const sel=t.closest('.prow').querySelector('.dirsel'); if (sel) sel.disabled=!t.checked;
+  }
   else if (t.id==='wWidth'){ W.width=Math.max(90,Math.min(300,+t.value||160)); }
   else if (t.id==='wBuffer'){ W.buffer=+t.value; }
   else if (t.id==='wLay'){ UI.layRule=t.value; $('layRule').value=t.value; }
@@ -1376,7 +1412,7 @@ function wizCreate(nest){
   if (tot>240) return toast('Order too large for one marker (max ~240 pieces) — reduce quantities','warn');
   const nameEl=$('wName');
   const name=(nameEl && nameEl.value.trim()) || wSuggestName();
-  const lines=W.lines.filter(L=>lineGarments(L)>0).map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...L.excl]}));
+  const lines=W.lines.filter(L=>lineGarments(L)>0).map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...L.excl], dir:{...L.dir}}));
   $('dlgOrder').close();
   newOrder(lines, name, W.width, W.buffer);
   toast(`Order created — ${tot} pieces in the tray`);
