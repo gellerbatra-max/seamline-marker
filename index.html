@@ -424,7 +424,6 @@
   <div class="dlg-foot">
     <button class="btn" data-close="dlgPlan">Close</button>
     <span style="flex:1"></span>
-    <button class="btn" id="pCsv">Export cut tickets (CSV)</button>
     <button class="btn primary" id="pCalc">⚡ Calculate markers</button>
   </div>
 </dialog>
@@ -449,7 +448,7 @@
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Refine</b> — drag pieces, rotate/flip, <b>Butt</b> slides a piece left until it touches its neighbour, <b>Compact</b> tightens the whole marker.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
-      <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). Open any plan row as a marker order, export cut tickets as CSV.</li>
+      <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
     <h4>RULES</h4>
     <ul>
@@ -1166,7 +1165,7 @@ function bestSpotFor(inst, curLen){
   }
   return best;
 }
-async function autoNest(){
+async function autoNest(quiet){
   const queue = S.pieces.filter(p=>!p.placed)
     .sort((a,b)=> instShape(b).area - instShape(a).area);
   if (!queue.length) return toast('Nothing to nest — tray is empty','warn');
@@ -1197,7 +1196,7 @@ async function autoNest(){
   const secs=((performance.now()-t0)/1000).toFixed(1);
   if (UI.nestAbort) toast('Nest cancelled — placed so far kept','warn');
   else if (failed.length) toast(`${failed.length} piece(s) didn’t fit: ${[...new Set(failed)].join(', ')}`,'warn');
-  else toast(`Marker made in ${secs}s — ${(st.util*100).toFixed(1)}% utilization, ${st.len.toFixed(1)} cm`);
+  else if (!quiet) toast(`Marker made in ${secs}s — ${(st.util*100).toFixed(1)}% utilization, ${st.len.toFixed(1)} cm`);
 }
 function compact(){
   const placed=S.pieces.filter(p=>p.placed).sort((a,b)=>a.x-b.x);
@@ -1512,20 +1511,30 @@ function planResultHTML(){
   const R=CP.result;
   const rows=R.markers.map((mk,i)=>{
     const plies=mk.spreads.reduce((a,s)=>a+s.ply,0);
-    const len=mixLen(mk.mix);
+    const len=mk.nest ? mk.nest.len : mixLen(mk.mix);
     const spreads=mk.spreads.map(s=>`<span class="sprd${s.low?' lowply':''}">${s.color}×${s.ply}${s.low?'⚠':''}</span>`).join(', ');
+    const lenCell=mk.nest
+      ? `<b style="color:var(--good)">${mk.nest.len.toFixed(0)} cm</b> · ${(mk.nest.util*100).toFixed(0)}%`
+      : `≈${len.toFixed(0)} cm`;
     return `<tr><td>${CP.prefix||'PLAN'}-M${i+1}</td><td style="white-space:nowrap">${mixChips(mk.mix)}</td><td>${mixGar(mk.mix)}</td>
       <td>${spreads}</td><td>${plies}</td><td>${mixGar(mk.mix)*plies}</td>
-      <td>≈${len.toFixed(0)} cm</td><td>≈${(len*plies/100).toFixed(1)} m</td>
+      <td style="white-space:nowrap">${lenCell}</td><td>${mk.nest?'':'≈'}${(len*plies/100).toFixed(1)} m</td>
       <td><button class="btn mini" data-popen="${i}">Open →</button></td></tr>`;
   }).join('');
   const totGar=R.markers.reduce((a,mk)=>a+mixGar(mk.mix)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
-  const totFab=R.markers.reduce((a,mk)=>a+mixLen(mk.mix)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
+  const totFab=R.markers.reduce((a,mk)=>a+(mk.nest?mk.nest.len:mixLen(mk.mix))*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
   const totSpreads=R.markers.reduce((a,mk)=>a+mk.spreads.length,0);
+  const allNested=R.markers.every(mk=>mk.nest);
   return `<fieldset class="lineset"><legend>Cut plan results</legend>
+    <div style="display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap">
+      <button class="btn mini" id="pNestAll" title="Auto-nest every marker in the plan — draws each layout and fills in actual lengths">⚡ Auto-nest all markers</button>
+      <button class="btn mini" id="pPdfAll" title="Download every marker as a mini-marker page in one PDF, with all plan details">⇩ Mini-markers PDF</button>
+      <button class="btn mini" id="pCsvAll" title="One CSV row per spread">Cut tickets CSV</button>
+      ${allNested?'<span class="wcap" style="align-self:center; margin:0"><b style="color:var(--good)">✓ all markers nested</b> — lengths are actual</span>':''}
+    </div>
     <table class="wsum"><tr><th>Marker</th><th>Ratio</th><th>G/ply</th><th>Spreads (colour×ply)</th><th>Plies</th><th>Garments</th><th>Marker len</th><th>Fabric</th><th></th></tr>
     ${rows}</table>
-    <div class="wcap">${R.markers.length} marker${R.markers.length===1?'':'s'} · ${totSpreads} spread${totSpreads===1?'':'s'} · <b>${totGar}</b> garments (ordered ${R.ordered}) · fabric ≈ <b style="color:var(--acc)">${(totFab/100).toFixed(1)} m</b> at 80% utilization.
+    <div class="wcap">${R.markers.length} marker${R.markers.length===1?'':'s'} · ${totSpreads} spread${totSpreads===1?'':'s'} · <b>${totGar}</b> garments (ordered ${R.ordered}) · fabric ${allNested?'=':'≈'} <b style="color:var(--acc)">${(totFab/100).toFixed(1)} m</b>${allNested?' (actual nested lengths)':' at 80% utilization'}.
     ${R.exact?' <b style="color:var(--good)">✓ demand met exactly</b>':' <b class="lowply">⚠ residual left — raise max ply / marker size</b>'}
     ${R.lowPly?' · <span class="lowply">⚠ some spreads fall below min ply</span>':''}</div>
     <div class="note">“Open →” loads that marker's size mix into the marker room as a one-bundle-per-garment order — nest it, and every spread of that marker is cut from the same plot.</div>
@@ -1605,6 +1614,172 @@ function planCSV(){
     new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
   toast('Cut tickets exported');
 }
+
+/* ---- Nest every plan marker: draws each layout, stores the placements,
+        then restores the marker that was open before the batch. ---- */
+async function nestAllPlan(){
+  if (!CP.result){ toast('Calculate the plan first','warn'); return false; }
+  const saved=JSON.stringify(S);
+  const buf=S?S.buffer:0.3;
+  const head=document.querySelector('#dlgNest .dlg-head');
+  const n=CP.result.markers.length;
+  $('dlgPlan').close();
+  for (let i=0;i<n;i++){
+    const mk=CP.result.markers[i];
+    const sizesQty={}; SIZES.forEach((s,si)=>{ if (mk.mix[si]) sizesQty[s]=mk.mix[si]; });
+    const name=`${CP.prefix||'PLAN'}-M${i+1}`;
+    head.textContent=`Auto-Nest — ${name} (${i+1}/${n})`;
+    newOrder([{modelId:CP.modelId, sizesQty, excl:[], dir:{}}], name, CP.width, buf);
+    await autoNest(true);
+    const st=markerStats();
+    mk.nest={ name, len:st.len, util:st.util, placed:st.placed, total:st.total,
+      width:S.width, buffer:S.buffer,
+      pieces:S.pieces.filter(p=>p.placed).map(p=>({ poly:instPoly(p), sizeIdx:p.sizeIdx,
+        nm:defByKey[p.defKey].name.toUpperCase(), sub:`${SIZES[p.sizeIdx]}-${p.bundle}` })) };
+  }
+  head.textContent='Auto-Nest';
+  S=migrateMarker(JSON.parse(saved));
+  $('markerName').value=S.name;
+  UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
+  renderAll(); persist();
+  openPlanDialog();
+  toast(`All ${n} markers nested — table now shows actual lengths`);
+  return true;
+}
+
+/* ---- Mini-marker PDF: hand-assembled PDF 1.4, no libraries.
+        Page 1 = plan summary, then one A4-landscape page per marker
+        with the nested layout drawing and every plan detail. ---- */
+const PDFW=842, PDFH=595, PDFM=36;
+const pdfEsc=s=>String(s).replace(/×/g,'x').replace(/≈/g,'~').replace(/[·—–]/g,'-').replace(/⚠/g,'!')
+  .replace(/[^\x20-\x7e]/g,'').replace(/([\\()])/g,'\\$1');
+const pdfRGB=h=>`${(parseInt(h.slice(1,3),16)/255).toFixed(3)} ${(parseInt(h.slice(3,5),16)/255).toFixed(3)} ${(parseInt(h.slice(5,7),16)/255).toFixed(3)}`;
+function pdfTxt(x,y,size,str,o){
+  o=o||{};
+  const w=String(str).length*size*0.52;
+  const tm = o.rot
+    ? `0 1 -1 0 ${(x+size*0.35).toFixed(1)} ${(o.center? y-w/2 : y).toFixed(1)} Tm`
+    : `1 0 0 1 ${(o.center? x-w/2 : x).toFixed(1)} ${y.toFixed(1)} Tm`;
+  return `BT /${o.bold?'F2':'F1'} ${size} Tf ${o.rgb||'0.10 0.11 0.14'} rg ${tm} (${pdfEsc(str)}) Tj ET\n`;
+}
+function pdfMarkerPage(mk,i,total){
+  const n=mk.nest, name=`${CP.prefix||'PLAN'}-M${i+1}`;
+  const model=modelById(CP.modelId).name;
+  const plies=mk.spreads.reduce((a,s)=>a+s.ply,0);
+  let c='';
+  c+=pdfTxt(PDFM,PDFH-46,16,`${name} — ${model}`,{bold:1});
+  c+=pdfTxt(PDFW-PDFM-150,PDFH-44,8.5,`Seamline Marker - ${new Date().toISOString().slice(0,10)}`,{rgb:'0.45 0.48 0.55'});
+  c+=pdfTxt(PDFM,PDFH-64,9.5,`Ratio ${mixLabel(mk.mix)}    -    ${mixGar(mk.mix)} garments/ply    -    ${plies} plies    -    ${mixGar(mk.mix)*plies} garments`);
+  c+=pdfTxt(PDFM,PDFH-79,9.5,`Spreads: ${mk.spreads.map(s=>`${s.color} x ${s.ply}${s.low?' (below min ply!)':''}`).join(',  ')}`);
+  c+=pdfTxt(PDFM,PDFH-94,9.5,`Length ${n.len.toFixed(1)} cm    -    utilization ${(n.util*100).toFixed(1)}%    -    width ${n.width} cm    -    buffer ${n.buffer} cm    -    fabric ${(n.len*plies/100).toFixed(1)} m    -    ${n.placed}/${n.total} pieces`);
+  // ---- mini marker drawing ----
+  const top=PDFH-118, bottom=PDFM+30;
+  const fabLen=Math.max(n.len+12,60);
+  const sc=Math.min((PDFW-2*PDFM)/fabLen,(top-bottom)/n.width);
+  const X=wx=>PDFM+wx*sc, Y=wy=>top-wy*sc;
+  c+=`0.955 0.945 0.915 rg 0.72 0.69 0.62 RG 0.8 w ${X(0).toFixed(1)} ${Y(n.width).toFixed(1)} ${(fabLen*sc).toFixed(1)} ${(n.width*sc).toFixed(1)} re B\n`;
+  for (const p of n.pieces){
+    const path=p.poly.map((pt,k)=>`${X(pt[0]).toFixed(2)} ${Y(pt[1]).toFixed(2)} ${k?'l':'m'}`).join(' ')+' h';
+    c+=`${pdfRGB(SIZE_C[p.sizeIdx])} rg 0.13 0.15 0.20 RG 0.4 w ${path} B\n`;
+  }
+  for (const p of n.pieces){
+    const xs=p.poly.map(q=>q[0]), ys=p.poly.map(q=>q[1]);
+    const bw=(Math.max(...xs)-Math.min(...xs))*sc, bh=(Math.max(...ys)-Math.min(...ys))*sc;
+    if (Math.min(bw,bh)<9) continue;
+    const cx=X((Math.max(...xs)+Math.min(...xs))/2), cy=Y((Math.max(...ys)+Math.min(...ys))/2);
+    const fs=Math.min(7,Math.max(3.2,Math.min(bw,bh)*0.16));
+    if (bh>bw*1.4){
+      c+=pdfTxt(cx-fs*0.65,cy,fs,p.nm,{center:1,rot:1});
+      c+=pdfTxt(cx+fs*0.65,cy,fs*0.9,p.sub,{center:1,rot:1});
+    } else {
+      c+=pdfTxt(cx,cy+fs*0.15,fs,p.nm,{center:1});
+      c+=pdfTxt(cx,cy-fs*1.05,fs*0.9,p.sub,{center:1});
+    }
+  }
+  // marker-length line + ruler
+  c+=`[3 2] 0 d 0.85 0.25 0.25 RG 0.8 w ${X(n.len).toFixed(1)} ${(Y(0)+5).toFixed(1)} m ${X(n.len).toFixed(1)} ${(Y(n.width)-5).toFixed(1)} l S [] 0 d\n`;
+  c+=pdfTxt(X(n.len),Y(n.width)-14,8,`${n.len.toFixed(1)} cm`,{center:1,bold:1,rgb:'0.85 0.25 0.25'});
+  for (let x=0;x<=fabLen;x+=50){
+    c+=`0.45 0.48 0.55 RG 0.5 w ${X(x).toFixed(1)} ${Y(n.width).toFixed(1)} m ${X(x).toFixed(1)} ${(Y(n.width)-4).toFixed(1)} l S\n`;
+    c+=pdfTxt(X(x),Y(n.width)-12,6,String(x),{center:1,rgb:'0.45 0.48 0.55'});
+  }
+  c+=pdfTxt(PDFW/2,PDFM-14,8,`fabric width ${n.width} cm - selvage to selvage`,{center:1,rgb:'0.45 0.48 0.55'});
+  c+=pdfTxt(PDFW-PDFM-60,PDFM-14,8,`page ${i+2} / ${total}`,{rgb:'0.45 0.48 0.55'});
+  return c;
+}
+function pdfSummaryPage(total){
+  const R=CP.result;
+  let c='', y=PDFH-52;
+  c+=pdfTxt(PDFM,y,18,'Cut Plan — Seamline Marker',{bold:1}); y-=20;
+  c+=pdfTxt(PDFM,y,10,`Model: ${modelById(CP.modelId).name}     Date: ${new Date().toISOString().slice(0,10)}     Prefix: ${CP.prefix||'PLAN'}`); y-=15;
+  c+=pdfTxt(PDFM,y,10,`Settings: min ply ${CP.minPly}   -   max ply ${CP.maxPly}   -   max garments/marker ${CP.maxG}   -   fabric width ${CP.width} cm`); y-=26;
+  c+=pdfTxt(PDFM,y,11,'Demand',{bold:1}); y-=15;
+  const dx=[PDFM,PDFM+120]; SIZES.forEach((s,i)=>dx.push(PDFM+120+55*(i+1)));
+  c+=pdfTxt(dx[0],y,8.5,'COLOUR',{bold:1,rgb:'0.45 0.48 0.55'});
+  SIZES.forEach((s,i)=>{ c+=pdfTxt(dx[1]+55*i,y,8.5,s,{bold:1,rgb:'0.45 0.48 0.55'}); });
+  c+=pdfTxt(dx[1]+55*6,y,8.5,'TOTAL',{bold:1,rgb:'0.45 0.48 0.55'}); y-=13;
+  for (const col of CP.colors){
+    if (!col.name.trim() || !SIZES.some(s=>(col.qty[s]|0)>0)) continue;
+    c+=pdfTxt(dx[0],y,9,col.name);
+    let t=0; SIZES.forEach((s,i)=>{ const q=col.qty[s]|0; t+=q; c+=pdfTxt(dx[1]+55*i,y,9,q?String(q):'-'); });
+    c+=pdfTxt(dx[1]+55*6,y,9,String(t),{bold:1}); y-=13;
+  }
+  y-=16;
+  c+=pdfTxt(PDFM,y,11,'Markers',{bold:1}); y-=15;
+  const mx=[PDFM,PDFM+70,PDFM+185,PDFM+225,PDFM+455,PDFM+495,PDFM+555,PDFM+635,PDFM+705];
+  ['MARKER','RATIO','G/PLY','SPREADS (COLOUR x PLY)','PLIES','GARMENTS','LENGTH','UTIL','FABRIC'].forEach((h,i)=>{
+    c+=pdfTxt(mx[i],y,8.5,h,{bold:1,rgb:'0.45 0.48 0.55'}); });
+  y-=13;
+  R.markers.forEach((mk,i)=>{
+    const plies=mk.spreads.reduce((a,s)=>a+s.ply,0), n=mk.nest;
+    const row=[`${CP.prefix||'PLAN'}-M${i+1}`, mixLabel(mk.mix), String(mixGar(mk.mix)),
+      mk.spreads.map(s=>`${s.color} x ${s.ply}`).join(', '), String(plies), String(mixGar(mk.mix)*plies),
+      n?`${n.len.toFixed(1)} cm`:'-', n?`${(n.util*100).toFixed(1)}%`:'-',
+      n?`${(n.len*plies/100).toFixed(1)} m`:'-'];
+    row.forEach((v,k)=>{ c+=pdfTxt(mx[k],y,8.5,v); });
+    y-=13;
+  });
+  y-=8;
+  const totGar=R.markers.reduce((a,mk)=>a+mixGar(mk.mix)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
+  const totFab=R.markers.reduce((a,mk)=>a+(mk.nest?mk.nest.len:0)*mk.spreads.reduce((x,s)=>x+s.ply,0),0);
+  c+=pdfTxt(PDFM,y,9.5,`${R.markers.length} markers - ${totGar} garments (ordered ${R.ordered}) - total fabric ${(totFab/100).toFixed(1)} m${R.exact?' - demand met exactly':''}${R.lowPly?' - warning: some spreads below min ply':''}`,{bold:1});
+  c+=pdfTxt(PDFW-PDFM-60,PDFM-14,8,`page 1 / ${total}`,{rgb:'0.45 0.48 0.55'});
+  return c;
+}
+function assemblePDF(streams){
+  const objs=[];
+  objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objs[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+  objs[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+  const kids=[];
+  streams.forEach((s,i)=>{
+    const pn=5+i*2;
+    kids.push(`${pn} 0 R`);
+    objs[pn]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDFW} ${PDFH}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${pn+1} 0 R >>`;
+    objs[pn+1]=`<< /Length ${s.length} >>\nstream\n${s}\nendstream`;
+  });
+  objs[2]=`<< /Type /Pages /Count ${streams.length} /Kids [${kids.join(' ')}] >>`;
+  let out='%PDF-1.4\n'; const offs=[];
+  for (let n=1;n<objs.length;n++){ offs[n]=out.length; out+=`${n} 0 obj\n${objs[n]}\nendobj\n`; }
+  const xref=out.length;
+  out+=`xref\n0 ${objs.length}\n0000000000 65535 f \n`;
+  for (let n=1;n<objs.length;n++) out+=String(offs[n]).padStart(10,'0')+' 00000 n \n';
+  out+=`trailer\n<< /Size ${objs.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return out;
+}
+async function planPDF(){
+  if (!CP.result) return toast('Calculate the plan first','warn');
+  if (!CP.result.markers.every(mk=>mk.nest)){
+    toast('Nesting all markers first…');
+    if (!await nestAllPlan()) return;
+  }
+  const total=CP.result.markers.length+1;
+  const pages=[pdfSummaryPage(total)];
+  CP.result.markers.forEach((mk,i)=>pages.push(pdfMarkerPage(mk,i,total)));
+  download(`${CP.prefix||'PLAN'}-minimarkers.pdf`,'application/pdf',
+    new Blob([assemblePDF(pages)],{type:'application/pdf'}));
+  toast('Mini-marker PDF downloaded — one page per marker');
+}
 $('planBody').addEventListener('input', e=>{
   const t=e.target;
   if (t.dataset.pc!=null) CP.colors[+t.dataset.pc].name=t.value;
@@ -1617,6 +1792,9 @@ $('planBody').addEventListener('input', e=>{
   else if (t.id==='pPrefix') CP.prefix=t.value;
 });
 $('planBody').addEventListener('click', e=>{
+  if (e.target.id==='pNestAll'){ nestAllPlan(); return; }
+  if (e.target.id==='pPdfAll'){ planPDF(); return; }
+  if (e.target.id==='pCsvAll'){ planCSV(); return; }
   if (e.target.id==='pAddColor'){
     if (CP.colors.length>=8) return toast('Max 8 colours','warn');
     CP.colors.push({name:'Colour '+(CP.colors.length+1), qty:{}}); renderPlan(); return;
@@ -1634,7 +1812,6 @@ $('planBody').addEventListener('click', e=>{
   }
 });
 $('pCalc').onclick=calcCutPlan;
-$('pCsv').onclick=planCSV;
 $('bPlan').onclick=openPlanDialog;
 
 /* toolbar wiring */
@@ -1644,7 +1821,7 @@ $('fileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSON(e.targ
 $('bSave').onclick=saveJSON;
 $('bExport').onclick=exportSVG;
 $('bPng').onclick=exportPNG;
-$('bNest').onclick=autoNest;
+$('bNest').onclick=()=>autoNest();
 $('bCompact').onclick=compact;
 $('bClear').onclick=returnAll;
 $('bRotL').onclick=()=>rotateSel(-1);
