@@ -5,7 +5,7 @@ One self-contained file — **double-click `SeamlineMarker.html`** to run it in 
 
 ## Workflow (modeled on the classic marker pipeline)
 
-1. **New Order** — pick a model (T-Shirt, Shirt, Trousers), size quantities, fabric width and cutter buffer. One bundle per garment; every piece lands in the tray.
+1. **New Order** — an Easy Order-style 5-step form (Models → Sizes → Pieces → Fabric → Finish): add **one or more models** (T-Shirt, Shirt, Trousers) as order lines, set size quantities per model, untick pieces to exclude them, choose fabric width / cutter buffer / lay rule, review the summary with an estimated marker length, then **Create** or **Create + Auto-Nest**. All models nest together in one combined marker; pieces carry a model tag (TSH·, SHT·, TRS·) when the order is multi-model.
 2. **Place** — click a tray piece then click the fabric (green ghost = valid, red = blocked), or press **⚡ Auto-Nest** to pack the whole marker automatically (effort slider trades speed for tightness).
 3. **Refine** — drag pieces (overlaps bounce back), rotate/flip under lay-rule constraints, **Butt** slides a piece until it touches its neighbour, **Compact** tightens the whole marker. Length, **utilization %** and piece counts update live; status chip = MADE / PARTIAL / UNMADE.
 4. **Output** — **Save** the marker as JSON (re-open later with **Open**), export the plot as **SVG** (1 unit = 1 cm, with title block) or **PNG**.

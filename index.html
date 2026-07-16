@@ -179,7 +179,39 @@
     background:var(--panel2); border:1px solid var(--edge); border-radius:6px;
     color:var(--ink); padding:6px 9px; flex:1; min-width:0;
   }
-  #sizeGrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; flex:1}
+  /* Easy Order wizard */
+  #dlgOrder{max-width:640px}
+  #dlgOrder .dlg-body{max-height:56vh; overflow:auto; min-height:220px}
+  .wsteps{display:flex; gap:4px; padding:12px 18px 0}
+  .wstep{flex:1; text-align:center; font-size:10.5px; letter-spacing:.06em; color:var(--mut);
+         padding:0 2px 6px; border-bottom:2px solid var(--edge); white-space:nowrap}
+  .wstep.on{color:var(--acc); border-color:var(--acc); font-weight:700}
+  .wstep.done{color:var(--ink); border-color:#2c6b62}
+  .wcap{color:var(--mut); font-size:12px; margin-bottom:10px}
+  .mcards{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px}
+  .mcard{background:var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:9px 10px;
+         display:flex; flex-direction:column; gap:4px}
+  .mcard b{font-size:12.5px}
+  .mcard .mc-sub{font-size:10.5px; color:var(--mut)}
+  .btn.mini{padding:3px 10px; font-size:11.5px; align-self:flex-start}
+  .olines{display:flex; flex-direction:column; gap:6px}
+  .oline{display:flex; align-items:center; gap:9px; background:var(--panel2); border:1px solid var(--edge);
+         border-radius:7px; padding:6px 10px; font-size:12.5px}
+  .oline .lett{background:var(--acc); color:#0c2523; font-weight:700; border-radius:4px; padding:0 6px; font-size:11px}
+  .oline .x{margin-left:auto; color:var(--mut); padding:2px 6px; border-radius:4px}
+  .oline .x:hover{background:#3a2026; color:var(--bad)}
+  fieldset.lineset{border:1px solid var(--edge); border-radius:8px; padding:10px 12px; margin-bottom:12px}
+  fieldset.lineset legend{font-size:11.5px; color:var(--acc); padding:0 6px; font-weight:700}
+  .pchk{display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; font-size:12.5px}
+  .pchk label{display:flex; gap:7px; align-items:center; color:#c6cddb}
+  .pchk input{accent-color:var(--acc)}
+  .pchk .sub{color:var(--mut); font-size:11px}
+  table.wsum{border-collapse:collapse; width:100%; font-size:12.5px; margin-bottom:12px}
+  table.wsum th{color:var(--mut); font-weight:600; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase}
+  table.wsum th,table.wsum td{padding:5px 8px; border-bottom:1px solid var(--edge); text-align:left}
+  table.wsum td:nth-child(n+3),table.wsum th:nth-child(n+3){text-align:right}
+
+  .szgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px}
   .szcell{display:flex; flex-direction:column; align-items:center; gap:3px}
   .szcell .t{font-size:10.5px; font-weight:700; border-radius:3px; padding:0 6px; color:#20242e}
   .szcell input{
@@ -333,32 +365,17 @@
   <span id="coords"></span>
 </footer>
 
-<!-- ---------- New Order dialog ---------- -->
+<!-- ---------- New Order (Easy Order wizard) ---------- -->
 <dialog id="dlgOrder">
-  <div class="dlg-head">New Order <button class="x" data-close="dlgOrder">✕</button></div>
-  <div class="dlg-body">
-    <div class="frow"><label>Marker name</label><input type="text" id="oName" spellcheck="false"></div>
-    <div class="frow"><label>Model</label>
-      <select id="oModel"></select>
-    </div>
-    <div class="frow" style="align-items:flex-start"><label style="padding-top:14px">Sizes × qty</label>
-      <div id="sizeGrid"></div>
-    </div>
-    <div class="frow"><label>Fabric width</label><input type="number" id="oWidth" min="90" max="300" step="1" value="160"> <span style="color:var(--mut)">cm</span></div>
-    <div class="frow"><label>Buffer</label>
-      <select id="oBuffer">
-        <option value="0">none — pieces may butt</option>
-        <option value="0.3">0.3 cm</option>
-        <option value="0.5">0.5 cm</option>
-        <option value="1">1.0 cm</option>
-      </select>
-    </div>
-    <div id="orderPreview"></div>
-    <div class="note">Creating an order builds one bundle per garment and fills the tray with every piece. It replaces the current marker.</div>
-  </div>
+  <div class="dlg-head">New Order — Easy Order <button class="x" data-close="dlgOrder">✕</button></div>
+  <div class="wsteps" id="wSteps"></div>
+  <div class="dlg-body" id="wizBody"></div>
   <div class="dlg-foot">
-    <button class="btn" data-close="dlgOrder">Cancel</button>
-    <button class="btn primary" id="oCreate">Create order</button>
+    <button class="btn" id="wBack">‹ Back</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="wNext">Next ›</button>
+    <button class="btn" id="wCreate">Create order</button>
+    <button class="btn primary" id="wCreateNest">Create + Auto-Nest</button>
   </div>
 </dialog>
 
@@ -378,7 +395,7 @@
   <div class="dlg-body">
     <h4>WORKFLOW</h4>
     <ol>
-      <li><b>New Order</b> — pick a model, size quantities, fabric width and buffer. Every piece of every bundle lands in the tray.</li>
+      <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, choose fabric width/buffer/lay rule, review the summary. All models nest together in one combined marker.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Refine</b> — drag pieces, rotate/flip, <b>Butt</b> slides a piece left until it touches its neighbour, <b>Compact</b> tightens the whole marker.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
@@ -441,7 +458,7 @@ const mir = half => {
    rot: 'two' = 0/180 (directional fabric) · 'four' = 90° steps · 'free'
    pair: second/fourth instance is cut mirrored (L/R pieces)          */
 const MODELS = [
- { id:'tshirt', name:'T-Shirt', pieces:[
+ { id:'tshirt', name:'T-Shirt', tag:'TSH', pieces:[
    { key:'FRONT',  name:'Front',      qty:1, rot:'two',
      pts:[[0,8],[4,7],[7,4.6],[8.6,1.4],[9.6,0],[21,3.4],[22.6,7],[23.6,11],[24.8,15],[26.6,19.4],[28,23],[27.4,46],[27,72],[0,72]], sym:true },
    { key:'BACK',   name:'Back',       qty:1, rot:'two',
@@ -451,7 +468,7 @@ const MODELS = [
    { key:'NECKBD', name:'Neck band',  qty:1, rot:'free',
      pts:[[0,0],[64,0],[64,3.6],[0,3.6]] },
  ]},
- { id:'shirt', name:'Shirt (long sleeve)', pieces:[
+ { id:'shirt', name:'Shirt (long sleeve)', tag:'SHT', pieces:[
    { key:'FRONT',  name:'Front',      qty:2, rot:'two', pair:true,
      pts:[[0,7.5],[2,5.4],[4.6,3],[8,1.1],[11.4,0],[23.4,3],[24.4,6.6],[25.2,10.4],[26.6,14.4],[28.6,17.6],[30.6,19.8],[30,45],[30.4,74],[0,74]] },
    { key:'BACK',   name:'Back',       qty:1, rot:'two',
@@ -469,7 +486,7 @@ const MODELS = [
    { key:'POCKET', name:'Pocket',     qty:1, rot:'four',
      pts:[[0,0],[14,0],[14,12],[7,16],[0,12]] },
  ]},
- { id:'trouser', name:'Trousers', pieces:[
+ { id:'trouser', name:'Trousers', tag:'TRS', pieces:[
    { key:'FRONT',  name:'Front leg',  qty:2, rot:'two', pair:true,
      pts:[[6.5,0],[30.5,1],[32,10],[33.5,18],[32.5,32],[31,46],[30,64],[29.5,102],[11,102],[10.4,78],[9.6,58],[7,40],[3,30],[0,23.6],[2.2,17],[4.6,9]] },
    { key:'BACK',   name:'Back leg',   qty:2, rot:'two', pair:true,
@@ -487,9 +504,11 @@ for (const m of MODELS) for (const d of m.pieces){
   let pts = d.sym ? mir(d.pts) : d.pts;
   d.base = norm(T(pts));
   d.key0 = m.id + '/' + d.key;
+  d.area0 = shoelace(d.base);          // for order-form length estimates
 }
 const defByKey = {};
 for (const m of MODELS) for (const d of m.pieces) defByKey[d.key0] = d;
+const modelById = id => MODELS.find(m=>m.id===id);
 
 /* ---------------- geometry core ---------------- */
 function shoelace(p){ let a=0; for (let i=0,n=p.length;i<n;i++){ const q=p[(i+1)%n]; a += p[i][0]*q[1]-q[0]*p[i][1]; } return Math.abs(a)/2; }
@@ -580,21 +599,37 @@ const $ = id => document.getElementById(id);
 const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
       gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost');
 
-function newOrder(modelId, name, sizesQty, width, buffer){
-  const model = MODELS.find(m=>m.id===modelId);
-  S = { name, modelId, width, buffer, sizesQty, pieces:[] };
-  for (let si=0; si<SIZES.length; si++){
-    const q = sizesQty[SIZES[si]]|0;
-    for (let b=1;b<=q;b++)
-      for (const d of model.pieces)
-        for (let k=0;k<d.qty;k++)
-          S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b,
-                          placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
-  }
+// lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…]}] — one order line per model
+function newOrder(lines, name, width, buffer){
+  S = { name, width, buffer, pieces:[],
+        lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...(L.excl||[])] })) };
+  S.lines.forEach((L, li)=>{
+    const model = modelById(L.modelId);
+    for (let si=0; si<SIZES.length; si++){
+      const q = L.sizesQty[SIZES[si]]|0;
+      for (let b=1;b<=q;b++)
+        for (const d of model.pieces){
+          if (L.excl.includes(d.key0)) continue;
+          for (let k=0;k<d.qty;k++)
+            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li,
+                            placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
+        }
+    }
+  });
   UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
   $('markerName').value = name;
   renderAll(); fitView(); persist();
 }
+// markers saved before multi-model orders carry modelId/sizesQty at the top level
+function migrateMarker(m){
+  if (!m.lines){
+    m.lines=[{ modelId:m.modelId||'tshirt', sizesQty:m.sizesQty||{}, excl:[] }];
+    delete m.modelId; delete m.sizesQty;
+  }
+  for (const p of m.pieces) if (p.line==null) p.line=0;
+  return m;
+}
+const lineTag = li => S.lines.length>1 ? modelById(S.lines[li].modelId).tag : '';
 
 /* ---------------- validity ---------------- */
 function inBounds(poly){
@@ -723,7 +758,7 @@ function pieceMarkup(inst, cls){
     `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[inst.sizeIdx]}"/>`+
     `<line class="grain" x1="${c[0]-gl}" y1="${c[1]}" x2="${c[0]+gl}" y2="${c[1]}"/>`+
     `<text${rotT} x="${c[0]}" y="${c[1]-fs*0.25}" font-size="${fs}" text-anchor="middle">${def.name.toUpperCase()}</text>`+
-    `<text${rotT} x="${c[0]}" y="${c[1]+fs*1.05}" font-size="${fs*0.85}" text-anchor="middle">${SIZES[inst.sizeIdx]}-${inst.bundle}</text>`+
+    `<text${rotT} x="${c[0]}" y="${c[1]+fs*1.05}" font-size="${fs*0.85}" text-anchor="middle">${lineTag(inst.line)?lineTag(inst.line)+'·':''}${SIZES[inst.sizeIdx]}-${inst.bundle}</text>`+
   `</g>`;
 }
 
@@ -743,15 +778,15 @@ function renderOverlay(len){
 }
 
 function thumbMarkup(inst, count){
-  const def=defByKey[inst.defKey];
+  const def=defByKey[inst.defKey], mdl=modelById(S.lines[inst.line].modelId), tag=lineTag(inst.line);
   const sh=shapeOf(inst.defKey, inst.sizeIdx, 0, inst.fx, false), bb=sh.bb;
   const pad=Math.max(bb.w,bb.h)*0.05;
-  return `<div class="thumb${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${def.name} · size ${SIZES[inst.sizeIdx]} — click, then click the fabric to place">`+
+  return `<div class="thumb${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${mdl.name} ${def.name} · size ${SIZES[inst.sizeIdx]} — click, then click the fabric to place">`+
     (count>1?`<div class="cnt">×${count}</div>`:'')+
     `<svg viewBox="${bb.x1-pad} ${bb.y1-pad} ${bb.w+2*pad} ${bb.h+2*pad}" preserveAspectRatio="xMidYMid meet">`+
       `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[inst.sizeIdx]}" fill-opacity=".85" stroke="#20242e" stroke-width="1" vector-effect="non-scaling-stroke"/>`+
     `</svg>`+
-    `<div class="nm">${def.name}</div>`+
+    `<div class="nm">${tag?`<span style="color:var(--mut)">${tag}·</span>`:''}${def.name}</div>`+
     `<div class="sz" style="background:${SIZE_C[inst.sizeIdx]}">${SIZES[inst.sizeIdx]}</div>`+
   `</div>`;
 }
@@ -760,11 +795,11 @@ function renderTray(){
   const groups = new Map();
   for (const p of S.pieces){
     if (p.placed || p.uid===UI.carry) continue;
-    const k = p.defKey+'|'+p.sizeIdx;
+    const k = p.line+'|'+p.defKey+'|'+p.sizeIdx;
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(p);
   }
-  const list=[...groups.values()].sort((a,b)=> a[0].sizeIdx-b[0].sizeIdx || a[0].defKey.localeCompare(b[0].defKey));
+  const list=[...groups.values()].sort((a,b)=> a[0].line-b[0].line || a[0].sizeIdx-b[0].sizeIdx || a[0].defKey.localeCompare(b[0].defKey));
   $('trayItems').innerHTML = list.length
     ? list.map(g=>thumbMarkup(g[0], g.length)).join('')
     : `<div id="trayEmpty">All pieces placed ✓</div>`;
@@ -779,9 +814,11 @@ function renderStats(){
   const cls = st.total&&st.placed===st.total ? 'made' : st.placed>0 ? 'partial' : 'unmade';
   chip.className = 'chip '+cls;
   chip.textContent = cls.toUpperCase();
-  const model = MODELS.find(m=>m.id===S.modelId);
-  const sz = SIZES.map((s,i)=> (S.sizesQty[s]|0)>0 ? `${s}×${S.sizesQty[s]}`:null).filter(Boolean).join(' ');
-  $('orderSummary').textContent = `${model.name} · ${sz||'no sizes'} · ${S.width} cm · buffer ${S.buffer} cm`;
+  const parts = S.lines.map(L=>{
+    const g = SIZES.reduce((a,s)=>a+(L.sizesQty[s]|0),0);
+    return `${modelById(L.modelId).name} ×${g}`;
+  });
+  $('orderSummary').textContent = `${parts.join(' + ')} · ${S.width} cm · buffer ${S.buffer} cm`;
   $('hintOverlay').hidden = st.placed>0 || st.total===0;
   return st;
 }
@@ -803,9 +840,9 @@ function renderHint(){
     si.textContent='';
   } else if (UI.sel!=null){
     const p = byUid(UI.sel);
-    if (p){ const def=defByKey[p.defKey], sh=instShape(p);
+    if (p){ const def=defByKey[p.defKey], sh=instShape(p), tag=lineTag(p.line);
       h.textContent = 'Drag to move · R rotate · F flip · L butt left · Del return to tray';
-      si.textContent = `${def.name.toUpperCase()} · ${SIZES[p.sizeIdx]}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · rot ${p.rot}°${p.fx?' · flipped':''}`;
+      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${SIZES[p.sizeIdx]}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · rot ${p.rot}°${p.fx?' · flipped':''}`;
     } else si.textContent='';
   } else {
     h.textContent = 'Select a piece from the tray and click the fabric — or press ⚡ Auto-Nest.';
@@ -1137,7 +1174,7 @@ function openJSON(file){
     try{
       const doc=JSON.parse(rd.result);
       if (doc.app!=='seamline-marker' || !doc.marker) throw 0;
-      S=doc.marker;
+      S=migrateMarker(doc.marker);
       for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
       UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
       $('markerName').value=S.name;
@@ -1158,13 +1195,13 @@ function plotSVGString(){
     const rt=vert?` transform="rotate(-90 ${c[0]} ${c[1]})"`:'';
     body+=`<g transform="translate(${p.x},${p.y})">`+
       `<path d="${fmtPoly(sh.pts)}" fill="${SIZE_C[p.sizeIdx]}" fill-opacity=".55" stroke="#111" stroke-width="0.12"/>`+
-      `<text${rt} x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle" font-family="Helvetica,Arial" fill="#111">${def.name.toUpperCase()} ${SIZES[p.sizeIdx]}-${p.bundle}</text>`+
+      `<text${rt} x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle" font-family="Helvetica,Arial" fill="#111">${def.name.toUpperCase()} ${lineTag(p.line)?lineTag(p.line)+'·':''}${SIZES[p.sizeIdx]}-${p.bundle}</text>`+
     `</g>`;
   }
   let ticks='';
   for (let x=0;x<=L;x+=50) ticks+=`<line x1="${x}" y1="${W}" x2="${x}" y2="${W+3}" stroke="#333" stroke-width="0.15"/><text x="${x}" y="${W+7}" font-size="3.5" text-anchor="middle" font-family="Helvetica,Arial" fill="#333">${x}</text>`;
-  const model=MODELS.find(m=>m.id===S.modelId);
-  const title=`${S.name} · ${model.name} · width ${W} cm · length ${st.len.toFixed(1)} cm · util ${(st.util*100).toFixed(1)}% · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
+  const modelNames=[...new Set(S.lines.map(L=>modelById(L.modelId).name))].join(' + ');
+  const title=`${S.name} · ${modelNames} · width ${W} cm · length ${st.len.toFixed(1)} cm · util ${(st.util*100).toFixed(1)}% · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*4}" height="${(W+24)*4}">`+
     `<rect x="-4" y="-12" width="${L+12}" height="${W+24}" fill="#fff"/>`+
     `<text x="0" y="-5" font-size="4.5" font-family="Helvetica,Arial" fill="#111" font-weight="bold">${title}</text>`+
@@ -1216,43 +1253,137 @@ function toast(msg, kind){
 }
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>$(b.dataset.close).close()));
 
+/* ---- Easy Order wizard: 1 Models · 2 Sizes · 3 Pieces · 4 Fabric · 5 Finish ---- */
+const STEP_NAMES=['Models','Sizes','Pieces','Fabric','Finish'];
+const LETTERS='ABCDEFGH';
+let W=null;
+const lineGarments = L => SIZES.reduce((a,s)=>a+(L.sizesQty[s]|0),0);
+const linePcsPerGarment = L => modelById(L.modelId).pieces.filter(d=>!L.excl.has(d.key0)).reduce((a,d)=>a+d.qty,0);
+const wTotalPieces = () => W.lines.reduce((a,L)=>a+lineGarments(L)*linePcsPerGarment(L),0);
+const wTotalGarments = () => W.lines.reduce((a,L)=>a+lineGarments(L),0);
+
 function openOrderDialog(){
-  const sel=$('oModel');
-  sel.innerHTML=MODELS.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
-  sel.value=S?S.modelId:'tshirt';
-  $('oName').value = suggestName(sel.value);
-  $('oWidth').value = S?S.width:160;
-  $('oBuffer').value = S?String(S.buffer):'0';
-  const grid=$('sizeGrid');
-  grid.innerHTML=SIZES.map((s,i)=>`<div class="szcell"><div class="t" style="background:${SIZE_C[i]}">${s}</div><input type="number" min="0" max="9" value="${S&&S.sizesQty[s]?S.sizesQty[s]:0}" data-size="${s}"></div>`).join('');
-  updateOrderPreview();
+  W={ step:1, prefix:'',
+      lines: S && S.lines ? S.lines.map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:new Set(L.excl||[])})) : [],
+      width: S?S.width:160, buffer: S?S.buffer:0 };
+  renderWizard();
   $('dlgOrder').showModal();
 }
-function suggestName(modelId){
-  const d=new Date();
-  return modelId.toUpperCase()+'-'+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+function wSuggestName(){
+  const d=new Date(), mmdd=String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  const tags=[...new Set(W.lines.map(L=>modelById(L.modelId).tag))];
+  return (W.prefix.trim()? W.prefix.trim().toUpperCase() : (tags.join('-')||'MARKER'))+'-'+mmdd;
 }
-function updateOrderPreview(){
-  const model=MODELS.find(m=>m.id===$('oModel').value);
-  const per=model.pieces.reduce((a,p)=>a+p.qty,0);
-  let garments=0;
-  document.querySelectorAll('#sizeGrid input').forEach(i=>garments+=(+i.value||0));
-  $('orderPreview').innerHTML = `${model.pieces.length} piece styles · ${per} pieces per garment · <b>${garments} garment${garments===1?'':'s'} = ${garments*per} pieces</b>`;
+function renderWizard(){
+  $('wSteps').innerHTML = STEP_NAMES.map((n,i)=>
+    `<div class="wstep${i+1===W.step?' on':i+1<W.step?' done':''}">${i+1} · ${n}</div>`).join('');
+  $('wBack').style.visibility = W.step===1?'hidden':'visible';
+  $('wNext').style.display = W.step<5?'':'none';
+  $('wCreate').style.display = $('wCreateNest').style.display = W.step===5?'':'none';
+  const b=$('wizBody');
+
+  if (W.step===1){
+    b.innerHTML =
+      `<div class="wcap">Add one or more models — pieces from every model nest together in one combined marker.</div>
+       <div class="mcards">`+
+      MODELS.map(m=>`<div class="mcard"><b>${m.name}</b><span class="mc-sub">${m.pieces.length} piece styles · ${m.pieces.reduce((a,p)=>a+p.qty,0)} pcs/garment</span><button class="btn mini" data-add="${m.id}">+ Add to order</button></div>`).join('')+
+      `</div><div class="wcap" style="margin-bottom:6px">Order lines</div><div class="olines">`+
+      (W.lines.length
+        ? W.lines.map((L,i)=>{const g=lineGarments(L);
+            return `<div class="oline"><span class="lett">${LETTERS[i]}</span>${modelById(L.modelId).name}<span class="mc-sub">${g||'no'} garment${g===1?'':'s'}</span><button class="x" data-del="${i}" title="Remove line">✕</button></div>`;}).join('')
+        : '<div class="wcap">No models yet — add one above.</div>')+
+      `</div>`;
+  }
+  else if (W.step===2){
+    b.innerHTML = `<div class="wcap">Garment quantities per size — one bundle per garment.</div>`+
+      W.lines.map((L,li)=>`<fieldset class="lineset"><legend>${LETTERS[li]} · ${modelById(L.modelId).name}</legend>
+        <div class="szgrid">`+
+        SIZES.map((s,i)=>`<div class="szcell"><div class="t" style="background:${SIZE_C[i]}">${s}</div><input type="number" min="0" max="9" value="${L.sizesQty[s]|0}" data-line="${li}" data-size="${s}"></div>`).join('')+
+        `</div></fieldset>`).join('')+
+      `<div class="wcap" id="wTot2"></div>`;
+    updWTotals();
+  }
+  else if (W.step===3){
+    b.innerHTML = `<div class="wcap">Untick pieces to leave them out of this marker (cut elsewhere, fused separately…).</div>`+
+      W.lines.map((L,li)=>{const m=modelById(L.modelId);
+        return `<fieldset class="lineset"><legend>${LETTERS[li]} · ${m.name}</legend><div class="pchk">`+
+          m.pieces.map(d=>`<label><input type="checkbox" data-line="${li}" data-key="${d.key0}"${L.excl.has(d.key0)?'':' checked'}> ${d.name} <span class="sub">×${d.qty} · ${d.rot==='two'?'two-way':d.rot==='four'?'four-way':'free'}</span></label>`).join('')+
+          `</div></fieldset>`;}).join('');
+  }
+  else if (W.step===4){
+    b.innerHTML = `
+      <div class="frow"><label>Fabric width</label><input type="number" id="wWidth" min="90" max="300" step="1" value="${W.width}"> <span style="color:var(--mut)">cm</span></div>
+      <div class="frow"><label>Buffer</label><select id="wBuffer">
+        <option value="0"${W.buffer===0?' selected':''}>none — pieces may butt</option>
+        <option value="0.3"${W.buffer===0.3?' selected':''}>0.3 cm</option>
+        <option value="0.5"${W.buffer===0.5?' selected':''}>0.5 cm</option>
+        <option value="1"${W.buffer===1?' selected':''}>1.0 cm</option></select></div>
+      <div class="frow"><label>Lay rule</label><select id="wLay">
+        <option value="strict"${UI.layRule==='strict'?' selected':''}>strict — each piece follows its own rule</option>
+        <option value="relaxed"${UI.layRule==='relaxed'?' selected':''}>90° allowed — non-directional weave</option>
+        <option value="free"${UI.layRule==='free'?' selected':''}>free — any angle</option></select></div>
+      <div class="frow"><label>Name prefix</label><input type="text" id="wPrefix" placeholder="optional — defaults to model tags" value="${W.prefix}" spellcheck="false"></div>
+      <div class="note">Marker name = prefix (or model tags) + date — editable on the Finish step.</div>`;
+  }
+  else {
+    const rows=W.lines.map((L,li)=>{const g=lineGarments(L), pp=linePcsPerGarment(L);
+      return `<tr><td>${LETTERS[li]}</td><td>${modelById(L.modelId).name}</td><td>${g}</td><td>${pp}</td><td>${g*pp}</td></tr>`;}).join('');
+    let area=0;
+    for (const L of W.lines){ const g=lineGarments(L);
+      for (const d of modelById(L.modelId).pieces) if(!L.excl.has(d.key0)) area+=d.area0*d.qty*g; }
+    const est=area/(W.width*0.8);
+    b.innerHTML =
+      `<table class="wsum"><tr><th></th><th>Model</th><th>Garments</th><th>Pcs/garment</th><th>Pieces</th></tr>${rows}
+       <tr><td></td><td><b>Total</b></td><td><b>${wTotalGarments()}</b></td><td></td><td><b>${wTotalPieces()}</b></td></tr></table>
+       <div class="wcap">Fabric ${W.width} cm · buffer ${W.buffer} cm · estimated marker length ≈ <b style="color:var(--acc)">${est.toFixed(0)} cm</b> at 80% utilization.</div>
+       <div class="frow" style="margin-top:10px"><label>Marker name</label><input type="text" id="wName" value="${wSuggestName()}" spellcheck="false"></div>
+       <div class="note">Creating the order replaces the current marker and fills the tray with ${wTotalPieces()} pieces.</div>`;
+  }
 }
-$('oModel').addEventListener('change', ()=>{ $('oName').value=suggestName($('oModel').value); updateOrderPreview(); });
-$('sizeGrid').addEventListener('input', updateOrderPreview);
-$('oCreate').addEventListener('click', ()=>{
-  const sq={}; let total=0;
-  document.querySelectorAll('#sizeGrid input').forEach(i=>{ sq[i.dataset.size]=+i.value||0; total+=sq[i.dataset.size]; });
-  if (!total) return toast('Enter a quantity for at least one size','warn');
-  const model=MODELS.find(m=>m.id===$('oModel').value);
-  const per=model.pieces.reduce((a,p)=>a+p.qty,0);
-  if (total*per>240) return toast('Order too large for one marker (max ~240 pieces) — reduce quantities','warn');
-  const w=Math.max(90,Math.min(300,+$('oWidth').value||160));
-  $('dlgOrder').close();
-  newOrder($('oModel').value, $('oName').value.trim()||suggestName($('oModel').value), sq, w, +$('oBuffer').value);
-  toast(`Order created — ${total*per} pieces in the tray`);
+function updWTotals(){
+  const el=$('wTot2'); if(!el) return;
+  el.innerHTML = `Total: <b style="color:var(--acc)">${wTotalGarments()}</b> garments · <b style="color:var(--acc)">${wTotalPieces()}</b> pieces`;
+}
+$('wizBody').addEventListener('click', e=>{
+  const add=e.target.closest('[data-add]');
+  if (add){
+    if (W.lines.length>=8) return toast('Max 8 order lines','warn');
+    W.lines.push({modelId:add.dataset.add, sizesQty:{M:1}, excl:new Set()});
+    renderWizard(); return;
+  }
+  const del=e.target.closest('[data-del]');
+  if (del){ W.lines.splice(+del.dataset.del,1); renderWizard(); }
 });
+$('wizBody').addEventListener('input', e=>{
+  const t=e.target;
+  if (t.dataset.size!=null){ W.lines[+t.dataset.line].sizesQty[t.dataset.size]=Math.max(0,Math.min(9,+t.value||0)); updWTotals(); }
+  else if (t.dataset.key){ const L=W.lines[+t.dataset.line]; t.checked ? L.excl.delete(t.dataset.key) : L.excl.add(t.dataset.key); }
+  else if (t.id==='wWidth'){ W.width=Math.max(90,Math.min(300,+t.value||160)); }
+  else if (t.id==='wBuffer'){ W.buffer=+t.value; }
+  else if (t.id==='wLay'){ UI.layRule=t.value; $('layRule').value=t.value; }
+  else if (t.id==='wPrefix'){ W.prefix=t.value; }
+});
+$('wBack').onclick=()=>{ if (W.step>1){ W.step--; renderWizard(); } };
+$('wNext').onclick=()=>{
+  if (W.step===1 && !W.lines.length) return toast('Add at least one model','warn');
+  if (W.step===2 && !W.lines.some(L=>lineGarments(L)>0)) return toast('Enter a quantity for at least one size','warn');
+  if (W.step===3 && W.lines.some(L=>lineGarments(L)>0 && linePcsPerGarment(L)===0)) return toast('Every model needs at least one piece included','warn');
+  W.step++; renderWizard();
+};
+function wizCreate(nest){
+  const tot=wTotalPieces();
+  if (!tot) return toast('Order is empty','warn');
+  if (tot>240) return toast('Order too large for one marker (max ~240 pieces) — reduce quantities','warn');
+  const nameEl=$('wName');
+  const name=(nameEl && nameEl.value.trim()) || wSuggestName();
+  const lines=W.lines.filter(L=>lineGarments(L)>0).map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...L.excl]}));
+  $('dlgOrder').close();
+  newOrder(lines, name, W.width, W.buffer);
+  toast(`Order created — ${tot} pieces in the tray`);
+  if (nest) autoNest();
+}
+$('wCreate').onclick=()=>wizCreate(false);
+$('wCreateNest').onclick=()=>wizCreate(true);
 
 /* toolbar wiring */
 $('bNew').onclick=openOrderDialog;
@@ -1330,7 +1461,7 @@ window.addEventListener('resize', ()=>setVB());
     if (raw){
       const doc=JSON.parse(raw);
       if (doc.marker && doc.marker.pieces){
-        S=doc.marker;
+        S=migrateMarker(doc.marker);
         for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
         $('markerName').value=S.name;
         restored=true;
@@ -1338,7 +1469,7 @@ window.addEventListener('resize', ()=>setVB());
     }
   }catch{}
   if (!restored){
-    newOrder('tshirt', 'TSHIRT-DEMO', {XS:0,S:1,M:2,L:1,XL:0,XXL:0}, 160, 0);
+    newOrder([{modelId:'tshirt', sizesQty:{S:1,M:2,L:1}, excl:[]}], 'TSHIRT-DEMO', 160, 0);
   } else {
     renderAll();
   }
