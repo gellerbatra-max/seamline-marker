@@ -3,6 +3,18 @@
 Interactive marker-making module of the **Seamline** apparel software bundle.
 One self-contained file — **double-click `SeamlineMarker.html`** to run it in any browser. No install, no server; work is autosaved in the browser between sessions.
 
+## Interface
+
+A calm, low-saturation shell in one muted teal accent, so the colour-coded pattern pieces stay the loudest thing on screen:
+
+- **Header** — editable marker name, an **order chip** (compact peek at model + size ratio; click to jump the right dock to Order), and **hero length/utilization** readout with a colour-threshold bar (green ≥60% · amber ≥35% · red below).
+- **Toolbar** — one condensed row that never overflows at 1280px: Workspace toggle (Marker / Cut Plan), File, Auto-Nest, Piece tools with inline shortcut badges, canvas-anchored zoom. Secondary tools (Open, Plot/PNG export, Return All, lay rule, grid/snap/auto-butt, undo/redo, Help) live in **More ▾**.
+- **Tray** — a scrollable left dock grouped by piece × size with count badges and a filter field, instead of a horizontal strip.
+- **Right dock** — a read-only **Order** panel (full per-line breakdown, inspect without risking the marker — editing is the separate explicit "Edit order…" action) and a **Shortcuts** panel.
+- **Status bar** — persistent and colour-coded (info / selection / ok / warn / error); a warn/error message holds until the next one instead of vanishing like a toast.
+- **Canvas** — piece labels counter-scale against zoom so they stay legible on long markers, fading out (revealed on hover/selection) once a piece is too small on screen to matter.
+- **Cut Plan** is a workspace mode, not a modal — the demand form, results and the marker canvas share one screen; switch back to Marker any time.
+
 ## Workflow (modeled on the classic marker pipeline)
 
 1. **New Order** — an Easy Order-style 5-step form (Models → Sizes → Pieces → Fabric → Finish): add **one or more models** (T-Shirt, Shirt, Trousers, Bra, Panty) as order lines, set size quantities per model, untick pieces to exclude them, **set each piece's lay direction** (two-way by default, overridable to four-way or free per piece), choose fabric width / cutter buffer / lay rule, review the summary with an estimated marker length, then **Create** or **Create + Auto-Nest**. All models nest together in one combined marker; pieces carry a model tag (TSH·, SHT·, TRS·) when the order is multi-model.
