@@ -1406,26 +1406,53 @@ function nudgeSel(dx,dy){
 }
 
 /* =====================================================================
-   AUTO-NEST  (bottom-left candidate placement + butt compaction)
+   AUTO-NEST v2  (multi-start bottom-left-fill + gravity fixpoint +
+   critical-piece re-insertion / jostle improvement)
    ===================================================================== */
-function bestSpotFor(inst, curLen){
+// Seeded PRNG so shuffled nest passes are reproducible run-to-run.
+function mulberry32(seed){
+  return function(){ seed|=0; seed=seed+0x6D2B79F5|0;
+    let t=Math.imul(seed^seed>>>15, 1|seed);
+    t=t+Math.imul(t^t>>>7, 61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296; };
+}
+// Yield to the UI without setTimeout: browsers clamp background-tab timers
+// to 1 s, which would stall a nest the moment the user switches tabs.
+const uiYield = (()=>{ const ch=new MessageChannel(), q=[];
+  ch.port1.onmessage=()=>{ const r=q.shift(); if(r)r(); };
+  return ()=>new Promise(r=>{ q.push(r); ch.port2.postMessage(0); });
+})();
+// Slide left/down alternately until the piece is wedged — a single
+// left-then-down pass can stop on a ledge that another round clears.
+function gravity(inst){
+  for (let i=0;i<6;i++){
+    const a=slideDir(inst,-1,0), b=slideDir(inst,0,-1);
+    if (!a && !b) break;
+  }
+}
+function bestSpotFor(inst, curLen, maxS1){
   const rots = nestRotations(inst);
-  const buf=S.buffer;
   let best=null;
   const placed = S.pieces.filter(p=>p.placed && p.uid!==inst.uid);
+  // edge-aligned candidates pay off early on; past ~60 placed pieces the
+  // butted candidates already cover the layout and they only cost time
+  const buf=S.buffer, rich=UI.effort>=34 && placed.length<=60;
   for (const rot of rots){
     const saveRot=inst.rot; inst.rot=rot;
     const bb=instShape(inst).bb;
     if (bb.h > S.width){ inst.rot=saveRot; continue; }
-    // candidates: origin, butted against every placed piece, and — as a
-    // guaranteed fallback — fresh fabric just past the current marker end.
-    const xs=new Set([0, +(curLen+buf+0.01).toFixed(2)]), ys=new Set([0]);
+    // candidates: origin, top edge, butted against every placed piece,
+    // edge-aligned with placed pieces (effort>=34), and — unless the search
+    // is capped by maxS1 — fresh fabric just past the current marker end.
+    const xs=new Set([0]), ys=new Set([0, Math.max(0,+(S.width-bb.h).toFixed(2))]);
+    if (maxS1==null) xs.add(+(curLen+buf+0.01).toFixed(2));
     for (const o of placed){
       const ob=instShape(o).bb;
       xs.add(+(o.x+ob.w+buf).toFixed(2));
       const xl=+(o.x-bb.w-buf).toFixed(2); if (xl>0) xs.add(xl);
       ys.add(+(o.y+ob.h+buf).toFixed(2));
       const yl=+(o.y-bb.h-buf).toFixed(2); if (yl>0) ys.add(yl);
+      if (rich){ xs.add(+o.x.toFixed(2)); ys.add(+o.y.toFixed(2)); }
     }
     const xa=[...xs].filter(x=>x>=0&&x+bb.w<=MAXLEN).sort((a,b)=>a-b);
     const ya=[...ys].filter(y=>y>=0&&y+bb.h<=S.width).sort((a,b)=>a-b);
@@ -1433,6 +1460,7 @@ function bestSpotFor(inst, curLen){
     outer:
     for (const x of xa){
       const s1=Math.max(curLen, x+bb.w);
+      if (maxS1!=null && s1>maxS1+1e-6) break;
       if (best && s1 > best.s1+1e-6) break;
       for (const y of ya){
         if (canPlaceAt(inst,x,y)){ found={x,y,s1,rot}; break outer; }
@@ -1444,37 +1472,127 @@ function bestSpotFor(inst, curLen){
   }
   return best;
 }
+// Placement orders to try: the classic first-fit-decreasing sorts plus,
+// at high effort, seeded jittered-area shuffles (à la SVGnest's GA genes).
+function nestOrderings(tray, rnd){
+  const bb=p=>instShape(p).bb;
+  const mk=cmp=>[...tray].sort(cmp);
+  const list=[ mk((a,b)=>instShape(b).area-instShape(a).area) ];
+  if (UI.effort>=34){
+    list.push(mk((a,b)=>Math.max(bb(b).w,bb(b).h)-Math.max(bb(a).w,bb(a).h)));
+    if (tray.length<=72){   // big orders: passes are pricey, keep the best two
+      list.push(mk((a,b)=>bb(b).h-bb(a).h));
+      list.push(mk((a,b)=>bb(b).w-bb(a).w));
+    }
+  }
+  if (UI.effort>=67){
+    for (let k=0;k<3;k++){
+      const jit=new Map(tray.map(p=>[p.uid, instShape(p).area*(0.7+0.6*rnd())]));
+      list.push(mk((a,b)=>jit.get(b.uid)-jit.get(a.uid)));
+    }
+  }
+  return list;
+}
+// One silent constructive pass: place `seq` onto whatever is already fixed.
+// Returns the number of pieces that did not fit, or -1 on user abort.
+async function nestTrial(seq, label){
+  let failed=0;
+  for (let i=0;i<seq.length;i++){
+    if (UI.nestAbort) return -1;
+    if (i%4===0){
+      $('nestMsg').textContent=`${label} — piece ${i+1}/${seq.length}`;
+      await uiYield();
+    }
+    const inst=seq[i];
+    const spot=bestSpotFor(inst, markerStats().len);
+    if (!spot){ failed++; continue; }
+    inst.rot=spot.rot; inst.x=spot.x; inst.y=spot.y; inst.placed=true;
+    gravity(inst);
+  }
+  return failed;
+}
+// Tear the layout down and re-place left-to-right (Dowsland-style jostle).
+// Kept only if strictly no worse; a shaken layout usually settles shorter.
+async function nestJostle(label){
+  const snap=snapPieces(), before=markerStats();
+  const seq=S.pieces.filter(p=>p.placed).sort((a,b)=>a.x-b.x || a.y-b.y);
+  for (const p of seq) p.placed=false;
+  const failed=await nestTrial(seq, label);
+  const after=markerStats();
+  if (failed!==0 || after.placed<before.placed || after.len>before.len-1e-6){
+    applySnap(snap); return false;
+  }
+  return true;
+}
+// Pull pieces whose right edge defines the marker end and try to re-place
+// them strictly inside the current length; each success shrinks the marker.
+async function nestImprove(iters, label){
+  let stuck=0;
+  for (let done=0; done<iters && stuck<4 && !UI.nestAbort; done++){
+    const len=markerStats().len;
+    const crit=S.pieces.filter(p=>p.placed && p.x+instShape(p).bb.w > len-0.5)
+      .sort((a,b)=>(b.x+instShape(b).bb.w)-(a.x+instShape(a).bb.w)).slice(0,3);
+    if (!crit.length) break;
+    let improved=false;
+    for (const p of crit){
+      const old={x:p.x, y:p.y, rot:p.rot};
+      p.placed=false;
+      const spot=bestSpotFor(p, markerStats().len, len-0.05);
+      if (spot && spot.s1 < len-0.05){
+        p.rot=spot.rot; p.x=spot.x; p.y=spot.y; p.placed=true;
+        gravity(p); improved=true; break;
+      }
+      p.rot=old.rot; p.x=old.x; p.y=old.y; p.placed=true;
+    }
+    stuck = improved ? 0 : stuck+1;
+    if (done%2===1){
+      $('nestMsg').textContent=`${label} — ${markerStats().len.toFixed(1)} cm`;
+      await uiYield();
+    }
+  }
+}
 async function autoNest(quiet){
-  const queue = S.pieces.filter(p=>!p.placed)
-    .sort((a,b)=> instShape(b).area - instShape(a).area);
-  if (!queue.length) return toast('Nothing to nest — tray is empty','warn');
+  const tray=S.pieces.filter(p=>!p.placed);
+  if (!tray.length) return toast('Nothing to nest — tray is empty','warn');
   cancelCarry();
   pushUndo();
   UI.nestAbort=false;
   const dlg=$('dlgNest'); dlg.showModal();
   const t0=performance.now();
-  let failed=[];
-  for (let i=0;i<queue.length;i++){
-    if (UI.nestAbort) break;
-    const inst=queue[i], def=defByKey[inst.defKey];
-    $('nestMsg').textContent = `Placing ${i+1}/${queue.length} — ${def.name.toUpperCase()} ${sizeNm(inst)}-${inst.bundle}`;
-    $('nestFill').style.width = ((i)/queue.length*100).toFixed(1)+'%';
-    await new Promise(r=>setTimeout(r,0));
-    const curLen = markerStats().len;
-    const spot = bestSpotFor(inst, curLen);
-    if (!spot){ failed.push(def.name); continue; }
-    inst.rot=spot.rot; inst.x=spot.x; inst.y=spot.y; inst.placed=true;
-    slideDir(inst,-1,0); slideDir(inst,0,-1);
-    if (UI.effort>=50){ slideDir(inst,-1,0); }
-    if (i%3===2) { renderPieces(); renderOverlay(markerStats().len); }
+  const rnd=mulberry32(0xC0FFEE);
+  const base=snapPieces();
+  const orders=nestOrderings(tray, rnd);
+  let best=null;
+  for (let t=0; t<orders.length && !UI.nestAbort; t++){
+    applySnap(base);
+    const failed=await nestTrial(orders[t], `Pass ${t+1}/${orders.length}`);
+    if (failed<0) break;
+    const st=markerStats();
+    if (!best || st.placed>best.placed || (st.placed===best.placed && st.len<best.len-1e-6))
+      best={snap:snapPieces(), len:st.len, placed:st.placed};
+    $('nestFill').style.width=((t+1)/(orders.length+1)*100).toFixed(1)+'%';
+  }
+  if (best) applySnap(best.snap);
+  if (!UI.nestAbort){
+    // retry anything no pass could fit, then polish the winning layout
+    for (const p of tray){
+      if (p.placed) continue;
+      const spot=bestSpotFor(p, markerStats().len);
+      if (spot){ p.rot=spot.rot; p.x=spot.x; p.y=spot.y; p.placed=true; gravity(p); }
+    }
+    if (UI.effort>=67) await nestJostle('Jostle');
+    await nestImprove(UI.effort>=67?30:UI.effort>=34?14:6, 'Polish');
+    for (let pass=0; pass<2; pass++)
+      for (const p of S.pieces.filter(p=>p.placed).sort((a,b)=>a.x-b.x)) gravity(p);
   }
   $('nestFill').style.width='100%';
   dlg.close();
   renderAll(); persist();
   const st=markerStats();
   const secs=((performance.now()-t0)/1000).toFixed(1);
-  if (UI.nestAbort) toast('Nest cancelled — placed so far kept','warn');
-  else if (failed.length) toast(`${failed.length} piece(s) didn’t fit: ${[...new Set(failed)].join(', ')}`,'warn');
+  const failedNames=[...new Set(tray.filter(p=>!p.placed).map(p=>defByKey[p.defKey].name))];
+  if (UI.nestAbort) toast('Nest cancelled — best layout so far kept','warn');
+  else if (failedNames.length) toast(`${failedNames.length} piece type(s) didn’t fit: ${failedNames.join(', ')}`,'warn');
   else if (!quiet) toast(`Marker made in ${secs}s — ${(st.util*100).toFixed(1)}% utilization, ${st.len.toFixed(1)} cm`);
 }
 function compact(){
