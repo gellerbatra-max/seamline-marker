@@ -63,15 +63,30 @@
   /* hero stats — the two numbers that decide the job, promoted above everything else */
   .hero{display:flex; align-items:stretch; gap:10px; margin-left:auto; flex:none}
   .hstat{
-    text-align:right; padding:4px 15px; border-radius:9px;
-    background:var(--panel2); border:1px solid var(--edge); min-width:118px;
+    text-align:right; padding:4px 12px; border-radius:9px;
+    background:var(--panel2); border:1px solid var(--edge); min-width:100px;
   }
   .hlabel{font-size:9.5px; letter-spacing:.1em; color:var(--mut); font-weight:700}
   .hval{font-variant-numeric:tabular-nums; line-height:1.05}
   .hval b{font-size:24px; font-weight:800; color:var(--ink)}
   .hval span{font-size:12px; color:var(--mut); font-weight:600; margin-left:3px}
+  /* editable metric input (fabric width) — reads like the big number, but typeable */
+  .hval input{
+    font-size:22px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums;
+    width:52px; background:transparent; border:none; border-bottom:1px dashed var(--edge);
+    text-align:right; padding:0; -moz-appearance:textfield;
+  }
+  .hval input:focus{outline:none; border-bottom-color:var(--acc-hi)}
+  .hval input::-webkit-inner-spin-button,.hval input::-webkit-outer-spin-button{-webkit-appearance:none; margin:0}
   .hsub{font-size:10.5px; color:var(--mut); margin-top:3px; font-variant-numeric:tabular-nums}
   .hsub b{color:var(--ink); font-weight:700}
+  .hsub input{
+    width:34px; background:var(--panel); border:1px solid var(--edge); border-radius:4px;
+    color:var(--ink); font-size:10.5px; text-align:right; padding:1px 3px; margin:0 1px;
+    font-variant-numeric:tabular-nums; -moz-appearance:textfield;
+  }
+  .hsub input:focus{outline:1px solid var(--acc-hi)}
+  .hsub input::-webkit-inner-spin-button,.hsub input::-webkit-outer-spin-button{-webkit-appearance:none; margin:0}
   #stUtil{color:var(--metric)}
   .hbar{height:3px; background:var(--edge); border-radius:2px; margin-top:4px; overflow:hidden}
   #utilBar{height:100%; width:0%; background:var(--metric); transition:width .2s, background-color .2s}
@@ -429,6 +444,10 @@
     <span class="ocv">view ⌄</span>
   </button>
   <div class="hero">
+    <div class="hstat" title="Fabric width — change it to re-lay the marker at a different width">
+      <div class="hlabel">FABRIC WIDTH</div>
+      <div class="hval"><input id="fabW" type="number" min="50" max="300" step="1" value="160"><span>cm</span></div>
+    </div>
     <div class="hstat">
       <div class="hlabel">MARKER LENGTH</div>
       <div class="hval"><b id="stLen">0.000</b><span>m</span></div>
@@ -439,9 +458,10 @@
       <div class="hval"><b id="stUtil">—</b><span>%</span></div>
       <div class="hbar"><div id="utilBar"></div></div>
     </div>
-    <div class="hstat" title="Fabric consumed per garment = (marker length + 0.04 cm) ÷ garments">
+    <div class="hstat" title="Fabric consumed per garment = (marker length + end allowance) ÷ garments">
       <div class="hlabel">CONSUMPTION</div>
       <div class="hval"><b id="stCons">—</b><span>m/gar</span></div>
+      <div class="hsub">end +<input id="endAllow" type="number" min="0" max="50" step="0.5" value="4"> cm</div>
     </div>
     <div class="hside">
       <span id="stPieces">0/0 pcs</span>
@@ -863,7 +883,8 @@ const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
 // lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…], dir:{pieceKey0:'two'|'four'|'free'}}]
 // dir overrides a piece's lay direction for this order; absent = the piece's natural default.
 function newOrder(lines, name, width, buffer){
-  S = { name, width, buffer, pieces:[],
+  const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
+  S = { name, width, buffer, endAllow:prevEnd, pieces:[],
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
                                excl:[...(L.excl||[])], dir:{...(L.dir||{})} })) };
   S.lines.forEach((L, li)=>{
@@ -896,6 +917,7 @@ function migrateMarker(m){
     if (p.line==null) p.line=0;
     if (!p.dir) p.dir = (defByKey[p.defKey]||{}).rot || 'two';
   }
+  if (m.endAllow==null) m.endAllow = 4;   // markers saved before the end-allowance field
   return m;
 }
 const pieceDir = inst => inst.dir || (defByKey[inst.defKey]||{}).rot || 'two';
@@ -1098,14 +1120,18 @@ const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&
 function orderGarments(){
   return S.lines.reduce((a,L)=> a + scaleOf(L.modelId).names.reduce((x,s)=>x+(L.sizesQty[s]|0),0), 0);
 }
+const endAllow = () => S.endAllow!=null ? S.endAllow : 4;   // end allowance, cm
 function renderStats(){
   const st = markerStats();
   $('stLen').textContent = (st.len/100).toFixed(3);   // marker length in metres
   $('stUtil').textContent = st.placed ? (st.util*100).toFixed(1) : '—';
-  // consumption = (marker length + 0.04 cm) / garments, shown as metres per garment
+  // consumption = (marker length + end allowance) / garments, in metres per garment
   const gar = orderGarments();
   $('stGar').textContent = gar;                       // garments this marker yields
-  $('stCons').textContent = (st.placed && gar>0) ? ((st.len + 0.04)/gar/100).toFixed(3) : '—';
+  $('stCons').textContent = (st.placed && gar>0) ? ((st.len + endAllow())/gar/100).toFixed(3) : '—';
+  // keep the editable fields in sync with the marker (skip while focused so typing isn't clobbered)
+  if (document.activeElement!==$('fabW'))     $('fabW').value = S.width;
+  if (document.activeElement!==$('endAllow')) $('endAllow').value = endAllow();
   $('stPieces').textContent = st.placed+'/'+st.total+' pcs';
   const chip=$('statusChip');
   const cls = st.total&&st.placed===st.total ? 'made' : st.placed>0 ? 'partial' : 'unmade';
@@ -1678,7 +1704,7 @@ function plotSVGString(){
   const ratioOf = L => scaleOf(L.modelId).names.map(s=> (L.sizesQty[s]|0)>0 ? `${s}${L.sizesQty[s]}` : null).filter(Boolean).join('/');
   const modelNames=S.lines.map(L=>`${modelById(L.modelId).name} ${ratioOf(L)}`).join(' + ');
   const gar=orderGarments();
-  const cons = gar>0 ? ` · consumption ${((st.len+0.04)/gar/100).toFixed(3)} m/gar` : '';
+  const cons = gar>0 ? ` · consumption ${((st.len+endAllow())/gar/100).toFixed(3)} m/gar (end +${endAllow()} cm)` : '';
   const title=`${S.name} · ${modelNames} · width ${W} cm · length ${(st.len/100).toFixed(3)} m · util ${(st.util*100).toFixed(1)}%${cons} · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*4}" height="${(W+24)*4}">`+
     `<rect x="-4" y="-12" width="${L+12}" height="${W+24}" fill="#fff"/>`+
@@ -2318,6 +2344,28 @@ for (const [id,key] of [['tGrid','grid'],['tSnap','snap'],['tButt','autobutt']])
   });
 }
 $('markerName').addEventListener('change',()=>{ S.name=$('markerName').value.trim()||S.name; persist(); });
+
+// End allowance: recompute consumption live, non-destructive.
+$('endAllow').addEventListener('input',()=>{
+  S.endAllow = Math.max(0, Math.min(50, +$('endAllow').value||0));
+  renderStats(); persist();
+});
+// Fabric width: a width change invalidates the whole layout (edge packing,
+// piece fit), so trying a new width returns every piece to the tray for a
+// clean re-nest — the intended "compare markers at different widths" flow.
+$('fabW').addEventListener('change',()=>{
+  const w = Math.max(50, Math.min(300, Math.round(+$('fabW').value||S.width)));
+  if (w===S.width){ $('fabW').value=S.width; return; }
+  const old=S.width; S.width=w;
+  const hadPlaced=S.pieces.some(p=>p.placed);
+  if (hadPlaced) pushUndo();
+  for (const p of S.pieces) p.placed=false;
+  UI.sel=UI.carry=null;
+  renderAll(); fitView(); persist();
+  toast(hadPlaced
+    ? `Fabric width ${old}→${w} cm — pieces returned to tray, nest to lay the marker`
+    : `Fabric width set to ${w} cm`);
+});
 
 /* keyboard */
 window.addEventListener('keydown', e=>{
