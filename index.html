@@ -70,6 +70,8 @@
   .hval{font-variant-numeric:tabular-nums; line-height:1.05}
   .hval b{font-size:24px; font-weight:800; color:var(--ink)}
   .hval span{font-size:12px; color:var(--mut); font-weight:600; margin-left:3px}
+  .hsub{font-size:10.5px; color:var(--mut); margin-top:3px; font-variant-numeric:tabular-nums}
+  .hsub b{color:var(--ink); font-weight:700}
   #stUtil{color:var(--metric)}
   .hbar{height:3px; background:var(--edge); border-radius:2px; margin-top:4px; overflow:hidden}
   #utilBar{height:100%; width:0%; background:var(--metric); transition:width .2s, background-color .2s}
@@ -430,6 +432,7 @@
     <div class="hstat">
       <div class="hlabel">MARKER LENGTH</div>
       <div class="hval"><b id="stLen">0.000</b><span>m</span></div>
+      <div class="hsub"><b id="stGar">0</b> garments</div>
     </div>
     <div class="hstat">
       <div class="hlabel">UTILIZATION</div>
@@ -1101,6 +1104,7 @@ function renderStats(){
   $('stUtil').textContent = st.placed ? (st.util*100).toFixed(1) : '—';
   // consumption = (marker length + 0.04 cm) / garments, shown as metres per garment
   const gar = orderGarments();
+  $('stGar').textContent = gar;                       // garments this marker yields
   $('stCons').textContent = (st.placed && gar>0) ? ((st.len + 0.04)/gar/100).toFixed(3) : '—';
   $('stPieces').textContent = st.placed+'/'+st.total+' pcs';
   const chip=$('statusChip');
