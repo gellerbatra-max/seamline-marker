@@ -429,12 +429,16 @@
   <div class="hero">
     <div class="hstat">
       <div class="hlabel">MARKER LENGTH</div>
-      <div class="hval"><b id="stLen">0.0</b><span>cm</span></div>
+      <div class="hval"><b id="stLen">0.000</b><span>m</span></div>
     </div>
     <div class="hstat">
       <div class="hlabel">UTILIZATION</div>
       <div class="hval"><b id="stUtil">—</b><span>%</span></div>
       <div class="hbar"><div id="utilBar"></div></div>
+    </div>
+    <div class="hstat" title="Fabric consumed per garment = (marker length + 0.04 cm) ÷ garments">
+      <div class="hlabel">CONSUMPTION</div>
+      <div class="hval"><b id="stCons">—</b><span>m/gar</span></div>
     </div>
     <div class="hside">
       <span id="stPieces">0/0 pcs</span>
@@ -1047,7 +1051,7 @@ function renderOverlay(len){
   let h='';
   if (len>0){
     h+=`<line x1="${len}" y1="-4" x2="${len}" y2="${S.width+4}" stroke="var(--acc2)" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-dasharray="5 4"/>`;
-    h+=`<text x="${len}" y="${S.width+11}" font-size="7.5" fill="var(--acc2)" text-anchor="middle" font-weight="700">${len.toFixed(1)} cm</text>`;
+    h+=`<text x="${len}" y="${S.width+11}" font-size="7.5" fill="var(--acc2)" text-anchor="middle" font-weight="700">${(len/100).toFixed(3)} m</text>`;
   }
   gOverlay.innerHTML = h;
 }
@@ -1086,10 +1090,18 @@ function renderTray(){
 }
 const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+// total garments the marker yields = one bundle per garment, summed over every
+// order line's size quantities (independent of how many pieces are placed yet)
+function orderGarments(){
+  return S.lines.reduce((a,L)=> a + scaleOf(L.modelId).names.reduce((x,s)=>x+(L.sizesQty[s]|0),0), 0);
+}
 function renderStats(){
   const st = markerStats();
-  $('stLen').textContent = st.len.toFixed(1);
+  $('stLen').textContent = (st.len/100).toFixed(3);   // marker length in metres
   $('stUtil').textContent = st.placed ? (st.util*100).toFixed(1) : '—';
+  // consumption = (marker length + 0.04 cm) / garments, shown as metres per garment
+  const gar = orderGarments();
+  $('stCons').textContent = (st.placed && gar>0) ? ((st.len + 0.04)/gar/100).toFixed(3) : '—';
   $('stPieces').textContent = st.placed+'/'+st.total+' pcs';
   const chip=$('statusChip');
   const cls = st.total&&st.placed===st.total ? 'made' : st.placed>0 ? 'partial' : 'unmade';
@@ -1546,7 +1558,7 @@ async function nestImprove(iters, label){
     }
     stuck = improved ? 0 : stuck+1;
     if (done%2===1){
-      $('nestMsg').textContent=`${label} — ${markerStats().len.toFixed(1)} cm`;
+      $('nestMsg').textContent=`${label} — ${(markerStats().len/100).toFixed(3)} m`;
       await uiYield();
     }
   }
@@ -1593,7 +1605,7 @@ async function autoNest(quiet){
   const failedNames=[...new Set(tray.filter(p=>!p.placed).map(p=>defByKey[p.defKey].name))];
   if (UI.nestAbort) toast('Nest cancelled — best layout so far kept','warn');
   else if (failedNames.length) toast(`${failedNames.length} piece type(s) didn’t fit: ${failedNames.join(', ')}`,'warn');
-  else if (!quiet) toast(`Marker made in ${secs}s — ${(st.util*100).toFixed(1)}% utilization, ${st.len.toFixed(1)} cm`);
+  else if (!quiet) toast(`Marker made in ${secs}s — ${(st.util*100).toFixed(1)}% utilization, ${(st.len/100).toFixed(3)} m`);
 }
 function compact(){
   const placed=S.pieces.filter(p=>p.placed).sort((a,b)=>a.x-b.x);
@@ -1602,7 +1614,7 @@ function compact(){
   for (let pass=0; pass<2; pass++)
     for (const p of placed){ slideDir(p,-1,0); slideDir(p,0,-1); }
   renderAll(); persist();
-  toast(`Compacted — ${markerStats().len.toFixed(1)} cm`);
+  toast(`Compacted — ${(markerStats().len/100).toFixed(3)} m`);
 }
 function returnAll(){
   if (!S.pieces.some(p=>p.placed)) return;
@@ -1661,7 +1673,9 @@ function plotSVGString(){
   for (let x=0;x<=L;x+=50) ticks+=`<line x1="${x}" y1="${W}" x2="${x}" y2="${W+3}" stroke="#333" stroke-width="0.15"/><text x="${x}" y="${W+7}" font-size="3.5" text-anchor="middle" font-family="Helvetica,Arial" fill="#333">${x}</text>`;
   const ratioOf = L => scaleOf(L.modelId).names.map(s=> (L.sizesQty[s]|0)>0 ? `${s}${L.sizesQty[s]}` : null).filter(Boolean).join('/');
   const modelNames=S.lines.map(L=>`${modelById(L.modelId).name} ${ratioOf(L)}`).join(' + ');
-  const title=`${S.name} · ${modelNames} · width ${W} cm · length ${st.len.toFixed(1)} cm · util ${(st.util*100).toFixed(1)}% · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
+  const gar=orderGarments();
+  const cons = gar>0 ? ` · consumption ${((st.len+0.04)/gar/100).toFixed(3)} m/gar` : '';
+  const title=`${S.name} · ${modelNames} · width ${W} cm · length ${(st.len/100).toFixed(3)} m · util ${(st.util*100).toFixed(1)}%${cons} · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*4}" height="${(W+24)*4}">`+
     `<rect x="-4" y="-12" width="${L+12}" height="${W+24}" fill="#fff"/>`+
     `<text x="0" y="-5" font-size="4.5" font-family="Helvetica,Arial" fill="#111" font-weight="bold">${title}</text>`+
