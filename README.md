@@ -5,15 +5,23 @@ One self-contained file — **double-click `SeamlineMarker.html`** to run it in 
 
 ## Interface
 
-A calm, low-saturation shell in one muted teal accent, so the colour-coded pattern pieces stay the loudest thing on screen:
+A **two-colour, Claude-style** shell — a warm neutral scale (surfaces, text, borders) plus one clay accent, with different segments told apart by neutral shades rather than extra hues. **Light and dark modes** (toggle in the header, follows your OS by default, remembered per browser). Pattern pieces are shades of the clay accent, keyed to size, each keeping its size label.
 
-- **Header** — editable marker name, an **order chip** (compact peek at model + size ratio; click to jump the right dock to Order), and a hero readout: an **editable fabric width** (change it to re-lay the marker at a different width — pieces return to the tray for a clean re-nest), **marker length** in metres with the marker's **garment count** beneath, **utilization** with a colour-threshold bar (green ≥60% · amber ≥35% · red below), and **consumption** = `(marker length + end allowance) ÷ garments` in metres/garment, with an **editable end-allowance** field (default 4 cm) beside it.
-- **Toolbar** — one condensed row that never overflows at 1280px: Workspace toggle (Marker / Cut Plan), File, Auto-Nest, Piece tools with inline shortcut badges, canvas-anchored zoom. Secondary tools (Open, Plot/PNG export, Return All, lay rule, grid/snap/auto-butt, undo/redo, Help) live in **More ▾**.
-- **Tray** — a scrollable left dock grouped by piece × size with count badges and a filter field, instead of a horizontal strip.
-- **Right dock** — a read-only **Order** panel (full per-line breakdown, inspect without risking the marker — editing is the separate explicit "Edit order…" action) and a **Shortcuts** panel.
+- **Header** — theme toggle, editable marker name, an **order chip** (compact peek at model + size ratio; click to open the Order dock), and a hero readout: **editable fabric width** (change it to re-lay the marker at a different width — pieces return to the tray for a clean re-nest), **marker length** in metres with the marker's **garment count** beneath, **utilization**, and **consumption** = `(marker length + end allowance) ÷ garments` in metres/garment with an **editable end-allowance** field (default 4 cm).
+- **Toolbar** — one condensed row that never overflows at 1280px: **Cut Plan / Marker** workspace toggle (Cut Plan first), File, Auto-Nest, piece tools with inline shortcut badges. Secondary tools live in **More ▾**; zoom is canvas-anchored.
+- **Tray** — a scrollable left dock grouped by piece × size with count badges and a filter field.
+- **Right dock** — four tabs:
+  - **Piece** — the organised "change this piece" toolbar (mirrors AccuMark's Piece tab + Toolbox): Rotate 90° cw/ccw (exact angle for free-lay pieces), Flip H/V, Butt/slide in four directions, Align (centre in width / top / bottom edge), Return to tray — plus the selected piece's identity, dimensions and position. Surfaces automatically when you select a piece.
+  - **Order** — read-only per-line breakdown; editing is the separate explicit "Edit order…" action.
+  - **Options** — everything that used to be scattered: theme, grid / snap / auto-butt, lay rule, cutter buffer, fabric width, end allowance, and a size-colour legend.
+  - **Keys** — the keyboard reference.
 - **Status bar** — persistent and colour-coded (info / selection / ok / warn / error); a warn/error message holds until the next one instead of vanishing like a toast.
 - **Canvas** — piece labels counter-scale against zoom so they stay legible on long markers, fading out (revealed on hover/selection) once a piece is too small on screen to matter.
-- **Cut Plan** is a workspace mode, not a modal — the demand form, results and the marker canvas share one screen; switch back to Marker any time.
+- **Cut Plan** is a workspace mode, not a modal — demand form, results and the marker canvas share one screen.
+
+## Compared to AccuMark Easy Marking
+
+Modeled on the Easy Marking ribbon (Piece · Marker · Fabric · Advanced · View) and Toolbox. **Implemented:** interactive placement, auto-nest (AutoMark analog), per-piece rotate/flip/butt/slide/align/centre/unplace, return-to-tray, compact, marker length/utilization/consumption/status, lay rules & buffers, size grading, plot (SVG/PNG) & marker JSON, and the Cut Plan (Easy Plan analog). **Not yet implemented** (candidates for next passes): Fabric tab (splice, bump line, plaid/stripe matching), Advanced tab (split piece, dynamic alteration, stored layrules, cut sequencing), Marry & Scoop grouped placement, add/duplicate/delete piece, the MarkPlot queue + Marker Plot Options (DXF/PDF/HPGL export destinations), and Cut Data generation for NC cutters.
 
 ## Workflow (modeled on the classic marker pipeline)
 

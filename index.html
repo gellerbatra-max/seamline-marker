@@ -5,17 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Seamline Marker</title>
 <style>
+  /* ============================================================
+     Two-colour system, Claude-style: a warm NEUTRAL scale (surfaces,
+     text, borders) + one CLAY accent. Everything else is a shade of
+     those two. Different UI segments are separated by neutral shades
+     (--bg → --panel → --panel2 → --hover), not by extra hues. Semantic
+     state (good/warn/bad) is used only where correctness must read at a
+     glance, kept muted and warm. Dark is the default; light overrides
+     the same tokens under html[data-theme="light"]. */
   :root{
-    /* Muted Teal + Slate — a calm, low-saturation shell for all-day CAD use.
-       One muted accent (--acc) for actions/brand; --metric is reserved for the
-       utilization number alone so the figure that drives tuning reads as data,
-       not as a shout. Semantic warn/danger stay a step more saturated so they
-       still interrupt when they need to. */
-    --bg:#10141b; --panel:#171d27; --panel2:#141a23; --edge:#293142;
-    --ink:#e6ebf2; --mut:#828b9b; --acc:#4a938a; --acc-hi:#5eab9f; --acc-ink:#eafaf6;
-    --metric:#7d9cb8; --acc2:#b97f57;
-    --good:#4c9a72; --warn:#d1a13d; --bad:#d6635f;
-    --fabric:#ece7db; --fabric-edge:#c9c2b2;
+    --bg:#262624; --panel:#30302E; --panel2:#242422; --stage:#1F1E1D;
+    --hover:#3A3937; --active:#454440; --edge:#403F3C; --edge2:#4E4D48;
+    --ink:#F0EEE6; --ink2:#D8D5C9; --mut:#A29E92; --faint:#75726A;
+    --acc:#C97B5D; --acc-hi:#D98E70; --acc-ink:#FBF8F3;
+    --acc-soft:#3A2C24; --acc-edge:#6E4B39; --acc-dim:#7C5641; --on-acc-soft:#E0A488;
+    --metric:#C97B5D; --acc2:#C97B5D;
+    --good:#7FA06B; --good-soft:#26301F; --good-edge:#41512F; --good-ink:#A7C68C;
+    --warn:#D0A24E; --warn-soft:#332813; --warn-edge:#5C4A24; --warn-ink:#DCB96A;
+    --bad:#D2705C; --bad-soft:#331F1B; --bad-ink:#E39381;
+    --pc-stroke:#4A4741; --pc-ink:#2E2C28;
+    --fabric:#E9E3D5; --fabric-edge:#CBC4B3; --fabric-line:#B9B09B;
+    --grid:#00000012; --overlay:rgba(20,19,18,.9); --shadow:rgba(0,0,0,.42);
+  }
+  html[data-theme="light"]{
+    --bg:#FAF9F5; --panel:#FFFFFF; --panel2:#F0EEE6; --stage:#EDEBE3;
+    --hover:#ECEAE0; --active:#E2DFD3; --edge:#E3E0D5; --edge2:#D6D2C6;
+    --ink:#2B2A26; --ink2:#46443D; --mut:#7A776D; --faint:#A8A498;
+    --acc:#BE5E3B; --acc-hi:#A94F30; --acc-ink:#FFFFFF;
+    --acc-soft:#F5E6DD; --acc-edge:#E4C3B1; --acc-dim:#D6A88F; --on-acc-soft:#A9522F;
+    --metric:#BE5E3B; --acc2:#BE5E3B;
+    --good:#5E7D4C; --good-soft:#E9EFDF; --good-edge:#C4D3AC; --good-ink:#4C6A3B;
+    --warn:#B07C2E; --warn-soft:#F5EAD2; --warn-edge:#E0CB94; --warn-ink:#8A611F;
+    --bad:#C0563F; --bad-soft:#F6E2DC; --bad-ink:#A2412C;
+    --pc-stroke:#5B574E; --pc-ink:#33322E;
+    --fabric:#F1EDE3; --fabric-edge:#D8D2C4; --fabric-line:#C6BEAC;
+    --grid:#0000000f; --overlay:rgba(250,249,245,.92); --shadow:rgba(70,60,50,.18);
   }
   *{box-sizing:border-box; margin:0; padding:0}
   html,body{height:100%}
@@ -49,15 +73,15 @@
   /* order chip — dashed border marks it as a read-only viewer, not an editor */
   #orderChip{
     display:flex; align-items:center; gap:8px; background:var(--panel2);
-    border:1px dashed #3d5f57; border-radius:8px; padding:6px 11px; font-size:12.5px;
+    border:1px dashed var(--acc-dim); border-radius:8px; padding:6px 11px; font-size:12.5px;
     color:var(--ink); max-width:280px; overflow:hidden; flex:0 1 auto;
   }
-  #orderChip:hover{border-color:var(--acc-hi); background:#182028}
+  #orderChip:hover{border-color:var(--acc-hi); background:var(--acc-soft)}
   #orderChipModel{color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
   #orderChipRatio{display:flex; gap:2px; overflow:hidden}
   .ocv{color:var(--acc-hi); font-size:11px; flex:none; margin-left:2px}
   .rchip{
-    display:inline-block; font-size:10px; font-weight:700; color:#20242e;
+    display:inline-block; font-size:10px; font-weight:700; color:var(--pc-ink);
     border-radius:3px; padding:0 4px; margin:0 1px; vertical-align:1px; flex:none;
   }
   /* hero stats — the two numbers that decide the job, promoted above everything else */
@@ -92,13 +116,18 @@
   #utilBar{height:100%; width:0%; background:var(--metric); transition:width .2s, background-color .2s}
   .hside{display:flex; flex-direction:column; justify-content:center; align-items:flex-end; gap:5px}
   #stPieces{font-size:12px; color:var(--mut); font-variant-numeric:tabular-nums}
+  #themeToggle{
+    flex:none; width:34px; height:34px; border-radius:8px; border:1px solid var(--edge);
+    background:var(--panel2); color:var(--ink); font-size:15px; line-height:1;
+  }
+  #themeToggle:hover{border-color:var(--acc); color:var(--acc)}
   .chip{
     background:var(--panel2); border:1px solid var(--edge); border-radius:14px;
     padding:3px 11px; font-size:12px; white-space:nowrap;
   }
   #statusChip{font-weight:700; letter-spacing:.06em; font-size:11px}
-  #statusChip.made{background:#16281f; border-color:#2f4c3d; color:#8bcaa4}
-  #statusChip.partial{background:#2e2510; border-color:#5c4a24; color:#dcb96a}
+  #statusChip.made{background:var(--good-soft); border-color:var(--good-edge); color:var(--good-ink)}
+  #statusChip.partial{background:var(--warn-soft); border-color:var(--warn-edge); color:var(--warn-ink)}
   #statusChip.unmade{background:var(--panel2); color:var(--mut)}
 
   /* ---------- toolbar ---------- */
@@ -123,15 +152,15 @@
     display:flex; align-items:center; gap:5px; padding:6px 9px; border-radius:6px;
     border:1px solid transparent; color:var(--ink); font-size:12px; white-space:nowrap; flex:none;
   }
-  .tb:hover{background:#222937; border-color:var(--edge)}
-  .tb:active{background:#2a3346}
+  .tb:hover{background:var(--hover); border-color:var(--edge)}
+  .tb:active{background:var(--active)}
   .tb .ic{font-size:14px; line-height:1; color:var(--acc-hi); width:15px; text-align:center}
   .tb .kbd{font:10px ui-monospace,Menlo,monospace; color:var(--mut); margin-left:1px}
   .tb.primary{background:var(--acc); color:var(--acc-ink); font-weight:700}
   .tb.primary .ic{color:var(--acc-ink)}
   .tb.primary:hover{background:var(--acc-hi)}
-  .tb.primary .kbd{color:#c8ece5}
-  .tb.tgl.on{background:#1a2f2c; border-color:#33544c; color:var(--acc-hi)}
+  .tb.primary .kbd{color:var(--acc-ink)}
+  .tb.tgl.on{background:var(--acc-soft); border-color:var(--acc-edge); color:var(--acc-hi)}
   .tb.tgl.on .ic{color:var(--acc-hi)}
   .sliderwrap{display:flex; align-items:center; gap:7px; padding:5px 9px; font-size:11.5px; color:var(--mut); flex:none}
   .sliderwrap input[type=range]{width:74px; accent-color:var(--acc)}
@@ -143,11 +172,11 @@
   #tbSpacer{flex:1; min-width:4px}
   .more-wrap{position:relative; flex:none}
   #bMore{border-color:var(--edge)}
-  #bMore.on{background:#222937; border-color:var(--acc-hi); color:var(--acc-hi)}
+  #bMore.on{background:var(--hover); border-color:var(--acc-hi); color:var(--acc-hi)}
   #morePanel{
     position:absolute; top:calc(100% + 6px); right:0; z-index:40;
     background:var(--panel); border:1px solid var(--edge); border-radius:10px;
-    padding:6px; box-shadow:0 14px 40px rgba(0,0,0,.45); min-width:210px;
+    padding:6px; box-shadow:0 14px 40px var(--shadow); min-width:210px;
     display:flex; flex-direction:column; gap:2px;
   }
   #morePanel[hidden]{display:none !important}
@@ -168,7 +197,7 @@
   #trayHead{padding:10px 12px 8px; border-bottom:1px solid var(--edge); flex:none}
   #trayHead .lbl{display:flex; align-items:center; justify-content:space-between}
   #trayHead .lbl span:first-child{font-size:10px; letter-spacing:.14em; color:var(--mut); font-weight:700}
-  #trayHead .lbl span:last-child{font-size:10px; letter-spacing:.14em; color:#586069}
+  #trayHead .lbl span:last-child{font-size:10px; letter-spacing:.14em; color:var(--faint)}
   #trayFilter{
     margin-top:8px; width:100%; background:var(--panel2); border:1px solid var(--edge);
     border-radius:7px; color:var(--ink); padding:6px 9px; font-size:12px;
@@ -195,31 +224,31 @@
     gap:8px; height:100%; color:var(--acc-hi); text-align:center; padding:0 14px;
   }
   #trayEmpty .ec{
-    width:38px; height:38px; border-radius:50%; background:rgba(74,147,138,.15);
+    width:38px; height:38px; border-radius:50%; background:var(--acc-soft);
     display:flex; align-items:center; justify-content:center; font-size:19px;
   }
   #trayEmpty b{font-size:13px}
   #trayEmpty span{font-size:11px; color:var(--mut); max-width:160px}
 
   /* ---------- stage ---------- */
-  #stage{flex:1; position:relative; overflow:hidden; background:#0d1016; min-width:0}
+  #stage{flex:1; position:relative; overflow:hidden; background:var(--stage); min-width:0}
   #cv{width:100%; height:100%; display:block; touch-action:none}
   #cv.panning{cursor:grabbing}
   #cv.carrying{cursor:copy}
-  .pc path{stroke:#232838; stroke-width:1.1px; vector-effect:non-scaling-stroke; fill-opacity:.82}
+  .pc path{stroke:var(--pc-stroke); stroke-width:1.1px; vector-effect:non-scaling-stroke; fill-opacity:.82}
   .pc:hover path{stroke:#000}
   .pc.sel path{stroke:var(--acc-hi); stroke-width:2.2px; fill-opacity:.95}
   .pc.bad path{fill:var(--bad) !important; fill-opacity:.75}
-  .pc text{pointer-events:none; fill:#20242e; font-weight:600; transition:opacity .1s}
+  .pc text{pointer-events:none; fill:var(--pc-ink); font-weight:600; transition:opacity .1s}
   .pc.small text{opacity:0}
   .pc.small:hover text, .pc.small.sel text{opacity:1}
-  .pc .grain{stroke:#20242e; stroke-width:.8px; vector-effect:non-scaling-stroke; opacity:.45; pointer-events:none}
+  .pc .grain{stroke:var(--pc-ink); stroke-width:.8px; vector-effect:non-scaling-stroke; opacity:.45; pointer-events:none}
   #ghost path{stroke-width:1.6px; vector-effect:non-scaling-stroke; fill-opacity:.55; pointer-events:none}
   #ghost.ok path{fill:var(--good); stroke:#2c5e46}
   #ghost.no path{fill:var(--bad); stroke:#8a3f3c}
   #hintOverlay{
     position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
-    background:rgba(18,21,28,.86); border:1px solid var(--edge); border-radius:12px;
+    background:var(--overlay); border:1px solid var(--edge); border-radius:12px;
     padding:18px 26px; text-align:center; color:var(--mut); font-size:13px;
     pointer-events:none; max-width:420px;
   }
@@ -228,7 +257,7 @@
      answers "how do I place/move a piece?" without opening a dialog */
   #canvasHint{
     position:absolute; top:10px; left:12px; display:flex; gap:8px; pointer-events:none;
-    background:rgba(16,20,27,.82); border:1px solid #33544c; color:var(--acc-hi);
+    background:var(--overlay); border:1px solid var(--acc-edge); color:var(--acc-hi);
     border-radius:6px; padding:5px 10px; font-size:11px; font-weight:600;
     font-family:ui-monospace,Menlo,monospace;
   }
@@ -236,18 +265,18 @@
      so the same action isn't duplicated in two places on screen */
   #zoomCtl{
     position:absolute; bottom:12px; right:14px; display:flex; align-items:center; gap:2px;
-    background:rgba(16,20,27,.88); border:1px solid var(--edge); border-radius:9px; padding:4px;
+    background:var(--overlay); border:1px solid var(--edge); border-radius:9px; padding:4px;
   }
   #zoomCtl button{padding:6px 11px; border-radius:6px; color:var(--ink); font-size:13px}
-  #zoomCtl button:hover{background:#222937}
+  #zoomCtl button:hover{background:var(--hover)}
   #zoomCtl #bZoomFit{font-size:11px; font-weight:600; color:var(--mut)}
   #zoomCtl #bZoomFit:hover{color:var(--ink)}
 
   /* ---------- right dock: order (read-only) · shortcuts ---------- */
   #rightDock{flex:none; width:246px; background:var(--panel); border-left:1px solid var(--edge); display:flex; flex-direction:column; min-height:0}
-  #dockTabs{display:flex; gap:6px; padding:9px 10px; border-bottom:1px solid var(--edge); flex:none}
-  .dtab{flex:1; padding:6px 8px; border-radius:7px; border:1px solid var(--edge); background:var(--panel2); color:var(--mut); font-size:11.5px; font-weight:600}
-  .dtab.on{border-color:var(--acc-hi); color:var(--acc-hi); background:#182028}
+  #dockTabs{display:flex; gap:4px; padding:9px 8px; border-bottom:1px solid var(--edge); flex:none}
+  .dtab{flex:1; padding:6px 4px; border-radius:7px; border:1px solid var(--edge); background:var(--panel2); color:var(--mut); font-size:11px; font-weight:600}
+  .dtab.on{border-color:var(--acc-hi); color:var(--acc-hi); background:var(--acc-soft)}
   #dockBody{flex:1; overflow-y:auto; padding:12px}
   .dsec-lbl{font-size:10px; letter-spacing:.12em; color:var(--mut); font-weight:700; margin-bottom:8px}
   .dbox{background:var(--panel2); border:1px solid var(--edge); border-radius:9px; padding:11px; margin-bottom:10px; font-size:11.5px; color:var(--mut); line-height:1.7}
@@ -261,7 +290,27 @@
     border-radius:8px; padding:8px; color:var(--ink); font-size:12px;
   }
   #dockEdit:hover{border-color:var(--acc)}
-  .dnote{margin-top:7px; font-size:10.5px; color:#586069; text-align:center}
+  .dnote{margin-top:7px; font-size:10.5px; color:var(--faint); text-align:center}
+  /* piece / options panel controls */
+  .dgrp{margin-bottom:11px}
+  .dgrp-l{font-size:10px; letter-spacing:.08em; color:var(--mut); font-weight:700; margin-bottom:5px; text-transform:uppercase}
+  .dbtns{display:flex; flex-wrap:wrap; gap:5px}
+  .dbtn{
+    padding:7px 10px; border-radius:7px; border:1px solid var(--edge); background:var(--panel2);
+    color:var(--ink); font-size:12px; font-weight:600;
+  }
+  .dbtn:hover{border-color:var(--acc); color:var(--acc)}
+  .dbtn.on{background:var(--acc-soft); border-color:var(--acc-edge); color:var(--on-acc-soft)}
+  .dbtn.danger:hover{border-color:var(--bad); color:var(--bad)}
+  .dfield{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--mut)}
+  .dfield input{width:48px; background:var(--panel2); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 6px; text-align:right}
+  .orow{display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--ink); padding:4px 0}
+  .orow select,.orow input{background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:4px 7px}
+  .orow input{width:52px; text-align:right}
+  .orow span{color:var(--mut)}
+  .legend{display:flex; flex-wrap:wrap; gap:6px 10px}
+  .legend .lg{display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--ink)}
+  .legend .sw{width:16px; height:12px; border-radius:3px; border:1px solid var(--fabric-edge)}
   .sc-row{display:flex; justify-content:space-between; font-size:12px; color:var(--ink); padding:3px 0}
   .sc-row span:last-child{color:var(--mut); font:11px ui-monospace,Menlo,monospace}
   #hintOverlay .k{color:var(--acc)}
@@ -279,9 +328,9 @@
   footer.st-ok #statusDot{background:var(--good)}
   footer.st-warn #statusDot{background:var(--warn)}
   footer.st-bad #statusDot{background:var(--bad)}
-  footer.st-ok{background:#152722}
-  footer.st-warn{background:#2a2313}
-  footer.st-bad{background:#2b1a1a}
+  footer.st-ok{background:var(--good-soft)}
+  footer.st-warn{background:var(--warn-soft)}
+  footer.st-bad{background:var(--bad-soft)}
   footer #hint{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   footer.st-ok #hint, footer.st-warn #hint, footer.st-bad #hint{color:var(--ink)}
   footer #selInfo{color:var(--ink)}
@@ -291,7 +340,7 @@
   dialog{
     background:var(--panel); color:var(--ink); border:1px solid var(--edge);
     border-radius:12px; padding:0; max-width:520px; width:92vw;
-    box-shadow:0 18px 60px rgba(0,0,0,.55);
+    box-shadow:0 18px 60px var(--shadow);
   }
   dialog::backdrop{background:rgba(5,7,10,.6)}
   .dlg-head{
@@ -322,7 +371,7 @@
   .wstep{flex:1; text-align:center; font-size:10.5px; letter-spacing:.06em; color:var(--mut);
          padding:0 2px 6px; border-bottom:2px solid var(--edge); white-space:nowrap}
   .wstep.on{color:var(--acc); border-color:var(--acc); font-weight:700}
-  .wstep.done{color:var(--ink); border-color:#3d5f57}
+  .wstep.done{color:var(--ink); border-color:var(--acc-dim)}
   .wcap{color:var(--mut); font-size:12px; margin-bottom:10px}
   .mcards{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:14px}
   .mcard{background:var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:9px 10px;
@@ -335,12 +384,12 @@
          border-radius:7px; padding:6px 10px; font-size:12.5px}
   .oline .lett{background:var(--acc); color:var(--acc-ink); font-weight:700; border-radius:4px; padding:0 6px; font-size:11px}
   .oline .x{margin-left:auto; color:var(--mut); padding:2px 6px; border-radius:4px}
-  .oline .x:hover{background:#3a2026; color:var(--bad)}
+  .oline .x:hover{background:var(--bad-soft); color:var(--bad)}
   fieldset.lineset{border:1px solid var(--edge); border-radius:8px; padding:10px 12px; margin-bottom:12px}
   fieldset.lineset legend{font-size:11.5px; color:var(--acc); padding:0 6px; font-weight:700}
   .pchk{display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; font-size:12.5px}
   .pchk .prow{display:flex; align-items:center; gap:8px}
-  .pchk label{display:flex; gap:7px; align-items:center; color:#c6cddb; flex:1; min-width:0}
+  .pchk label{display:flex; gap:7px; align-items:center; color:var(--ink2); flex:1; min-width:0}
   .pchk label .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .pchk input[type=checkbox]{accent-color:var(--acc); flex:none}
   .pchk .sub{color:var(--mut); font-size:11px; flex:none}
@@ -360,7 +409,7 @@
     border-bottom:1px solid var(--edge); flex:none; background:var(--panel);
   }
   #cpTopbar h2{font-size:14.5px; font-weight:700}
-  #cpTopbar .note{font-size:11px; color:var(--mut); border:1px dashed #3d5f57; border-radius:6px; padding:3px 9px}
+  #cpTopbar .note{font-size:11px; color:var(--mut); border:1px dashed var(--acc-dim); border-radius:6px; padding:3px 9px}
   #planBody{flex:1; overflow:auto; padding:18px 22px 40px}
   #toolbar.mode-cutplan .ws-only{display:none}
   .crow{display:flex; align-items:center; gap:6px; margin-bottom:6px}
@@ -373,10 +422,10 @@
   .crow input[type=number]{width:100%; min-width:0; text-align:center; background:var(--panel2);
                border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 2px}
   .crow .qcell{display:flex; flex-direction:column; align-items:center; gap:2px}
-  .crow .qcell .t{font-size:9.5px; font-weight:700; border-radius:3px; padding:0 5px; color:#20242e}
+  .crow .qcell .t{font-size:9.5px; font-weight:700; border-radius:3px; padding:0 5px; color:var(--pc-ink)}
   .crow .x{align-self:flex-start; margin-top:16px}
   .crow .x{color:var(--mut); padding:2px 7px; border-radius:4px; flex:none}
-  .crow .x:hover{background:#3a2026; color:var(--bad)}
+  .crow .x:hover{background:var(--bad-soft); color:var(--bad)}
   .setrow{display:flex; gap:14px; flex-wrap:wrap}
   .setrow .set{display:flex; flex-direction:column; gap:3px; font-size:11px; color:var(--mut)}
   .setrow .set input{width:86px; background:var(--panel2); border:1px solid var(--edge);
@@ -387,7 +436,7 @@
 
   .szgrid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px}
   .szcell{display:flex; flex-direction:column; align-items:center; gap:3px}
-  .szcell .t{font-size:10.5px; font-weight:700; border-radius:3px; padding:0 6px; color:#20242e}
+  .szcell .t{font-size:10.5px; font-weight:700; border-radius:3px; padding:0 6px; color:var(--pc-ink)}
   .szcell input{
     width:100%; text-align:center; background:var(--panel2);
     border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 2px;
@@ -405,7 +454,7 @@
   #dlgHelp .dlg-body{max-height:64vh; overflow:auto}
   #dlgHelp h4{margin:14px 0 6px; color:var(--acc); font-size:12.5px; letter-spacing:.05em}
   #dlgHelp h4:first-child{margin-top:0}
-  #dlgHelp p, #dlgHelp li{color:#c6cddb; font-size:12.5px; margin-bottom:4px}
+  #dlgHelp p, #dlgHelp li{color:var(--ink2); font-size:12.5px; margin-bottom:4px}
   #dlgHelp ol,#dlgHelp ul{padding-left:20px}
   kbd{
     background:var(--panel2); border:1px solid var(--edge); border-bottom-width:2px;
@@ -419,7 +468,7 @@
   .toast{
     background:#242b3a; border:1px solid var(--edge); border-left:3px solid var(--acc);
     color:var(--ink); border-radius:7px; padding:8px 16px; font-size:12.5px;
-    box-shadow:0 6px 24px rgba(0,0,0,.4); animation:tin .18s ease-out;
+    box-shadow:0 6px 24px var(--shadow); animation:tin .18s ease-out;
   }
   .toast.warn{border-left-color:var(--warn)}
   .toast.bad{border-left-color:var(--bad)}
@@ -431,8 +480,8 @@
 <header>
   <div class="logo">
     <svg width="26" height="26" viewBox="0 0 26 26">
-      <rect x="1" y="1" width="24" height="24" rx="6" fill="#4a938a"/>
-      <path d="M5 17 C9 17 9 9 13 9 C17 9 17 17 21 17" fill="none" stroke="#10141b" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3.2 2.6"/>
+      <rect x="1" y="1" width="24" height="24" rx="6" fill="var(--acc)"/>
+      <path d="M5 17 C9 17 9 9 13 9 C17 9 17 17 21 17" fill="none" stroke="var(--acc-ink)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3.2 2.6"/>
     </svg>
     <span class="wordmark">seam<em>line</em></span>
     <span class="modtag">MARKER</span>
@@ -468,12 +517,13 @@
       <div class="chip unmade" id="statusChip">UNMADE</div>
     </div>
   </div>
+  <button id="themeToggle" title="Toggle light / dark">☾</button>
 </header>
 
 <div id="toolbar">
   <div class="wtoggle" id="wsToggle" title="Switch workspace">
-    <button class="on" id="wsMarkerBtn" data-ws="marker">Marker</button>
     <button id="wsCutplanBtn" data-ws="cutplan">Cut Plan</button>
+    <button class="on" id="wsMarkerBtn" data-ws="marker">Marker</button>
   </div>
   <div class="tsep"></div>
   <button class="tb" id="bNew" title="New order — model, sizes, fabric (N)"><span class="ic">▤</span>New Order</button>
@@ -552,8 +602,10 @@
 
     <div id="rightDock">
       <div id="dockTabs">
-        <button class="dtab on" id="dockTabOrder" data-dock="order">Order</button>
-        <button class="dtab" id="dockTabSc" data-dock="shortcuts">Shortcuts</button>
+        <button class="dtab" data-dock="piece">Piece</button>
+        <button class="dtab on" data-dock="order">Order</button>
+        <button class="dtab" data-dock="options">Options</button>
+        <button class="dtab" data-dock="keys">Keys</button>
       </div>
       <div id="dockBody"></div>
     </div>
@@ -609,7 +661,7 @@
     <ol>
       <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, choose fabric width/buffer/lay rule, review the summary. All models nest together in one combined marker.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
-      <li><b>Refine</b> — drag pieces, rotate/flip, <b>Butt</b> slides a piece left until it touches its neighbour, <b>Compact</b> tightens the whole marker.</li>
+      <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, lay rule, buffer, width, end allowance and the theme.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
       <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
@@ -662,10 +714,10 @@ const shade=(hex,t)=>{                       // t<0 darken · t>0 lighten
 };
 const ALPHA_F=[0.92,0.96,1.0,1.045,1.09,1.14];
 const BANDS=[32,34,36,38,40,42], CUPS=['A','B','C','D'];
-// Muted, low-chroma size hues — distinct enough to read at a glance, toned down
-// so the piece colours (the loudest thing on screen) don't compete with the
-// muted teal shell around them.
-const CUP_C=['#6f97b3','#6f9b7c','#c9a355','#c4835a'];   // hue = cup, shade = band
+// Sizes are shades of the clay accent — a warm ramp from light tan to deep
+// terracotta, so the marker stays within the two-colour system. Each piece
+// keeps its size label, so adjacent shades never need to be told apart by hue.
+const CUP_C=['#D6A587','#C8845E','#B56A45','#9E5638'];   // cup A→D warm shades, band = shade
 const BRA_NAMES=[], BRA_C=[];
 for (let bi=0;bi<BANDS.length;bi++) for (let ci=0;ci<CUPS.length;ci++){
   BRA_NAMES.push(BANDS[bi]+CUPS[ci]);
@@ -673,7 +725,7 @@ for (let bi=0;bi<BANDS.length;bi++) for (let ci=0;ci<CUPS.length;ci++){
 }
 const SCALES={
   alpha:{ names:['XS','S','M','L','XL','XXL'],
-          colors:['#6f97b3','#6f9b7c','#c9a355','#c4835a','#93789f','#af6c78'],
+          colors:['#E4C4AE','#D6A587','#C8845E','#B56A45','#9E5638','#82452F'],
           cols:6, base:'M', demo:{S:60,M:120,L:60},
           factors:si=>{ const f=ALPHA_F[si]; return [1+(f-1)*0.5, f]; } },
   // 32A–42D: band drives girth, cup letter drives the cup panels
@@ -1015,14 +1067,14 @@ function renderFabric(len){
   const W=S.width, L=Math.max(400, len+140);
   let h = `<rect x="0" y="0" width="${L}" height="${W}" fill="var(--fabric)"/>`;
   h += `<rect x="0" y="0" width="${L}" height="${W}" fill="none" stroke="var(--fabric-edge)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
-  h += `<line x1="0" y1="1.2" x2="${L}" y2="1.2" stroke="#b8ae99" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="6 4"/>`;
-  h += `<line x1="0" y1="${W-1.2}" x2="${L}" y2="${W-1.2}" stroke="#b8ae99" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="6 4"/>`;
+  h += `<line x1="0" y1="1.2" x2="${L}" y2="1.2" stroke="var(--fabric-line)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="6 4"/>`;
+  h += `<line x1="0" y1="${W-1.2}" x2="${L}" y2="${W-1.2}" stroke="var(--fabric-line)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="6 4"/>`;
   gFab.innerHTML = h;
 
   let g='';
   if (UI.grid){
-    for (let x=10;x<L;x+=10) g+=`<line x1="${x}" y1="0" x2="${x}" y2="${W}" stroke="#00000012" stroke-width="${x%50?0.5:1}" vector-effect="non-scaling-stroke"/>`;
-    for (let y=10;y<W;y+=10) g+=`<line x1="0" y1="${y}" x2="${L}" y2="${y}" stroke="#00000012" stroke-width="${y%50?0.5:1}" vector-effect="non-scaling-stroke"/>`;
+    for (let x=10;x<L;x+=10) g+=`<line x1="${x}" y1="0" x2="${x}" y2="${W}" stroke="var(--grid)" stroke-width="${x%50?0.5:1}" vector-effect="non-scaling-stroke"/>`;
+    for (let y=10;y<W;y+=10) g+=`<line x1="0" y1="${y}" x2="${L}" y2="${y}" stroke="var(--grid)" stroke-width="${y%50?0.5:1}" vector-effect="non-scaling-stroke"/>`;
   }
   gGrid.innerHTML = g;
 
@@ -1030,15 +1082,15 @@ function renderFabric(len){
   let r='';
   for (let x=0;x<=L;x+=10){
     const major = x%50===0;
-    r+=`<line x1="${x}" y1="${-(major?7:4)}" x2="${x}" y2="0" stroke="#8b94a7" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-    if (major) r+=`<text x="${x}" y="-10" font-size="7" fill="#8b94a7" text-anchor="middle">${x}</text>`;
+    r+=`<line x1="${x}" y1="${-(major?7:4)}" x2="${x}" y2="0" stroke="var(--mut)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    if (major) r+=`<text x="${x}" y="-10" font-size="7" fill="var(--mut)" text-anchor="middle">${x}</text>`;
   }
   for (let y=0;y<=W;y+=10){
     const major = y%50===0;
-    r+=`<line x1="${-(major?7:4)}" y1="${y}" x2="0" y2="${y}" stroke="#8b94a7" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-    if (major) r+=`<text x="-10" y="${y+2.4}" font-size="7" fill="#8b94a7" text-anchor="end">${y}</text>`;
+    r+=`<line x1="${-(major?7:4)}" y1="${y}" x2="0" y2="${y}" stroke="var(--mut)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+    if (major) r+=`<text x="-10" y="${y+2.4}" font-size="7" fill="var(--mut)" text-anchor="end">${y}</text>`;
   }
-  r+=`<text x="${L/2}" y="${W+13}" font-size="8" fill="#5a6274" text-anchor="middle">fabric width ${W} cm · selvage to selvage</text>`;
+  r+=`<text x="${L/2}" y="${W+13}" font-size="8" fill="var(--faint)" text-anchor="middle">fabric width ${W} cm · selvage to selvage</text>`;
   gRulers.innerHTML = r;
 }
 
@@ -1157,14 +1209,18 @@ function renderStats(){
   return st;
 }
 
-/* ---- right dock: read-only Order view + Shortcuts — inspecting never risks
-   the marker; editing is the separate, explicit "Edit order…" action ---- */
+/* ---- right dock: Piece editor · read-only Order · Options · Keys.
+   The Piece tab is the organised "change this piece" toolbar (rotate, flip,
+   butt, centre, nudge, remove); Options gathers the marker settings that
+   used to be scattered in the More ▾ menu. ---- */
 UI.dockTab = 'order';
 function renderOrderDock(){
   if (!S) return;
-  $('dockTabOrder').classList.toggle('on', UI.dockTab==='order');
-  $('dockTabSc').classList.toggle('on', UI.dockTab==='shortcuts');
-  if (UI.dockTab==='shortcuts'){ $('dockBody').innerHTML = shortcutsHTML(); return; }
+  document.querySelectorAll('#dockTabs .dtab').forEach(b=>b.classList.toggle('on', b.dataset.dock===UI.dockTab));
+  const b=$('dockBody');
+  if (UI.dockTab==='keys'){ b.innerHTML=shortcutsHTML(); return; }
+  if (UI.dockTab==='piece'){ b.innerHTML=pieceHTML(); return; }
+  if (UI.dockTab==='options'){ b.innerHTML=optionsHTML(); return; }
   const lines = S.lines.map((L,li)=>{
     const sc=scaleOf(L.modelId), model=modelById(L.modelId);
     const ratio = sc.names.map((s,i)=> (L.sizesQty[s]|0)>0
@@ -1177,10 +1233,78 @@ function renderOrderDock(){
       <div style="margin-top:9px">Pieces: ${pieces.map(d=>`${d.name} ×${d.qty}`).join(' · ')}<br>
       ${garments} garment${garments===1?'':'s'} · ${pcsPerG} pcs/garment · <b>${garments*pcsPerG} pieces</b></div></div>`;
   }).join('');
-  $('dockBody').innerHTML = `<div class="dsec-lbl">ORDER · READ-ONLY</div>${lines}` +
+  b.innerHTML = `<div class="dsec-lbl">ORDER · READ-ONLY</div>${lines}` +
     `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Lay rule <b>${UI.layRule}</b></div>` +
     `<button id="dockEdit">✎ Edit order…</button>` +
     `<div class="dnote">Inspect without risking the marker.</div>`;
+}
+// The organised piece toolbar (AccuMark's Piece tab + Toolbox, in one place).
+function pieceHTML(){
+  const p = UI.sel!=null ? byUid(UI.sel) : null;
+  if (!p || !p.placed){
+    return `<div class="dsec-lbl">PIECE</div>
+      <div class="dbox" style="text-align:center; color:var(--mut)">Select a placed piece on the fabric to rotate, flip, butt, centre or return it.<br><br>Or click a tray piece, then the fabric, to place it.</div>`;
+  }
+  const def=defByKey[p.defKey], sh=instShape(p), tag=lineTag(p.line), dir=pieceDir(p);
+  const free = effDir(p)==='free';
+  return `<div class="dsec-lbl">PIECE</div>
+    <div class="dbox">
+      <div class="dline-hd"><span class="lett" style="background:${sizeCol(p)}; color:var(--pc-ink)">${sizeNm(p)}</span><span class="nm">${def.name}</span></div>
+      <div>${tag?tag+' · ':''}bundle ${p.bundle} · ${dirLabel(dir)}<br>
+      ${sh.bb.w.toFixed(1)} × ${sh.bb.h.toFixed(1)} cm · at x ${p.x.toFixed(1)} y ${p.y.toFixed(1)}${p.fx?' · flipped':''}</div>
+    </div>
+    <div class="dgrp"><div class="dgrp-l">Rotate</div><div class="dbtns">
+      <button class="dbtn" data-pa="rotccw">⟲ 90°</button>
+      <button class="dbtn" data-pa="rotcw">⟳ 90°</button>
+      ${free?`<span class="dfield">angle <input id="pcAngle" type="number" min="0" max="359" step="5" value="${p.rot}"> °</span>`:''}
+    </div></div>
+    <div class="dgrp"><div class="dgrp-l">Flip</div><div class="dbtns">
+      <button class="dbtn" data-pa="flipx">⇋ Horizontal</button>
+      <button class="dbtn" data-pa="flipy">⇵ Vertical</button>
+    </div></div>
+    <div class="dgrp"><div class="dgrp-l">Butt / slide</div><div class="dbtns">
+      <button class="dbtn" data-pa="buttl">← Left</button>
+      <button class="dbtn" data-pa="buttu">↑ Up</button>
+      <button class="dbtn" data-pa="buttr">→ Right</button>
+      <button class="dbtn" data-pa="buttd">↓ Down</button>
+    </div></div>
+    <div class="dgrp"><div class="dgrp-l">Align</div><div class="dbtns">
+      <button class="dbtn" data-pa="center">⊟ Centre in width</button>
+      <button class="dbtn" data-pa="top">⊤ Top edge</button>
+      <button class="dbtn" data-pa="bottom">⊥ Bottom edge</button>
+    </div></div>
+    <button class="dbtn danger" data-pa="unplace" style="width:100%; margin-top:6px">✕ Return to tray</button>
+    <div class="dnote">Arrows nudge 1 cm (Shift = 1 mm). R/F rotate/flip.</div>`;
+}
+function optionsHTML(){
+  const dark = document.documentElement.getAttribute('data-theme')!=='light';
+  const swatches = SCALES.alpha.names.map((s,i)=>
+    `<span class="lg"><span class="sw" style="background:${SCALES.alpha.colors[i]}"></span>${s}</span>`).join('');
+  return `<div class="dsec-lbl">APPEARANCE</div>
+    <div class="dgrp"><div class="dgrp-l">Theme</div><div class="dbtns">
+      <button class="dbtn${!dark?' on':''}" data-opt="light">☀ Light</button>
+      <button class="dbtn${dark?' on':''}" data-opt="dark">☾ Dark</button>
+    </div></div>
+    <div class="dsec-lbl" style="margin-top:14px">MARKER OPTIONS</div>
+    <div class="dgrp"><div class="dgrp-l">View</div><div class="dbtns">
+      <button class="dbtn${UI.grid?' on':''}" data-opt="grid">▦ Grid</button>
+      <button class="dbtn${UI.snap?' on':''}" data-opt="snap">⌗ Snap 0.5</button>
+      <button class="dbtn${UI.autobutt?' on':''}" data-opt="autobutt">⇱ Auto-butt</button>
+    </div></div>
+    <div class="dbox">
+      <label class="orow">Lay rule
+        <select id="optLay">
+          <option value="strict"${UI.layRule==='strict'?' selected':''}>strict</option>
+          <option value="relaxed"${UI.layRule==='relaxed'?' selected':''}>90° ok</option>
+          <option value="free"${UI.layRule==='free'?' selected':''}>free</option>
+        </select></label>
+      <label class="orow">Cutter buffer <span><input id="optBuf" type="number" min="0" max="5" step="0.1" value="${S.buffer}"> cm</span></label>
+      <label class="orow">Fabric width <span><input id="optW" type="number" min="50" max="300" step="1" value="${S.width}"> cm</span></label>
+      <label class="orow">End allowance <span><input id="optEnd" type="number" min="0" max="50" step="0.5" value="${endAllow()}"> cm</span></label>
+    </div>
+    <div class="dsec-lbl" style="margin-top:14px">SIZE LEGEND</div>
+    <div class="legend">${swatches}</div>
+    <div class="dnote">Buffer changes apply on the next nest. Width change re-lays the marker.</div>`;
 }
 function shortcutsHTML(){
   const rows=[['Rotate cw / ccw','R / ⇧R'],['Flip h / v','F / ⇧F'],['Nudge 1 cm','← ↑ → ↓'],
@@ -1259,9 +1383,14 @@ function worldPt(e){
    INTERACTION
    ===================================================================== */
 function select(uid){
+  const wasNull = UI.sel==null;
   UI.sel=uid;
   for (const g of gPieces.children) g.classList.toggle('sel', +g.dataset.uid===uid);
   renderHint();
+  // first selection surfaces the Piece editor from any tab; keep it live while
+  // it's showing. (A background click deselects and leaves the tab alone.)
+  if (uid!=null && wasNull) UI.dockTab='piece';
+  if (UI.dockTab==='piece') renderOrderDock();
 }
 function snapv(v){ return UI.snap ? Math.round(v*2)/2 : +v.toFixed(2); }
 
@@ -1364,10 +1493,48 @@ $('trayItems').addEventListener('click', e=>{
 $('trayFilter').addEventListener('input', renderTray);
 
 /* ---- right dock wiring ---- */
-$('dockTabOrder').onclick=()=>{ UI.dockTab='order'; renderOrderDock(); };
-$('dockTabSc').onclick=()=>{ UI.dockTab='shortcuts'; renderOrderDock(); };
-$('dockBody').addEventListener('click', e=>{ if (e.target.id==='dockEdit') openOrderDialog(); });
+$('dockTabs').addEventListener('click', e=>{
+  const t=e.target.closest('.dtab'); if(!t) return;
+  UI.dockTab=t.dataset.dock; renderOrderDock();
+});
 $('orderChip').addEventListener('click', ()=>{ UI.dockTab='order'; renderOrderDock(); });
+// dock body: edit-order, piece actions (data-pa), options (data-opt)
+$('dockBody').addEventListener('click', e=>{
+  if (e.target.id==='dockEdit'){ openOrderDialog(); return; }
+  const pa=e.target.closest('[data-pa]');
+  if (pa){
+    switch(pa.dataset.pa){
+      case 'rotcw': rotateSel(1); break;   case 'rotccw': rotateSel(-1); break;
+      case 'flipx': flipSel('x'); break;    case 'flipy': flipSel('y'); break;
+      case 'buttl': buttSel(-1,0); break;   case 'buttr': buttSel(1,0); break;
+      case 'buttu': buttSel(0,-1); break;   case 'buttd': buttSel(0,1); break;
+      case 'center': alignSel('center'); break;
+      case 'top': alignSel('top'); break;   case 'bottom': alignSel('bottom'); break;
+      case 'unplace': if(UI.sel!=null) unplace(UI.sel); break;
+    }
+    return;
+  }
+  const opt=e.target.closest('[data-opt]');
+  if (opt){
+    const o=opt.dataset.opt;
+    if (o==='light'||o==='dark') applyTheme(o);
+    else if (o==='grid'||o==='snap'||o==='autobutt'){
+      UI[o]=!UI[o]; const tb={grid:'tGrid',snap:'tSnap',autobutt:'tButt'}[o];
+      $(tb).classList.toggle('on',UI[o]); if(o==='grid') renderFabric(markerStats().len);
+    }
+    renderOrderDock();
+    return;
+  }
+});
+// options: live inputs
+$('dockBody').addEventListener('change', e=>{
+  const t=e.target;
+  if (t.id==='optLay'){ UI.layRule=t.value; $('layRule').value=t.value; }
+  else if (t.id==='optBuf'){ S.buffer=Math.max(0,Math.min(5,+t.value||0)); persist(); }
+  else if (t.id==='optW'){ $('fabW').value=t.value; $('fabW').dispatchEvent(new Event('change',{bubbles:true})); }
+  else if (t.id==='optEnd'){ $('endAllow').value=t.value; $('endAllow').dispatchEvent(new Event('input',{bubbles:true})); renderOrderDock(); }
+  else if (t.id==='pcAngle'){ rotateToAngle(+t.value||0); }
+});
 function updateGhost(w){
   const inst=byUid(UI.carry); if(!inst){ gGhost.innerHTML=''; return; }
   const sh=instShape(inst), bb=sh.bb;
@@ -1444,6 +1611,26 @@ function nudgeSel(dx,dy){
     if (!canPlaceAt(inst,nx,ny)) return;
     inst.x=nx; inst.y=ny;
     renderAll(); select(inst.uid); persistSoon();
+  });
+}
+// Align the selected piece within the fabric width: centre / top / bottom.
+function alignSel(where){
+  withSel(inst=>{
+    if (!inst.placed) return;
+    const bb=instShape(inst).bb;
+    const ny = where==='top' ? 0 : where==='bottom' ? +(S.width-bb.h).toFixed(2) : +((S.width-bb.h)/2).toFixed(2);
+    if (!canPlaceAt(inst,inst.x,ny)) return toast('No room to align here','warn');
+    pushUndo(); inst.y=ny;
+    renderAll(); select(inst.uid); persist();
+  });
+}
+// Free-lay pieces: rotate to an exact angle.
+function rotateToAngle(deg){
+  withSel(inst=>{
+    if (!inst.placed) return;
+    const old=inst.rot; inst.rot=((deg%360)+360)%360;
+    if (!canPlaceAt(inst,inst.x,inst.y)){ inst.rot=old; return toast('No room to rotate here','warn'); }
+    pushUndo(); renderAll(); select(inst.uid); persist();
   });
 }
 
@@ -2335,6 +2522,16 @@ $('bUndo').onclick=undo;
 $('bRedo').onclick=redo;
 $('bHelp').onclick=()=>$('dlgHelp').showModal();
 $('nestCancel').onclick=()=>{ UI.nestAbort=true; };
+
+/* ---- light / dark theme ---- */
+function applyTheme(mode){
+  document.documentElement.setAttribute('data-theme', mode);
+  $('themeToggle').textContent = mode==='light' ? '☀' : '☾';
+  $('themeToggle').title = mode==='light' ? 'Switch to dark' : 'Switch to light';
+  try{ localStorage.setItem('seamline-marker-theme', mode); }catch{}
+}
+$('themeToggle').onclick=()=>applyTheme(
+  document.documentElement.getAttribute('data-theme')==='light' ? 'dark' : 'light');
 $('effort').addEventListener('input',e=>{ UI.effort=+e.target.value; $('effortVal').textContent=UI.effort; });
 $('layRule').addEventListener('change',e=>{ UI.layRule=e.target.value; });
 for (const [id,key] of [['tGrid','grid'],['tSnap','snap'],['tButt','autobutt']]){
@@ -2404,6 +2601,11 @@ window.addEventListener('resize', ()=>{ setVB(); scheduleLabelRefresh(); });
    BOOT
    ===================================================================== */
 (function boot(){
+  // theme: saved preference, else follow the OS
+  let theme='dark';
+  try{ theme = localStorage.getItem('seamline-marker-theme')
+      || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); }catch{}
+  applyTheme(theme);
   let restored=false;
   try{
     const raw=localStorage.getItem('seamline-marker-autosave');
