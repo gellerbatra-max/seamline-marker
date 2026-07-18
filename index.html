@@ -53,9 +53,10 @@
   input,select{font:inherit}
 
   /* ---------- header ---------- */
+  /* marker-info ribbon — docked at the bottom, AccuMark-style */
   header{
     display:flex; align-items:center; gap:14px; padding:8px 14px;
-    background:var(--panel); border-bottom:1px solid var(--edge); flex:none;
+    background:var(--panel); border-top:1px solid var(--edge); flex:none;
   }
   .logo{display:flex; align-items:center; gap:9px}
   .logo svg{display:block}
@@ -201,6 +202,18 @@
   #trayFilter{
     margin-top:8px; width:100%; background:var(--panel2); border:1px solid var(--edge);
     border-radius:7px; color:var(--ink); padding:6px 9px; font-size:12px;
+  }
+  /* fabric category chips — filter the tray (and Auto-Nest) to one fabric */
+  #trayFabs{display:flex; flex-wrap:wrap; gap:4px; margin-top:8px}
+  .fabchip{
+    padding:3px 9px; border-radius:10px; border:1px solid var(--edge); background:var(--panel2);
+    color:var(--mut); font-size:10.5px; font-weight:700; font-family:ui-monospace,Menlo,monospace;
+  }
+  .fabchip:hover{border-color:var(--acc); color:var(--acc)}
+  .fabchip.on{background:var(--acc-soft); border-color:var(--acc-edge); color:var(--on-acc-soft)}
+  .fabtag{
+    flex:none; font-size:9.5px; font-weight:700; color:var(--mut); border:1px solid var(--edge);
+    border-radius:4px; padding:1px 5px; font-family:ui-monospace,Menlo,monospace;
   }
   #trayItems{flex:1; overflow-y:auto; overflow-x:hidden; padding:9px}
   #trayItems::-webkit-scrollbar{width:8px}
@@ -397,6 +410,12 @@
           border-radius:5px; padding:2px 5px; font-size:11px; flex:none}
   .dirsel:disabled{opacity:.3}
   .dirsel.override{border-color:var(--acc); color:var(--acc)}
+  .fabin{width:38px; background:var(--panel); border:1px solid var(--edge); color:var(--ink);
+         border-radius:5px; padding:2px 4px; font-size:11px; text-align:center; flex:none;
+         font-family:ui-monospace,Menlo,monospace}
+  .fabin:disabled{opacity:.3}
+  .fabin.override{border-color:var(--acc); color:var(--acc)}
+  .fabin:focus{outline:1px solid var(--acc-hi)}
   table.wsum{border-collapse:collapse; width:100%; font-size:12.5px; margin-bottom:12px}
   table.wsum th{color:var(--mut); font-weight:600; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase}
   table.wsum th,table.wsum td{padding:5px 8px; border-bottom:1px solid var(--edge); text-align:left}
@@ -477,49 +496,6 @@
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <svg width="26" height="26" viewBox="0 0 26 26">
-      <rect x="1" y="1" width="24" height="24" rx="6" fill="var(--acc)"/>
-      <path d="M5 17 C9 17 9 9 13 9 C17 9 17 17 21 17" fill="none" stroke="var(--acc-ink)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3.2 2.6"/>
-    </svg>
-    <span class="wordmark">seam<em>line</em></span>
-    <span class="modtag">MARKER</span>
-  </div>
-  <input id="markerName" title="Marker name" value="MARKER-01" spellcheck="false">
-  <button id="orderChip" title="View the order — read-only, opens the Order dock">
-    <span id="orderChipModel">—</span>
-    <span id="orderChipRatio"></span>
-    <span class="ocv">view ⌄</span>
-  </button>
-  <div class="hero">
-    <div class="hstat" title="Fabric width — change it to re-lay the marker at a different width">
-      <div class="hlabel">FABRIC WIDTH</div>
-      <div class="hval"><input id="fabW" type="number" min="50" max="300" step="1" value="160"><span>cm</span></div>
-    </div>
-    <div class="hstat">
-      <div class="hlabel">MARKER LENGTH</div>
-      <div class="hval"><b id="stLen">0.000</b><span>m</span></div>
-      <div class="hsub"><b id="stGar">0</b> garments</div>
-    </div>
-    <div class="hstat">
-      <div class="hlabel">UTILIZATION</div>
-      <div class="hval"><b id="stUtil">—</b><span>%</span></div>
-      <div class="hbar"><div id="utilBar"></div></div>
-    </div>
-    <div class="hstat" title="Fabric consumed per garment = (marker length + end allowance) ÷ garments">
-      <div class="hlabel">CONSUMPTION</div>
-      <div class="hval"><b id="stCons">—</b><span>m/gar</span></div>
-      <div class="hsub">end +<input id="endAllow" type="number" min="0" max="50" step="0.5" value="4"> cm</div>
-    </div>
-    <div class="hside">
-      <span id="stPieces">0/0 pcs</span>
-      <div class="chip unmade" id="statusChip">UNMADE</div>
-    </div>
-  </div>
-  <button id="themeToggle" title="Toggle light / dark">☾</button>
-</header>
-
 <div id="toolbar">
   <div class="wtoggle" id="wsToggle" title="Switch workspace">
     <button id="wsCutplanBtn" data-ws="cutplan">Cut Plan</button>
@@ -573,6 +549,7 @@
       <div id="trayHead">
         <div class="lbl"><span>UNPLACED</span><span>TRAY</span></div>
         <input id="trayFilter" placeholder="filter pieces…" spellcheck="false">
+        <div id="trayFabs" hidden></div>
       </div>
       <div id="trayItems"></div>
     </div>
@@ -622,6 +599,49 @@
   </div>
 </div>
 
+<header>
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 26 26">
+      <rect x="1" y="1" width="24" height="24" rx="6" fill="var(--acc)"/>
+      <path d="M5 17 C9 17 9 9 13 9 C17 9 17 17 21 17" fill="none" stroke="var(--acc-ink)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3.2 2.6"/>
+    </svg>
+    <span class="wordmark">seam<em>line</em></span>
+    <span class="modtag">MARKER</span>
+  </div>
+  <input id="markerName" title="Marker name" value="MARKER-01" spellcheck="false">
+  <button id="orderChip" title="View the order — read-only, opens the Order dock">
+    <span id="orderChipModel">—</span>
+    <span id="orderChipRatio"></span>
+    <span class="ocv">view ⌄</span>
+  </button>
+  <div class="hero">
+    <div class="hstat" title="Fabric width — change it to re-lay the marker at a different width">
+      <div class="hlabel">FABRIC WIDTH</div>
+      <div class="hval"><input id="fabW" type="number" min="50" max="300" step="1" value="160"><span>cm</span></div>
+    </div>
+    <div class="hstat">
+      <div class="hlabel">MARKER LENGTH</div>
+      <div class="hval"><b id="stLen">0.000</b><span>m</span></div>
+      <div class="hsub"><b id="stGar">0</b> garments</div>
+    </div>
+    <div class="hstat">
+      <div class="hlabel">UTILIZATION</div>
+      <div class="hval"><b id="stUtil">—</b><span>%</span></div>
+      <div class="hbar"><div id="utilBar"></div></div>
+    </div>
+    <div class="hstat" title="Fabric consumed per garment = (marker length + end allowance) ÷ garments">
+      <div class="hlabel">CONSUMPTION</div>
+      <div class="hval"><b id="stCons">—</b><span>m/gar</span></div>
+      <div class="hsub">end +<input id="endAllow" type="number" min="0" max="50" step="0.5" value="4"> cm</div>
+    </div>
+    <div class="hside">
+      <span id="stPieces">0/0 pcs</span>
+      <div class="chip unmade" id="statusChip">UNMADE</div>
+    </div>
+  </div>
+  <button id="themeToggle" title="Toggle light / dark">☾</button>
+</header>
+
 <footer>
   <span id="statusDot"></span>
   <span id="hint">Ready.</span>
@@ -659,7 +679,7 @@
   <div class="dlg-body">
     <h4>WORKFLOW</h4>
     <ol>
-      <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, choose fabric width/buffer/lay rule, review the summary. All models nest together in one combined marker.</li>
+      <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, set each piece's lay direction and <b>fabric category</b> (any code — A/B/C, 1/2/3, BD/Gst/FR…), choose fabric width/buffer/lay rule, review the summary. Pieces sharing a fabric code cut from the same fabric; chips above the tray filter the tray and scope Auto-Nest to one fabric at a time.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, lay rule, buffer, width, end allowance and the theme.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
@@ -938,7 +958,7 @@ function newOrder(lines, name, width, buffer){
   const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
   S = { name, width, buffer, endAllow:prevEnd, pieces:[],
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
-                               excl:[...(L.excl||[])], dir:{...(L.dir||{})} })) };
+                               excl:[...(L.excl||[])], dir:{...(L.dir||{})}, fab:{...(L.fab||{})} })) };
   S.lines.forEach((L, li)=>{
     const model = modelById(L.modelId), sc = scaleOf(L.modelId);
     for (let si=0; si<sc.names.length; si++){
@@ -947,12 +967,14 @@ function newOrder(lines, name, width, buffer){
         for (const d of model.pieces){
           if (L.excl.includes(d.key0)) continue;
           const dir = L.dir[d.key0] || d.rot;
+          const fab = L.fab[d.key0] || 'A';   // fabric category — user codes: A/B/C, 1/2/3, BD/Gst…
           for (let k=0;k<d.qty;k++)
-            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir,
+            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir, fab,
                             placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
         }
     }
   });
+  UI.fabricFilter=null;
   UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
   $('markerName').value = name;
   renderAll(); fitView(); persist();
@@ -964,15 +986,22 @@ function migrateMarker(m){
     m.lines=[{ modelId:m.modelId||'tshirt', sizesQty:m.sizesQty||{}, excl:[] }];
     delete m.modelId; delete m.sizesQty;
   }
-  for (const L of m.lines) if (!L.dir) L.dir={};
+  for (const L of m.lines){ if (!L.dir) L.dir={}; if (!L.fab) L.fab={}; }
   for (const p of m.pieces){
     if (p.line==null) p.line=0;
     if (!p.dir) p.dir = (defByKey[p.defKey]||{}).rot || 'two';
+    if (!p.fab) p.fab = 'A';   // markers saved before fabric categories
   }
   if (m.endAllow==null) m.endAllow = 4;   // markers saved before the end-allowance field
   return m;
 }
 const pieceDir = inst => inst.dir || (defByKey[inst.defKey]||{}).rot || 'two';
+const pieceFab = inst => inst.fab || 'A';
+// distinct fabric codes in the current marker, in first-seen order
+function markerFabrics(){
+  const seen=[]; for (const p of S.pieces){ const f=pieceFab(p); if (!seen.includes(f)) seen.push(f); }
+  return seen;
+}
 const lineTag = li => S.lines.length>1 ? modelById(S.lines[li].modelId).tag : '';
 
 /* ---------------- validity ---------------- */
@@ -1085,10 +1114,13 @@ function renderFabric(len){
     r+=`<line x1="${x}" y1="${-(major?7:4)}" x2="${x}" y2="0" stroke="var(--mut)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
     if (major) r+=`<text x="${x}" y="-10" font-size="7" fill="var(--mut)" text-anchor="middle">${x}</text>`;
   }
+  // width ruler counts from the BOTTOM selvage: 0,0 is the bottom-left corner
+  // (marker convention). Internally y still runs down — display only is flipped.
   for (let y=0;y<=W;y+=10){
-    const major = y%50===0;
+    const dv = W-y;
+    const major = dv%50===0;
     r+=`<line x1="${-(major?7:4)}" y1="${y}" x2="0" y2="${y}" stroke="var(--mut)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-    if (major) r+=`<text x="-10" y="${y+2.4}" font-size="7" fill="var(--mut)" text-anchor="end">${y}</text>`;
+    if (major || dv===W) r+=`<text x="-10" y="${y+2.4}" font-size="7" fill="var(--mut)" text-anchor="end">${dv}</text>`;
   }
   r+=`<text x="${L/2}" y="${W+13}" font-size="8" fill="var(--faint)" text-anchor="middle">fabric width ${W} cm · selvage to selvage</text>`;
   gRulers.innerHTML = r;
@@ -1133,21 +1165,33 @@ function renderOverlay(len){
   gOverlay.innerHTML = h;
 }
 
-function trowMarkup(inst, count){
+function trowMarkup(inst, count, multiFab){
   const def=defByKey[inst.defKey], mdl=modelById(S.lines[inst.line].modelId), tag=lineTag(inst.line);
-  return `<div class="trow${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${mdl.name} ${def.name} · size ${sizeNm(inst)} — click, then click the fabric to place">`+
+  return `<div class="trow${UI.carry===inst.uid?' carrying':''}" data-uid="${inst.uid}" title="${mdl.name} ${def.name} · size ${sizeNm(inst)} · fabric ${esc(pieceFab(inst))} — click, then click the fabric to place">`+
     `<div class="sw" style="background:${sizeCol(inst)}"></div>`+
     `<div class="info"><div class="nm">${tag?`<span style="color:var(--mut)">${tag}·</span>`:''}${def.name}</div><div class="sz">size ${sizeNm(inst)}</div></div>`+
+    (multiFab?`<span class="fabtag">${esc(pieceFab(inst))}</span>`:'')+
     `<span class="cnt">×${count}</span>`+
   `</div>`;
 }
 
 function renderTray(){
   const q = ($('trayFilter').value||'').trim().toLowerCase();
+  // fabric filter chips — shown only when the marker uses more than one fabric
+  const fabs = markerFabrics();
+  const multiFab = fabs.length>1;
+  if (UI.fabricFilter && !fabs.includes(UI.fabricFilter)) UI.fabricFilter=null;
+  $('trayFabs').hidden = !multiFab;
+  if (multiFab){
+    $('trayFabs').innerHTML =
+      `<button class="fabchip${!UI.fabricFilter?' on':''}" data-fab="*">All</button>`+
+      fabs.map(f=>`<button class="fabchip${UI.fabricFilter===f?' on':''}" data-fab="${esc(f)}">${esc(f)}</button>`).join('');
+  }
   const groups = new Map();
   for (const p of S.pieces){
     if (p.placed || p.uid===UI.carry) continue;
-    const k = p.line+'|'+p.defKey+'|'+p.sizeIdx;
+    if (UI.fabricFilter && pieceFab(p)!==UI.fabricFilter) continue;
+    const k = p.line+'|'+p.defKey+'|'+p.sizeIdx+'|'+pieceFab(p);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(p);
   }
@@ -1155,14 +1199,16 @@ function renderTray(){
   const totalBeforeFilter = list.length;
   if (q) list = list.filter(g=>{
     const def=defByKey[g[0].defKey];
-    return (def.name+' '+sizeNm(g[0])).toLowerCase().includes(q);
+    return (def.name+' '+sizeNm(g[0])+' '+pieceFab(g[0])).toLowerCase().includes(q);
   });
   if (!totalBeforeFilter){
-    $('trayItems').innerHTML = `<div id="trayEmpty"><div class="ec">✓</div><b>All pieces placed</b><span>Tray is empty. Return pieces here to re-nest, or hit Auto-Nest.</span></div>`;
+    $('trayItems').innerHTML = UI.fabricFilter
+      ? `<div id="trayEmpty"><div class="ec">✓</div><b>Fabric ${esc(UI.fabricFilter)} placed</b><span>No unplaced pieces on this fabric.</span></div>`
+      : `<div id="trayEmpty"><div class="ec">✓</div><b>All pieces placed</b><span>Tray is empty. Return pieces here to re-nest, or hit Auto-Nest.</span></div>`;
   } else if (!list.length){
     $('trayItems').innerHTML = `<div id="trayEmpty"><div class="ec">⌕</div><b>No matches</b><span>Nothing in the tray matches “${esc(q)}”.</span></div>`;
   } else {
-    $('trayItems').innerHTML = list.map(g=>trowMarkup(g[0], g.length)).join('');
+    $('trayItems').innerHTML = list.map(g=>trowMarkup(g[0], g.length, multiFab)).join('');
   }
 }
 const esc = s => String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1228,9 +1274,14 @@ function renderOrderDock(){
     const garments = sc.names.reduce((a,s)=>a+(L.sizesQty[s]|0),0);
     const pieces = model.pieces.filter(d=>!L.excl.includes(d.key0));
     const pcsPerG = pieces.reduce((a,d)=>a+d.qty,0);
+    // fabric breakdown for this line, e.g. "A: Front, Back · Gst: Gusset"
+    const byFab = {};
+    for (const d of pieces){ const f=L.fab[d.key0]||'A'; (byFab[f]=byFab[f]||[]).push(d.name); }
+    const fabLine = Object.keys(byFab).length>1
+      ? `<br>Fabrics: ${Object.entries(byFab).map(([f,ns])=>`<b>${esc(f)}</b> — ${ns.join(', ')}`).join(' · ')}` : '';
     return `<div class="dbox"><div class="dline-hd"><span class="lett">${LETTERS[li]}</span><span class="nm">${model.name}</span></div>
       <div>${ratio||'<span style="color:var(--mut)">no sizes ordered</span>'}</div>
-      <div style="margin-top:9px">Pieces: ${pieces.map(d=>`${d.name} ×${d.qty}`).join(' · ')}<br>
+      <div style="margin-top:9px">Pieces: ${pieces.map(d=>`${d.name} ×${d.qty}`).join(' · ')}${fabLine}<br>
       ${garments} garment${garments===1?'':'s'} · ${pcsPerG} pcs/garment · <b>${garments*pcsPerG} pieces</b></div></div>`;
   }).join('');
   b.innerHTML = `<div class="dsec-lbl">ORDER · READ-ONLY</div>${lines}` +
@@ -1250,8 +1301,8 @@ function pieceHTML(){
   return `<div class="dsec-lbl">PIECE</div>
     <div class="dbox">
       <div class="dline-hd"><span class="lett" style="background:${sizeCol(p)}; color:var(--pc-ink)">${sizeNm(p)}</span><span class="nm">${def.name}</span></div>
-      <div>${tag?tag+' · ':''}bundle ${p.bundle} · ${dirLabel(dir)}<br>
-      ${sh.bb.w.toFixed(1)} × ${sh.bb.h.toFixed(1)} cm · at x ${p.x.toFixed(1)} y ${p.y.toFixed(1)}${p.fx?' · flipped':''}</div>
+      <div>${tag?tag+' · ':''}bundle ${p.bundle} · ${dirLabel(dir)} · fabric <b>${esc(pieceFab(p))}</b><br>
+      ${sh.bb.w.toFixed(1)} × ${sh.bb.h.toFixed(1)} cm · at x ${p.x.toFixed(1)} y ${(S.width-(p.y+sh.bb.h)).toFixed(1)}${p.fx?' · flipped':''}</div>
     </div>
     <div class="dgrp"><div class="dgrp-l">Rotate</div><div class="dbtns">
       <button class="dbtn" data-pa="rotccw">⟲ 90°</button>
@@ -1420,7 +1471,7 @@ function startPan(e){
 }
 function onMove(e){
   const w=worldPt(e);
-  $('coords').textContent = `x ${w.x.toFixed(1)}  y ${w.y.toFixed(1)} cm`;
+  $('coords').textContent = `x ${w.x.toFixed(1)}  y ${(S.width-w.y).toFixed(1)} cm`;   // 0,0 = bottom-left
   if (UI.pan){
     const scale = UI.vb.w/cv.clientWidth;
     UI.vb.x = UI.pan.vx - (e.clientX-UI.pan.mx)*scale;
@@ -1491,6 +1542,14 @@ $('trayItems').addEventListener('click', e=>{
   renderTray(); renderHint();
 });
 $('trayFilter').addEventListener('input', renderTray);
+$('trayFabs').addEventListener('click', e=>{
+  const c=e.target.closest('.fabchip'); if(!c) return;
+  UI.fabricFilter = c.dataset.fab==='*' ? null : c.dataset.fab;
+  renderTray();
+  setFooterStatus(UI.fabricFilter
+    ? `Fabric ${UI.fabricFilter} — tray filtered; Auto-Nest will place only this fabric`
+    : 'Showing all fabrics', 'ok');
+});
 
 /* ---- right dock wiring ---- */
 $('dockTabs').addEventListener('click', e=>{
@@ -1781,8 +1840,11 @@ async function nestImprove(iters, label){
   }
 }
 async function autoNest(quiet){
-  const tray=S.pieces.filter(p=>!p.placed);
-  if (!tray.length) return toast('Nothing to nest — tray is empty','warn');
+  // an active fabric chip scopes the nest to that fabric's pieces, so each
+  // fabric's marker can be laid one at a time
+  let tray=S.pieces.filter(p=>!p.placed);
+  if (UI.fabricFilter) tray=tray.filter(p=>pieceFab(p)===UI.fabricFilter);
+  if (!tray.length) return toast(UI.fabricFilter?`Nothing to nest on fabric ${UI.fabricFilter}`:'Nothing to nest — tray is empty','warn');
   cancelCarry();
   pushUndo();
   UI.nestAbort=false;
@@ -1969,7 +2031,7 @@ const wTotalGarments = () => W.lines.reduce((a,L)=>a+lineGarments(L),0);
 function openOrderDialog(){
   W={ step:1, prefix:'',
       lines: S && S.lines ? S.lines.map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty},
-              excl:new Set(L.excl||[]), dir:{...(L.dir||{})}})) : [],
+              excl:new Set(L.excl||[]), dir:{...(L.dir||{})}, fab:{...(L.fab||{})}})) : [],
       width: S?S.width:160, buffer: S?S.buffer:0 };
   renderWizard();
   $('dlgOrder').showModal();
@@ -2011,17 +2073,20 @@ function renderWizard(){
     updWTotals();
   }
   else if (W.step===3){
-    b.innerHTML = `<div class="wcap">Untick pieces to exclude them from this marker. Set each piece's <b>lay direction</b> — two-way (0°/180°) is the default; four-way allows 90° turns, free allows any angle.</div>`+
+    b.innerHTML = `<div class="wcap">Untick pieces to exclude them from this marker. Set each piece's <b>lay direction</b> (two-way is the default) and its <b>fabric</b> — type any code you like: A/B/C, 1/2/3, or BD, Gst, FR… Pieces of the same code cut from the same fabric.</div>`+
       W.lines.map((L,li)=>{const m=modelById(L.modelId);
         return `<fieldset class="lineset"><legend>${LETTERS[li]} · ${m.name}</legend><div class="pchk">`+
           m.pieces.map(d=>{
             const inc=!L.excl.has(d.key0), cur=L.dir[d.key0]||d.rot, over=cur!==d.rot;
+            const fab=L.fab[d.key0]||'A', fover=fab!=='A';
             return `<div class="prow">`+
               `<label><input type="checkbox" data-line="${li}" data-key="${d.key0}"${inc?' checked':''}> `+
               `<span class="nm">${d.name}</span> <span class="sub">×${d.qty}</span></label>`+
               `<select class="dirsel${over?' override':''}" data-line="${li}" data-dir="${d.key0}"${inc?'':' disabled'} title="Lay direction — default ${dirLabel(d.rot)}">`+
                 DIRS.map(o=>`<option value="${o[0]}"${cur===o[0]?' selected':''}>${o[1]}</option>`).join('')+
-              `</select></div>`;
+              `</select>`+
+              `<input class="fabin${fover?' override':''}" data-line="${li}" data-fabkey="${d.key0}" value="${esc(fab)}" maxlength="4" spellcheck="false"${inc?'':' disabled'} title="Fabric category — pieces sharing a code are cut from the same fabric">`+
+              `</div>`;
           }).join('')+
           `</div></fieldset>`;}).join('');
   }
@@ -2063,7 +2128,7 @@ $('wizBody').addEventListener('click', e=>{
   const add=e.target.closest('[data-add]');
   if (add){
     if (W.lines.length>=8) return toast('Max 8 order lines','warn');
-    W.lines.push({modelId:add.dataset.add, sizesQty:{[scaleOf(add.dataset.add).base]:1}, excl:new Set(), dir:{}});
+    W.lines.push({modelId:add.dataset.add, sizesQty:{[scaleOf(add.dataset.add).base]:1}, excl:new Set(), dir:{}, fab:{}});
     renderWizard(); return;
   }
   const del=e.target.closest('[data-del]');
@@ -2076,10 +2141,17 @@ $('wizBody').addEventListener('input', e=>{
     const L=W.lines[+t.dataset.line]; L.dir[t.dataset.dir]=t.value;
     t.classList.toggle('override', t.value!==defByKey[t.dataset.dir].rot);
   }
+  else if (t.dataset.fabkey){
+    const L=W.lines[+t.dataset.line];
+    const code=t.value.trim().slice(0,4) || 'A';
+    if (code==='A') delete L.fab[t.dataset.fabkey]; else L.fab[t.dataset.fabkey]=code;
+    t.classList.toggle('override', code!=='A');
+  }
   else if (t.dataset.key){
     const L=W.lines[+t.dataset.line];
     t.checked ? L.excl.delete(t.dataset.key) : L.excl.add(t.dataset.key);
-    const sel=t.closest('.prow').querySelector('.dirsel'); if (sel) sel.disabled=!t.checked;
+    const row=t.closest('.prow');
+    row.querySelectorAll('.dirsel,.fabin').forEach(el=>el.disabled=!t.checked);
   }
   else if (t.id==='wWidth'){ W.width=Math.max(90,Math.min(300,+t.value||160)); }
   else if (t.id==='wBuffer'){ W.buffer=+t.value; }
@@ -2099,7 +2171,7 @@ function wizCreate(nest){
   if (tot>240) return toast('Order too large for one marker (max ~240 pieces) — reduce quantities','warn');
   const nameEl=$('wName');
   const name=(nameEl && nameEl.value.trim()) || wSuggestName();
-  const lines=W.lines.filter(L=>lineGarments(L)>0).map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...L.excl], dir:{...L.dir}}));
+  const lines=W.lines.filter(L=>lineGarments(L)>0).map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty}, excl:[...L.excl], dir:{...L.dir}, fab:{...L.fab}}));
   $('dlgOrder').close();
   newOrder(lines, name, W.width, W.buffer);
   toast(`Order created — ${tot} pieces in the tray`);
