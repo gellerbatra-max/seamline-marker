@@ -212,6 +212,7 @@
 
   /* ---------- measure / zoom-window mode + approval chip ---------- */
   #cv.measuring{cursor:crosshair}
+  #gCut{pointer-events:none}
   .chip.appr.needs{background:var(--warn); color:#241a05}
   .chip.appr.ok{background:var(--good); color:#0a2214}
 
@@ -537,7 +538,7 @@
     <button class="rtab" data-rtab="piece">Piece</button>
     <button class="rtab" data-rtab="marker">Marker</button>
     <button class="rtab" data-rtab="fabric">Fabric</button>
-    <button class="rtab dis" disabled title="Split piece · placement templates · cut sequencing — planned">Advanced</button>
+    <button class="rtab" data-rtab="advanced">Advanced</button>
     <button class="rtab" data-rtab="view">View</button>
   </div>
   <div id="tbSpacer"></div>
@@ -553,6 +554,7 @@
     <button class="tb" id="bOpen" title="Open a saved marker (.json)"><span class="ic">⌂</span>Open marker…</button>
     <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
     <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
+    <button class="tb" id="bCopy1" title="Copy the plot to the clipboard at true 1:1 scale (96 dpi paste targets)"><span class="ic">⧉</span>Copy 1:1</button>
   </div>
   <div class="rpane" data-rpane="piece" hidden>
     <button class="tb" id="bRotL" title="Rotate counter-clockwise (Shift+R)"><span class="ic">⟲</span><span class="kbd">⇧R</span></button>
@@ -606,6 +608,22 @@
     <button class="tb" id="bEditOrder" title="Change fabric width, buffer, sizes or pieces"><span class="ic">✎</span>Edit order…</button>
     <span class="rnote">width · buffer · end allowance live in the header and Options dock — splice · plaid &amp; stripe · block fuse planned</span>
   </div>
+  <div class="rpane" data-rpane="advanced" hidden>
+    <button class="tb tgl" id="tCutPath" title="Show the knife path — cut order, plunge points, travel direction and dry-haul"><span class="ic">✂</span>Knife path</button>
+    <button class="tb" id="bAutoSeq" title="Auto-sequence: banded serpentine sweep, the order a conveyor cutter consumes the marker"><span class="ic">⚡</span>Auto sequence</button>
+    <button class="tb" id="bPickSeq" title="Pick order — click pieces in the order they should cut; Enter finishes, Esc cancels"><span class="ic">☝</span>Pick order</button>
+    <button class="tb" id="bRevSeq" title="Reverse the cut sequence (spreader started from the other table end)"><span class="ic">⇄</span>Reverse</button>
+    <span class="fchip" title="Cut window / conveyor bite length — pieces are sequenced band by band">band <input id="cutBandW" type="number" min="10" max="200" step="5" value="50" style="width:44px"> cm</span>
+    <select class="mini-sel" id="cutDirSel" title="Knife travel direction around each piece">
+      <option value="ccw">Cut: CCW</option>
+      <option value="cw">Cut: CW</option>
+    </select>
+    <div class="tsep"></div>
+    <button class="tb" id="bExpHPGL" title="Generate cut data — HPGL .plt (1 plu = 0.025 mm), the garment-cutter lingua franca"><span class="ic">⬇</span>Cut data HPGL</button>
+    <button class="tb" id="bExpDXF" title="Generate cut data — DXF R12, AAMA-style: layer 1 = contours in cut order, layer 15 = labels"><span class="ic">⬇</span>Cut data DXF</button>
+    <button class="tb tgl on" id="tCutLabels" title="Include piece labels (seq · name · size · bundle) on DXF layer 15"><span class="ic">A</span>Labels</button>
+    <span class="rnote">split piece · placement templates — planned</span>
+  </div>
   <div class="rpane" data-rpane="view" hidden>
     <button class="tb" id="bZoomWin" title="Zoom window — drag a rectangle to zoom into it (W)"><span class="ic">◱</span>Zoom window<span class="kbd">W</span></button>
     <button class="tb tgl on" id="tThumb" title="Show the whole-marker thumbnail (click it to jump the view)"><span class="ic">▭</span>Thumbnail</button>
@@ -634,6 +652,7 @@
         <g id="gOverlay"></g>
         <g id="gRulers"></g>
         <g id="gMeasure"></g>
+        <g id="gCut"></g>
         <g id="ghost"></g>
       </svg>
       <div id="thumb" hidden><svg id="thumbSvg" preserveAspectRatio="xMidYMid meet"></svg></div>
@@ -757,7 +776,7 @@
       <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, set each piece's lay direction and <b>fabric category</b> (any code — A/B/C, 1/2/3, BD/Gst/FR…), choose fabric width/buffer/rotation rule, review the summary. Pieces sharing a fabric code cut from the same fabric; chips above the tray filter the tray and scope Auto-Nest to one fabric at a time.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
-      <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
+      <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, copy it 1:1 to the clipboard, or save the marker as JSON. On the <b>Advanced</b> tab, sequence the cut (<b>Auto sequence</b> = banded serpentine sweep; <b>Pick order</b> = click pieces in order; <b>Knife path</b> shows plunge points, direction and dry-haul) and <b>Generate Cut Data</b> as HPGL (.plt) for the cutter or DXF R12 for CAM import — entity order is the cut order.</li>
       <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
     <h4>RULES</h4>
@@ -1043,6 +1062,7 @@ const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
 function newOrder(lines, name, width, buffer){
   const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
   S = { name, width, buffer, endAllow:prevEnd, pieces:[],
+        cut:{ mode:'auto', order:[], params:{ bandW:50, dir:'ccw' } },
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
                                excl:[...(L.excl||[])], dir:{...(L.dir||{})}, fab:{...(L.fab||{})} })) };
   S.lines.forEach((L, li)=>{
@@ -1081,6 +1101,9 @@ function migrateMarker(m){
   }
   if (m.endAllow==null) m.endAllow = 4;   // markers saved before the end-allowance field
   if (m.approval==null) m.approval = 'none';   // markers saved before the approval flag
+  // markers saved before cut sequencing
+  if (!m.cut) m.cut = { mode:'auto', order:[], params:{} };
+  m.cut.params = Object.assign({ bandW:50, dir:'ccw' }, m.cut.params||{});
   return m;
 }
 const pieceDir = inst => inst.dir || (defByKey[inst.defKey]||{}).rot || 'two';
@@ -1141,12 +1164,18 @@ function slideDir(inst, dx, dy){
 }
 
 /* ---------------- undo ---------------- */
-const snapPieces = () => JSON.stringify(S.pieces.map(p=>[p.uid,p.placed?1:0,p.x,p.y,p.rot,p.fx?1:0,p.fy?1:0]));
+const snapPieces = () => JSON.stringify({
+  pieces: S.pieces.map(p=>[p.uid,p.placed?1:0,p.x,p.y,p.rot,p.fx?1:0,p.fy?1:0]),
+  cut: S.cut ? { mode:S.cut.mode, order:S.cut.order.slice() } : null,   // slice — never alias
+});
 function pushUndo(){ UI.undo.push(snapPieces()); if (UI.undo.length>100) UI.undo.shift(); UI.redo=[]; }
 function applySnap(s){
-  const map = new Map(JSON.parse(s).map(r=>[r[0],r]));
+  const snap = JSON.parse(s);
+  const rows = Array.isArray(snap) ? snap : snap.pieces;   // pre-cut-sequencing snapshots were a bare array
+  const map = new Map(rows.map(r=>[r[0],r]));
   for (const p of S.pieces){ const r=map.get(p.uid); if(!r) continue;
     p.placed=!!r[1]; p.x=r[2]; p.y=r[3]; p.rot=r[4]; p.fx=!!r[5]; p.fy=!!r[6]; }
+  if (!Array.isArray(snap) && snap.cut && S.cut){ S.cut.mode=snap.cut.mode; S.cut.order=snap.cut.order.slice(); }
 }
 function undo(){ if(!UI.undo.length) return toast('Nothing to undo','warn');
   UI.redo.push(snapPieces()); applySnap(UI.undo.pop()); UI.sel=null; renderAll(); persist(); }
@@ -1473,7 +1502,7 @@ function shortcutsHTML(){
     ['Butt left / up','L / U'],['Return to tray','Del'],['Cancel / deselect','Esc'],
     ['Undo / redo','⌃Z / ⌃Y'],['Zoom in/out/fit','+ − 0'],['Zoom window','W'],
     ['Add to selection','⇧ click'],['Marquee select','⇧ drag'],['Select bundle','⌥ click'],
-    ['New order','N'],['Cut Plan','P']];
+    ['Finish pick order','Enter'],['New order','N'],['Cut Plan','P']];
   return `<div class="dsec-lbl">KEYBOARD</div>` +
     rows.map(r=>`<div class="sc-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
 }
@@ -1486,6 +1515,7 @@ function renderAll(){
   renderTray();
   renderHint();
   if (typeof renderThumb==='function') renderThumb();
+  if (typeof drawCutPreview==='function') drawCutPreview();
 }
 
 function renderHint(){
@@ -1612,6 +1642,11 @@ function onDown(e){
   if (e.button!==0) return;
   const w = worldPt(e);
 
+  if (UI.pickSeq){
+    const g=e.target.closest && e.target.closest('g.pc');
+    if (g) pickSeqClick(+g.dataset.uid);
+    return;
+  }
   if (UI.zoomwin){ UI.zw={x0:w.x, y0:w.y, x1:w.x, y1:w.y}; capturePtr(e); return; }
   if (UI.measure){ measureClick(w, e.target.closest && e.target.closest('g.pc')); return; }
 
@@ -2126,6 +2161,10 @@ async function autoNest(quiet){
   }
   $('nestFill').style.width='100%';
   dlg.close();
+  // a re-nest invalidates a hand-made cut sequence — ask, never silently discard
+  if (S.cut && S.cut.mode==='manual' && S.cut.order.length &&
+      confirm('Layout changed. Discard the manual cut sequence and resequence automatically?'))
+    S.cut.mode='auto';
   renderAll(); persist();
   const st=markerStats();
   const secs=((performance.now()-t0)/1000).toFixed(1);
@@ -2182,7 +2221,7 @@ function openJSON(file){
   };
   rd.readAsText(file);
 }
-function plotSVGString(){
+function plotSVGString(pxPerCm=4){
   const st=markerStats(), W=S.width, L=Math.max(st.len, 50);
   let body='';
   for (const p of S.pieces){
@@ -2203,7 +2242,7 @@ function plotSVGString(){
   const gar=orderGarments();
   const cons = gar>0 ? ` · consumption ${((st.len+endAllow())/gar/100).toFixed(3)} m/gar (end +${endAllow()} cm)` : '';
   const title=`${S.name} · ${modelNames} · width ${W} cm · length ${(st.len/100).toFixed(3)} m · util ${(st.util*100).toFixed(1)}%${cons} · ${st.placed}/${st.total} pcs · buffer ${S.buffer} cm · Seamline Marker · ${new Date().toISOString().slice(0,10)}`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*4}" height="${(W+24)*4}">`+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -12 ${L+12} ${W+24}" width="${(L+12)*pxPerCm}" height="${(W+24)*pxPerCm}">`+
     `<rect x="-4" y="-12" width="${L+12}" height="${W+24}" fill="#fff"/>`+
     `<text x="0" y="-5" font-size="4.5" font-family="Helvetica,Arial" fill="#111" font-weight="bold">${title}</text>`+
     `<rect x="0" y="0" width="${L+4}" height="${W}" fill="#f7f4ec" stroke="#555" stroke-width="0.2"/>`+
@@ -2811,6 +2850,10 @@ $('rtabs').addEventListener('click', e=>{
   const b=e.target.closest('.rtab'); if(!b || b.disabled) return;
   document.querySelectorAll('#rtabs .rtab').forEach(x=>x.classList.toggle('on', x===b));
   document.querySelectorAll('#ribbonRow .rpane').forEach(p=>p.hidden = p.dataset.rpane!==b.dataset.rtab);
+  if (b.dataset.rtab==='advanced' && S && S.cut){   // sync cut params into the pane
+    $('cutBandW').value=S.cut.params.bandW;
+    $('cutDirSel').value=S.cut.params.dir;
+  }
 });
 
 /* =====================================================================
@@ -3114,6 +3157,266 @@ function unmarrySel(){
   toast('Marry removed');
 }
 
+/* ---- Tier 3: cut sequencing + cut data (HPGL / DXF R12) ---- */
+const gCut=$('gCut');
+UI.cutPreview=false; UI.pickSeq=null; UI.cutLabels=true;
+
+const signedArea = ring => {
+  let a=0;
+  for (let i=0;i<ring.length;i++){ const p=ring[i], q=ring[(i+1)%ring.length]; a+=p[0]*q[1]-q[0]*p[1]; }
+  return a/2;
+};
+
+// Keep S.cut.order consistent with reality: drop unplaced/duplicate uids,
+// append any placed piece missing from the order (a late addition cuts last —
+// nothing is ever silently left uncut).
+function validateCutOrder(quiet){
+  const c=S.cut; if (!c) return;
+  const placed=new Set(S.pieces.filter(p=>p.placed).map(p=>p.uid));
+  const seen=new Set();
+  c.order=c.order.filter(u=>{ if (!placed.has(u)||seen.has(u)) return false; seen.add(u); return true; });
+  let added=0;
+  for (const p of S.pieces) if (p.placed && !seen.has(p.uid)){ c.order.push(p.uid); seen.add(p.uid); added++; }
+  if (added && !quiet && c.mode==='manual')
+    setFooterStatus(added+' piece(s) appended to the cut sequence','warn');
+}
+
+// Banded serpentine sweep — the order a windowed conveyor cutter consumes a
+// marker. Bands by leading edge (bbox min-x) so the head never returns over
+// fabric already cut out from under a long piece; serpentine within each band;
+// near-ties cut the smaller piece first while the lay is still anchored.
+function autoSequence(){
+  const c=S.cut, bw=Math.max(10, c.params.bandW||50);
+  const rows=S.pieces.filter(p=>p.placed).map(p=>{
+    const sh=instShape(p);
+    return { uid:p.uid, band:Math.floor(p.x/bw), cy:p.y+sh.bb.h/2, cx:p.x+sh.bb.w/2, area:Math.abs(sh.area) };
+  });
+  rows.sort((a,b)=>{
+    if (a.band!==b.band) return a.band-b.band;
+    if (Math.abs(a.cy-b.cy)>=2) return (a.band%2===0) ? a.cy-b.cy : b.cy-a.cy;
+    if (Math.abs(a.area-b.area)>0.01) return a.area-b.area;
+    if (a.cx!==b.cx) return a.cx-b.cx;
+    return a.uid-b.uid;
+  });
+  c.order=rows.map(r=>r.uid);
+  c.mode='auto';
+}
+
+// The single geometry source consumed by the preview, the footer metrics and
+// both exporters — they can never disagree. Rings are deduped, winding-
+// normalized per instance (fx/fy mirroring flips winding), and rotated to
+// start at the plunge vertex: a convex corner (interior < 150°) nearest the
+// previous knife-up point — corner plunges hide the entry nick.
+function buildCutMoves(){
+  validateCutOrder(true);
+  const c=S.cut;
+  if (c.mode==='auto') autoSequence();
+  const wantNeg=(c.params.dir||'ccw')==='ccw';   // machine-CCW = negative world area (y flips at emit)
+  const moves=[]; let cutLen=0, dryLen=0, cur=[0,0];
+  for (const uid of c.order){
+    const p=byUid(uid); if (!p||!p.placed) continue;
+    const raw=instPoly(p);
+    let ring=raw.filter((pt,i)=>{
+      if (i===0) return true;
+      const q=raw[i-1];
+      return Math.hypot(pt[0]-q[0], pt[1]-q[1])>0.005;
+    });
+    while (ring.length>1 && Math.hypot(ring[0][0]-ring[ring.length-1][0], ring[0][1]-ring[ring.length-1][1])<=0.005) ring.pop();
+    if (ring.length<3) continue;
+    if ((signedArea(ring)<0)!==wantNeg) ring=ring.slice().reverse();
+    const sgn=Math.sign(signedArea(ring))||1;
+    let best=-1, bestD=1e18, fall=0, fallD=1e18;
+    for (let i=0;i<ring.length;i++){
+      const a=ring[(i+ring.length-1)%ring.length], v=ring[i], b=ring[(i+1)%ring.length];
+      const e1=[v[0]-a[0], v[1]-a[1]], e2=[b[0]-v[0], b[1]-v[1]];
+      const cross=e1[0]*e2[1]-e1[1]*e2[0], dot=e1[0]*e2[0]+e1[1]*e2[1];
+      const d=(v[0]-cur[0])**2+(v[1]-cur[1])**2;
+      if (d<fallD){ fallD=d; fall=i; }
+      if (Math.sign(cross)===sgn && Math.abs(Math.atan2(cross,dot))>Math.PI/6 && d<bestD){ bestD=d; best=i; }
+    }
+    const s=best>=0?best:fall;
+    ring=ring.slice(s).concat(ring.slice(0,s));
+    dryLen+=Math.hypot(ring[0][0]-cur[0], ring[0][1]-cur[1]);
+    for (let i=0;i<ring.length;i++){ const q=ring[(i+1)%ring.length]; cutLen+=Math.hypot(q[0]-ring[i][0], q[1]-ring[i][1]); }
+    cur=ring[0];                        // contour closes — knife ends at its plunge point
+    moves.push({p, ring});
+  }
+  dryLen+=Math.hypot(cur[0], cur[1]);   // return home
+  return {moves, cutLen, dryLen};
+}
+
+function cutMetrics(){
+  const {moves,cutLen,dryLen}=buildCutMoves();
+  if (!moves.length) return;
+  setFooterStatus(`Cut ${(cutLen/100).toFixed(1)} m · dry haul ${(dryLen/100).toFixed(1)} m (${Math.round(dryLen/Math.max(cutLen,0.01)*100)}%) · ${moves.length} pcs sequenced`,'ok');
+}
+
+function drawCutPreview(){
+  if (!gCut) return;
+  if (UI.pickSeq){ drawPickBadges(); return; }
+  if (!UI.cutPreview){ gCut.innerHTML=''; return; }
+  const {moves}=buildCutMoves();
+  if (!moves.length){ gCut.innerHTML=''; return; }
+  const fs=Math.max(2.5, UI.vb.w/cv.clientWidth*11);
+  let dry='M 0 0', body='';
+  moves.forEach((m,i)=>{
+    const r=m.ring;
+    dry+=` L ${r[0][0]} ${r[0][1]}`;
+    const d='M '+r.map(pt=>pt[0]+' '+pt[1]).join(' L ')+' Z';
+    // direction arrowhead on the first segment
+    const ax=r[0][0], ay=r[0][1], bx=r[1][0], by=r[1][1];
+    const dl=Math.hypot(bx-ax,by-ay)||1, ux=(bx-ax)/dl, uy=(by-ay)/dl;
+    const tx=ax+ux*fs, ty=ay+uy*fs;
+    const arrow=`<path d="M ${tx} ${ty} l ${(-ux*0.5-uy*0.3)*fs} ${(-uy*0.5+ux*0.3)*fs} M ${tx} ${ty} l ${(-ux*0.5+uy*0.3)*fs} ${(-uy*0.5-ux*0.3)*fs}" stroke="var(--good)" stroke-width="1.5" vector-effect="non-scaling-stroke" fill="none"/>`;
+    const c=instShape(m.p).c, px=m.p.x+c[0], py=m.p.y+c[1];
+    body+=`<path d="${d}" fill="none" stroke="var(--good)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`+
+      `<circle cx="${r[0][0]}" cy="${r[0][1]}" r="${fs/5}" fill="var(--good)"/>`+arrow+
+      `<circle cx="${px}" cy="${py}" r="${fs*0.7}" fill="var(--panel)" stroke="var(--acc)" vector-effect="non-scaling-stroke"/>`+
+      `<text x="${px}" y="${py+fs*0.24}" font-size="${fs*0.62}" text-anchor="middle" fill="var(--acc-hi)" font-weight="700">${i+1}</text>`;
+  });
+  dry+=' L 0 0';
+  gCut.innerHTML=
+    `<path d="${dry}" fill="none" stroke="var(--bad)" stroke-width="1" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>`+
+    `<path d="M -3 0 L 3 0 M 0 -3 L 0 3" stroke="var(--bad)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`+
+    body;
+}
+
+/* pick order — click pieces in cut order on the canvas */
+function startPickSeq(){
+  validateCutOrder(true);
+  UI.pickSeq=[]; cv.classList.add('measuring');
+  $('bPickSeq').classList.add('on');
+  setFooterStatus(`Click pieces in cut order (0/${S.pieces.filter(p=>p.placed).length}) — Pick order/Enter finishes, Esc cancels`,'ok');
+  drawCutPreview();
+}
+function endPickSeq(){
+  UI.pickSeq=null; cv.classList.remove('measuring');
+  $('bPickSeq').classList.remove('on');
+  drawCutPreview(); renderHint();
+}
+function pickSeqClick(uid){
+  const p=byUid(uid); if (!p||!p.placed) return;
+  const i=UI.pickSeq.indexOf(uid);
+  if (i>=0) UI.pickSeq.length=i;        // misclick recovery: unassign it and everything after
+  else UI.pickSeq.push(uid);
+  setFooterStatus(`Click pieces in cut order (${UI.pickSeq.length}/${S.pieces.filter(q=>q.placed).length}) — Pick order/Enter finishes, Esc cancels`,'ok');
+  drawCutPreview();
+}
+function commitPickSeq(){
+  const picked=UI.pickSeq.slice();
+  pushUndo();
+  validateCutOrder(true);
+  S.cut.order=picked.concat(S.cut.order.filter(u=>!picked.includes(u)));
+  S.cut.mode='manual';
+  endPickSeq(); persist();
+  UI.cutPreview=true; $('tCutPath').classList.add('on'); drawCutPreview();
+  toast(`Cut sequence set — ${picked.length} picked, the rest follow in their previous order`);
+  cutMetrics();
+}
+function drawPickBadges(){
+  const fs=Math.max(2.5, UI.vb.w/cv.clientWidth*11);
+  let h='';
+  UI.pickSeq.forEach((uid,i)=>{
+    const p=byUid(uid); if (!p) return;
+    const c=instShape(p).c;
+    h+=`<circle cx="${p.x+c[0]}" cy="${p.y+c[1]}" r="${fs*0.7}" fill="var(--acc)"/>`+
+       `<text x="${p.x+c[0]}" y="${p.y+c[1]+fs*0.25}" font-size="${fs*0.65}" text-anchor="middle" fill="var(--acc-ink)" font-weight="700">${i+1}</text>`;
+  });
+  gCut.innerHTML=h;
+}
+
+/* HPGL: 1 plu = 0.025 mm → cm×400, integers; absolute PU/PD only; explicit
+   closure back to the plunge vertex (HPGL has no closed flag); y flipped once
+   at emit so machine origin is bottom-left. */
+function exportHPGL(){
+  const {moves}=buildCutMoves();
+  if (!moves.length) return toast('Nothing sequenced — place pieces first','warn');
+  const W=S.width; let over=false;
+  const X=v=>{ const n=Math.round(v*400); if (Math.abs(n)>32767) over=true; return n; };
+  const Y=v=>{ const n=Math.round((W-v)*400); if (Math.abs(n)>32767) over=true; return n; };
+  let out='IN;SP1;\r\n';
+  for (const m of moves){
+    const r=m.ring;
+    out+=`PU${X(r[0][0])},${Y(r[0][1])};\r\n`;
+    const pts=r.slice(1).concat([r[0]]).map(pt=>X(pt[0])+','+Y(pt[1]));
+    let line='PD';
+    for (const t of pts){
+      if (line.length+t.length+2>70){ out+=line+';\r\n'; line='PD'; }   // +2 = comma + trailing ';'
+      line+=(line==='PD'?'':',')+t;
+    }
+    out+=line+';\r\n';
+  }
+  out+='PU0,0;SP0;\r\n';
+  download((S.name||'marker')+'.plt','application/octet-stream',
+    new Blob([out],{type:'application/octet-stream'}));
+  toast(over
+    ? 'HPGL exported — WARNING: coordinates exceed the 16-bit legacy plotter range'
+    : 'Cut data exported (HPGL · 1 plu = 0.025 mm · order = cut sequence)', over?'warn':undefined);
+}
+
+/* DXF R12 (AC1009), AAMA-flavored: layer 1 = closed POLYLINEs in cut order,
+   layer 15 = labels with the sequence number leading. Flattened entities, no
+   handles, no LWPOLYLINE, no $INSUNITS (does not exist in R12); LTYPE table
+   declared before the LAYER table references it. */
+function exportDXF(){
+  const {moves}=buildCutMoves();
+  if (!moves.length) return toast('Nothing sequenced — place pieces first','warn');
+  const W=S.width, st=markerStats(), N=v=>v.toFixed(2);
+  const L=[];
+  L.push('999',`Seamline Marker ${S.name} | UNITS: CM | ${N(Math.max(st.len,1))} x ${N(W)} | entity order = cut order`);
+  L.push('0','SECTION','2','HEADER',
+    '9','$ACADVER','1','AC1009',
+    '9','$EXTMIN','10','0.0','20','0.0','30','0.0',
+    '9','$EXTMAX','10',N(Math.max(st.len,1)),'20',N(W),'30','0.0',
+    '0','ENDSEC');
+  L.push('0','SECTION','2','TABLES',
+    '0','TABLE','2','LTYPE','70','1',
+    '0','LTYPE','2','CONTINUOUS','70','64','3','Solid line','72','65','73','0','40','0.0',
+    '0','ENDTAB',
+    '0','TABLE','2','LAYER','70','2',
+    '0','LAYER','2','1','70','64','62','1','6','CONTINUOUS',
+    '0','LAYER','2','15','70','64','62','7','6','CONTINUOUS',
+    '0','ENDTAB','0','ENDSEC');
+  L.push('0','SECTION','2','ENTITIES');
+  moves.forEach((m,i)=>{
+    L.push('0','POLYLINE','8','1','66','1','10','0.0','20','0.0','30','0.0','70','1');
+    for (const pt of m.ring)
+      L.push('0','VERTEX','8','1','10',N(pt[0]),'20',N(W-pt[1]),'30','0.0');
+    L.push('0','SEQEND','8','1');
+    if (UI.cutLabels){
+      const c=instShape(m.p).c, def=defByKey[m.p.defKey];
+      L.push('0','TEXT','8','15',
+        '10',N(m.p.x+c[0]),'20',N(W-(m.p.y+c[1])),'30','0.0','40','1.0',
+        '1',`${i+1} ${def.name.toUpperCase()} ${sizeNm(m.p)} b${m.p.bundle}`);
+    }
+  });
+  L.push('0','ENDSEC','0','EOF');
+  download((S.name||'marker')+'.dxf','application/dxf',
+    new Blob([L.join('\r\n')+'\r\n'],{type:'application/dxf'}));
+  toast('Cut data exported (DXF R12 · layer 1 = contours in cut order, layer 15 = labels)');
+}
+
+/* Copy 1:1 — raster at 96 dpi ÷ 2.54 px per cm so Office-class paste targets
+   show the marker at true scale. */
+function copyMarker1to1(){
+  const svg=plotSVGString(96/2.54);
+  const img=new Image();
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  img.onload=()=>{
+    const c=document.createElement('canvas');
+    c.width=img.width; c.height=img.height;
+    c.getContext('2d').drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    c.toBlob(async b=>{
+      try{
+        await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);
+        toast('Marker copied 1:1 (true scale at 96 dpi paste targets)');
+      }catch{ toast('Clipboard blocked by the browser — use PNG export instead','warn'); }
+    });
+  };
+  img.src=url;
+}
+
 /* ---- restore points ---- */
 const RP_KEY='seamline-marker-restorepoints';
 const rpEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -3191,6 +3494,38 @@ $('themeToggle').onclick=()=>applyTheme(
   document.documentElement.getAttribute('data-theme')==='light' ? 'dark' : 'light');
 $('effort').addEventListener('input',e=>{ UI.effort=+e.target.value; $('effortVal').textContent=UI.effort; });
 $('layRule').addEventListener('change',e=>{ UI.layRule=e.target.value; if (UI.dockTab==='options') renderOrderDock(); });
+
+/* Tier-3 cut sequencing wiring */
+$('tCutPath').onclick=()=>{
+  UI.cutPreview=!UI.cutPreview;
+  $('tCutPath').classList.toggle('on', UI.cutPreview);
+  drawCutPreview();
+  if (UI.cutPreview) cutMetrics();
+};
+$('bAutoSeq').onclick=()=>{
+  if (S.cut.mode==='manual' && S.cut.order.length &&
+      !confirm('Discard the manual cut sequence and resequence automatically?')) return;
+  pushUndo(); autoSequence();
+  UI.cutPreview=true; $('tCutPath').classList.add('on');
+  drawCutPreview(); persist(); cutMetrics();
+};
+$('bPickSeq').onclick=()=>{ UI.pickSeq ? commitPickSeq() : startPickSeq(); };
+$('bRevSeq').onclick=()=>{
+  validateCutOrder(true);
+  if (!S.cut.order.length) return toast('Nothing sequenced yet','warn');
+  pushUndo(); S.cut.order.reverse(); S.cut.mode='manual';
+  drawCutPreview(); persist(); cutMetrics();
+};
+$('cutBandW').addEventListener('change', e=>{
+  S.cut.params.bandW=Math.max(10, Math.min(200, Math.round(+e.target.value)||50));
+  e.target.value=S.cut.params.bandW;
+  drawCutPreview(); persist();
+});
+$('cutDirSel').addEventListener('change', e=>{ S.cut.params.dir=e.target.value; drawCutPreview(); persist(); });
+$('bExpHPGL').onclick=exportHPGL;
+$('bExpDXF').onclick=exportDXF;
+$('tCutLabels').onclick=()=>{ UI.cutLabels=!UI.cutLabels; $('tCutLabels').classList.toggle('on', UI.cutLabels); };
+$('bCopy1').onclick=copyMarker1to1;
 
 /* Tier-2 group / bundle wiring */
 $('bBundle').onclick=()=>{ if (UI.sel!=null) selectBundle(UI.sel); else toast('Click a piece first, then Bundle','warn'); };
@@ -3271,11 +3606,13 @@ window.addEventListener('keydown', e=>{
     case 'u': case 'U': buttSel(0,-1); break;
     case 'Delete': case 'Backspace': if(UI.sel!=null || UI.selSet.size) unplaceSel(); break;
     case 'Escape':
-      if (UI.measure) clearMeasure();
+      if (UI.pickSeq) endPickSeq();
+      else if (UI.measure) clearMeasure();
       else if (UI.zoomwin) toggleZoomWin();
       else if (UI.carry!=null) cancelCarry();
       else select(null);
       break;
+    case 'Enter': if (UI.pickSeq) commitPickSeq(); break;
     case 'w': case 'W': toggleZoomWin(); break;
     case 'ArrowLeft':  e.preventDefault(); nudgeSel(e.shiftKey?-0.1:-1,0); break;
     case 'ArrowRight': e.preventDefault(); nudgeSel(e.shiftKey?0.1:1,0); break;
