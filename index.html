@@ -565,9 +565,20 @@
     <button class="tb" id="bFit" title="Fit piece — let the nester find the best spot for the selected piece"><span class="ic">◨</span>Fit piece</button>
     <button class="tb" id="bDup" title="Duplicate the selected placed piece as an extra — then click the fabric to place the copy"><span class="ic">⧉</span>Duplicate</button>
     <div class="tsep"></div>
-    <button class="tb" id="bUnplace" title="Return selected piece to the tray (Del)"><span class="ic">✕</span>Return<span class="kbd">Del</span></button>
+    <button class="tb" id="bUnplace" title="Return selected piece(s) to the tray (Del)"><span class="ic">✕</span>Return<span class="kbd">Del</span></button>
     <button class="tb" id="bUnplaceSmall" title="Return every placed piece smaller than 20% of the largest — nest big, hand-finish small"><span class="ic">⋱</span>Unplace small</button>
     <button class="tb" id="bClear" title="Return all pieces to the tray"><span class="ic">⟲</span>Return all</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bBundle" title="Select every placed piece of this garment bundle (Alt+click a piece does the same)"><span class="ic">▣</span>Bundle</button>
+    <button class="tb" id="bBundleFlip" title="Mirror the selected bundle/group in place"><span class="ic">⇋</span>Flip bundle</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bAlL" title="Align selected pieces to the leftmost edge"><span class="ic">⇤</span></button>
+    <button class="tb" id="bAlR" title="Align selected pieces to the rightmost edge"><span class="ic">⇥</span></button>
+    <button class="tb" id="bAlT" title="Align selected pieces to the topmost edge"><span class="ic">⤒</span></button>
+    <button class="tb" id="bAlB" title="Align selected pieces to the bottommost edge"><span class="ic">⤓</span></button>
+    <div class="tsep"></div>
+    <button class="tb" id="bMarry" title="Marry the selected pieces — they select and move as one from now on"><span class="ic">⚭</span>Marry</button>
+    <button class="tb" id="bUnmarry" title="Remove the marry from the selected pieces"><span class="ic">⚮</span>Unmarry</button>
   </div>
   <div class="rpane" data-rpane="marker" hidden>
     <div class="sliderwrap" title="Nesting effort — higher tries more placement orders and packs tighter">
@@ -1015,8 +1026,8 @@ const instPoly  = (i,x=i.x,y=i.y) => instShape(i).pts.map(p=>[p[0]+x, p[1]+y]);
 let S = null;
 let uidSeq = 1;
 const UI = {
-  sel:null, carry:null,
-  drag:null, pan:null,
+  sel:null, selSet:new Set(), carry:null,
+  drag:null, pan:null, mq:null,
   undo:[], redo:[],
   vb:{x:-30,y:-30,w:600,h:280},
   grid:true, snap:true, autobutt:false,
@@ -1066,6 +1077,7 @@ function migrateMarker(m){
     if (p.line==null) p.line=0;
     if (!p.dir) p.dir = (defByKey[p.defKey]||{}).rot || 'two';
     if (!p.fab) p.fab = 'A';   // markers saved before fabric categories
+    if (p.marry){ const n=+String(p.marry).slice(1); if (n>=marrySeq) marrySeq=n+1; }
   }
   if (m.endAllow==null) m.endAllow = 4;   // markers saved before the end-allowance field
   if (m.approval==null) m.approval = 'none';   // markers saved before the approval flag
@@ -1088,18 +1100,30 @@ function inBounds(poly){
   }
   return true;
 }
-function canPlaceAt(inst, x, y){
-  const sh = instShape(inst), bb = sh.bb, buf = S.buffer;
+// `skip`: optional Set of uids ignored during the check (group moves — the
+// group's own members travel together, so they never collide with each other).
+// Per-piece overrides: o.buf widens the pair gap; o.block makes the whole
+// bounding box an obstacle (Gerber Block) instead of the polygon.
+function canPlaceAt(inst, x, y, skip){
+  const sh = instShape(inst), bb = sh.bb;
   if (x < -0.01 || y < -0.01 || y+bb.h > S.width+0.01 || x+bb.w > MAXLEN) return false;
-  const poly = sh.pts.map(p=>[p[0]+x, p[1]+y]);
-  // 0.05 mm tolerance on the buffer: candidates butted at exactly `buf` distance
-  // must not be rejected over binary floating-point noise (e.g. 0.3 cm).
-  const tol = buf>0 ? buf-0.005 : 0;
+  let poly = null;
   for (const o of S.pieces){
-    if (!o.placed || o.uid===inst.uid) continue;
+    if (!o.placed || o.uid===inst.uid || (skip && skip.has(o.uid))) continue;
+    const buf = Math.max(S.buffer, inst.buf||0, o.buf||0);
     const ob = instShape(o).bb;
     if (o.x+ob.w+buf < x-0.005 || x+bb.w+buf < o.x-0.005 ||
         o.y+ob.h+buf < y-0.005 || y+bb.h+buf < o.y-0.005) continue;
+    // 0.05 mm tolerance on the buffer: candidates butted at exactly `buf` distance
+    // must not be rejected over binary floating-point noise (e.g. 0.3 cm).
+    const tol = buf>0 ? buf-0.005 : 0;
+    if (inst.block || o.block){
+      // block: bounding boxes may not come nearer than the pair gap
+      if (!(o.x+ob.w+tol <= x || x+bb.w+tol <= o.x ||
+            o.y+ob.h+tol <= y || y+bb.h+tol <= o.y)) return false;
+      continue;
+    }
+    if (!poly) poly = sh.pts.map(p=>[p[0]+x, p[1]+y]);
     if (tooClose(poly, instPoly(o), tol)) return false;
   }
   return true;
@@ -1228,7 +1252,7 @@ function pieceMarkup(inst, cls){
 
 function renderPieces(){
   let h='';
-  for (const p of S.pieces) if (p.placed) h += pieceMarkup(p, p.uid===UI.sel?'sel':'');
+  for (const p of S.pieces) if (p.placed) h += pieceMarkup(p, (UI.selSet.has(p.uid)||p.uid===UI.sel)?'sel':'');
   gPieces.innerHTML = h;
 }
 
@@ -1406,6 +1430,11 @@ function pieceHTML(){
       <button class="dbtn" data-pa="top">⊤ Top edge</button>
       <button class="dbtn" data-pa="bottom">⊥ Bottom edge</button>
     </div></div>
+    <div class="dgrp"><div class="dgrp-l">Buffer / block</div><div class="dbtns">
+      <span class="dfield">buffer <input id="pcBuf" type="number" min="0" max="5" step="0.1" value="${p.buf!=null?p.buf:''}" placeholder="${S.buffer}"> cm</span>
+      <button class="dbtn${p.block?' on':''}" data-pa="block" title="Treat this piece's whole bounding box as an obstacle (Gerber Block)">▭ Block</button>
+    </div></div>
+    ${p.marry?`<div class="dnote">⚭ married group ${esc(p.marry)} — selects and moves as one (Unmarry on the Piece ribbon)</div>`:''}
     <button class="dbtn danger" data-pa="unplace" style="width:100%; margin-top:6px">✕ Return to tray</button>
     <div class="dnote">Arrows nudge 1 cm (Shift = 1 mm). R/F rotate/flip.</div>`;
 }
@@ -1443,6 +1472,7 @@ function shortcutsHTML(){
   const rows=[['Rotate cw / ccw','R / ⇧R'],['Flip h / v','F / ⇧F'],['Nudge 1 cm','← ↑ → ↓'],
     ['Butt left / up','L / U'],['Return to tray','Del'],['Cancel / deselect','Esc'],
     ['Undo / redo','⌃Z / ⌃Y'],['Zoom in/out/fit','+ − 0'],['Zoom window','W'],
+    ['Add to selection','⇧ click'],['Marquee select','⇧ drag'],['Select bundle','⌥ click'],
     ['New order','N'],['Cut Plan','P']];
   return `<div class="dsec-lbl">KEYBOARD</div>` +
     rows.map(r=>`<div class="sc-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
@@ -1466,11 +1496,14 @@ function renderHint(){
     const p = byUid(UI.carry), def=defByKey[p.defKey];
     h.textContent = `Carrying ${def.name.toUpperCase()} ${sizeNm(p)} — click the fabric to place · R rotate · F flip · Esc cancel`;
     si.textContent='';
+  } else if (UI.selSet.size>1){
+    h.textContent = 'Group: drag any member to move together · L/U butt-slide the group · Del returns all · align / marry on the Piece ribbon';
+    si.textContent = UI.selSet.size+' pieces selected';
   } else if (UI.sel!=null){
     const p = byUid(UI.sel);
     if (p){ const def=defByKey[p.defKey], sh=instShape(p), tag=lineTag(p.line);
-      h.textContent = 'Drag to move · R rotate · F flip · L butt left · Del return to tray';
-      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${sizeNm(p)}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · ${dirLabel(pieceDir(p))} · rot ${p.rot}°${p.fx?' · flipped':''}`;
+      h.textContent = 'Drag to move · R rotate · F flip · L butt left · Del return to tray · ⇧click add · ⌥click bundle';
+      si.textContent = `${tag?tag+' ':''}${def.name.toUpperCase()} · ${sizeNm(p)}-${p.bundle} · ${sh.bb.w.toFixed(1)}×${sh.bb.h.toFixed(1)} cm · ${dirLabel(pieceDir(p))} · rot ${p.rot}°${p.fx?' · flipped':''}${p.marry?' · ⚭':''}`;
     } else si.textContent='';
   } else {
     h.textContent = 'Select a piece from the tray and click the fabric — or press ⚡ Auto-Nest.';
@@ -1520,15 +1553,56 @@ function worldPt(e){
 /* =====================================================================
    INTERACTION
    ===================================================================== */
+/* Selection is a set (multi-select) with UI.sel as the primary piece —
+   single-piece ops keep working on the primary; group ops use the set.
+   Married pieces always join the selection together. */
+const bundleKeyOf = p => p.line+'|'+p.sizeIdx+'|'+p.bundle;
+function expandMarry(uids){
+  const out=new Set(uids);
+  for (const u of uids){
+    const p=byUid(u);
+    if (p && p.marry) for (const q of S.pieces)
+      if (q.placed && q.marry===p.marry) out.add(q.uid);
+  }
+  return out;
+}
+function paintSel(){
+  for (const g of gPieces.children) g.classList.toggle('sel', UI.selSet.has(+g.dataset.uid));
+}
+function selectMany(uids, primary){
+  UI.selSet = expandMarry(uids);
+  UI.sel = primary!==undefined && primary!==null ? primary
+         : (UI.selSet.size ? [...UI.selSet][UI.selSet.size-1] : null);
+  if (UI.sel!=null) UI.selSet.add(UI.sel);
+  paintSel(); renderHint();
+  if (UI.dockTab==='piece') renderOrderDock();
+}
 function select(uid){
-  const wasNull = UI.sel==null;
-  UI.sel=uid;
-  for (const g of gPieces.children) g.classList.toggle('sel', +g.dataset.uid===uid);
+  const wasNull = UI.sel==null && !UI.selSet.size;
+  UI.selSet = uid==null ? new Set() : expandMarry([uid]);
+  UI.sel = uid;
+  paintSel();
   renderHint();
   // first selection surfaces the Piece editor from any tab; keep it live while
   // it's showing. (A background click deselects and leaves the tab alone.)
   if (uid!=null && wasNull) UI.dockTab='piece';
   if (UI.dockTab==='piece') renderOrderDock();
+}
+function selToggle(uid){
+  const s=new Set(UI.selSet);
+  if (UI.sel!=null) s.add(UI.sel);
+  if (s.has(uid)){ expandMarry([uid]).forEach(u=>s.delete(u)); }
+  else s.add(uid);
+  selectMany([...s], s.has(uid)?uid:undefined);
+}
+const selUids = () => UI.selSet.size ? [...UI.selSet] : (UI.sel!=null ? [UI.sel] : []);
+function selectBundle(uid){
+  const p=byUid(uid); if (!p) return;
+  const k=bundleKeyOf(p);
+  const uids=S.pieces.filter(q=>q.placed && bundleKeyOf(q)===k).map(q=>q.uid);
+  if (!uids.length) return toast('No placed pieces in this bundle','warn');
+  selectMany(uids, uid);
+  setFooterStatus(`Bundle ${sizeNm(p)}-${p.bundle} — ${uids.length} piece(s) selected`,'ok');
 }
 function snapv(v){ return UI.snap ? Math.round(v*2)/2 : +v.toFixed(2); }
 
@@ -1546,10 +1620,19 @@ function onDown(e){
   const g = e.target.closest && e.target.closest('g.pc');
   if (g){
     const uid=+g.dataset.uid, inst=byUid(uid);
-    select(uid);
-    UI.drag={ uid, offX:w.x-inst.x, offY:w.y-inst.y, sx:inst.x, sy:inst.y, moved:false, el:g, valid:true };
+    if (e.altKey){ selectBundle(uid); return; }              // Alt+click = select bundle
+    if (e.shiftKey){ selToggle(uid); return; }               // Shift+click = add/remove
+    // clicking a member of a multi-selection grabs the whole group
+    if (!(UI.selSet.size>1 && UI.selSet.has(uid))) select(uid);
+    const members=[...(UI.selSet.size>1?UI.selSet:[uid])].map(u=>{
+      const p=byUid(u);
+      return { uid:u, sx:p.x, sy:p.y, el:[...gPieces.children].find(x=>+x.dataset.uid===u) };
+    });
+    UI.drag={ uid, offX:w.x-inst.x, offY:w.y-inst.y, sx:inst.x, sy:inst.y,
+              moved:false, el:g, valid:true, members };
     capturePtr(e);
   } else {
+    if (e.shiftKey){ UI.mq={x0:w.x, y0:w.y, x1:w.x, y1:w.y}; capturePtr(e); return; }   // marquee
     select(null);
     startPan(e);
   }
@@ -1575,13 +1658,35 @@ function onMove(e){
     UI.vb.y = UI.pan.vy - (e.clientY-UI.pan.my)*scale;
     setVB(); return;
   }
+  if (UI.mq){
+    UI.mq.x1=w.x; UI.mq.y1=w.y;
+    const m=UI.mq, mx=Math.min(m.x0,m.x1), my=Math.min(m.y0,m.y1);
+    gMeasure.innerHTML=`<rect x="${mx}" y="${my}" width="${Math.abs(m.x1-m.x0)}" height="${Math.abs(m.y1-m.y0)}"
+      fill="var(--acc)" fill-opacity=".08" stroke="var(--acc)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>`;
+    return;
+  }
   if (UI.drag){
     const d=UI.drag, inst=byUid(d.uid);
-    inst.x = snapv(w.x-d.offX); inst.y = snapv(w.y-d.offY);
+    const nx=snapv(w.x-d.offX), ny=snapv(w.y-d.offY);
+    const dx=nx-d.sx, dy=ny-d.sy;
     d.moved=true;
-    d.el.setAttribute('transform',`translate(${inst.x},${inst.y})`);
-    d.valid = canPlaceAt(inst, inst.x, inst.y);
-    d.el.classList.toggle('bad', !d.valid);
+    if (d.members && d.members.length>1){
+      const set=new Set(d.members.map(m=>m.uid));
+      let allOk=true;
+      for (const m of d.members){
+        const p=byUid(m.uid);
+        p.x=+(m.sx+dx).toFixed(2); p.y=+(m.sy+dy).toFixed(2);
+        if (m.el) m.el.setAttribute('transform',`translate(${p.x},${p.y})`);
+        if (!canPlaceAt(p, p.x, p.y, set)) allOk=false;
+      }
+      d.valid=allOk;
+      for (const m of d.members) if (m.el) m.el.classList.toggle('bad', !allOk);
+    } else {
+      inst.x=nx; inst.y=ny;
+      d.el.setAttribute('transform',`translate(${inst.x},${inst.y})`);
+      d.valid = canPlaceAt(inst, inst.x, inst.y);
+      d.el.classList.toggle('bad', !d.valid);
+    }
     return;
   }
   if (UI.carry!=null) updateGhost(w);
@@ -1595,22 +1700,45 @@ function onUp(e){
     toggleZoomWin();
     return;
   }
+  if (UI.mq){
+    const m=UI.mq; UI.mq=null; gMeasure.innerHTML='';
+    const x1=Math.min(m.x0,m.x1), y1=Math.min(m.y0,m.y1),
+          x2=Math.max(m.x0,m.x1), y2=Math.max(m.y0,m.y1);
+    const hit=S.pieces.filter(p=>{
+      if (!p.placed) return false;
+      const bb=instShape(p).bb, cx=p.x+bb.w/2, cy=p.y+bb.h/2;
+      return cx>=x1 && cx<=x2 && cy>=y1 && cy<=y2;
+    }).map(p=>p.uid);
+    if (hit.length){ selectMany(hit); setFooterStatus(hit.length+' piece(s) selected','ok'); }
+    else select(null);
+    return;
+  }
   if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); return; }
   if (UI.drag){
     const d=UI.drag, inst=byUid(d.uid); UI.drag=null;
     if (!d.moved){ renderHint(); return; }
+    const group = d.members && d.members.length>1;
     if (!d.valid){
-      inst.x=d.sx; inst.y=d.sy;
-      toast('Overlap — piece bounced back','bad');
+      if (group) for (const m of d.members){ const p=byUid(m.uid); p.x=m.sx; p.y=m.sy; }
+      else { inst.x=d.sx; inst.y=d.sy; }
+      toast(group?'Overlap — group bounced back':'Overlap — piece bounced back','bad');
       renderAll();
-      select(d.uid);
+      group ? selectMany(d.members.map(m=>m.uid), d.uid) : select(d.uid);
       return;
     }
-    // commit
-    const nx=inst.x, ny=inst.y; inst.x=d.sx; inst.y=d.sy;
-    pushUndo(); inst.x=nx; inst.y=ny;
-    if (UI.autobutt){ slideDir(inst,-1,0); slideDir(inst,0,-1); }
-    renderAll(); select(d.uid); persist();
+    // commit: restore start positions, snapshot for undo, re-apply the move
+    if (group){
+      const now=d.members.map(m=>{ const p=byUid(m.uid); return [p.x,p.y]; });
+      d.members.forEach(m=>{ const p=byUid(m.uid); p.x=m.sx; p.y=m.sy; });
+      pushUndo();
+      d.members.forEach((m,i)=>{ const p=byUid(m.uid); p.x=now[i][0]; p.y=now[i][1]; });
+      renderAll(); selectMany(d.members.map(m=>m.uid), d.uid); persist();
+    } else {
+      const nx=inst.x, ny=inst.y; inst.x=d.sx; inst.y=d.sy;
+      pushUndo(); inst.x=nx; inst.y=ny;
+      if (UI.autobutt){ slideDir(inst,-1,0); slideDir(inst,0,-1); }
+      renderAll(); select(d.uid); persist();
+    }
   }
 }
 // Register for pointer events (real input) AND mouse events (fallback for
@@ -1675,6 +1803,7 @@ $('dockBody').addEventListener('click', e=>{
       case 'center': alignSel('center'); break;
       case 'top': alignSel('top'); break;   case 'bottom': alignSel('bottom'); break;
       case 'unplace': if(UI.sel!=null) unplace(UI.sel); break;
+      case 'block': { const p=byUid(UI.sel); if(p){ p.block=!p.block; persist(); renderOrderDock(); } } break;
     }
     return;
   }
@@ -1692,6 +1821,11 @@ $('dockBody').addEventListener('click', e=>{
 // options: live inputs
 $('dockBody').addEventListener('change', e=>{
   const t=e.target;
+  if (t.id==='pcBuf' && UI.sel!=null){
+    const p=byUid(UI.sel);
+    if (t.value===''){ delete p.buf; } else p.buf=Math.max(0,Math.min(5,+t.value||0));
+    persist(); return;
+  }
   if (t.id==='optLay'){ UI.layRule=t.value; $('layRule').value=t.value; }
   else if (t.id==='optBuf'){ S.buffer=Math.max(0,Math.min(5,+t.value||0)); persist(); }
   else if (t.id==='optW'){ $('fabW').value=t.value; $('fabW').dispatchEvent(new Event('change',{bubbles:true})); }
@@ -1754,6 +1888,14 @@ function flipSel(axis){
   });
 }
 function buttSel(dx,dy){
+  // multi-selection slides as one rigid group until any member butts
+  if (UI.selSet.size>1){
+    const uids=selUids();
+    pushUndo();
+    if (!slideGroup(uids,dx,dy)) UI.undo.pop();
+    renderAll(); selectMany(uids, UI.sel); persist();
+    return;
+  }
   withSel(inst=>{
     if (!inst.placed) return;
     pushUndo();
@@ -2883,6 +3025,95 @@ function duplicatePlaced(){
   toast('Duplicate created — click the fabric to place it');
 }
 
+/* ---- Tier 2: group / bundle operations ---- */
+let marrySeq=1;
+function slideGroup(uids, dx, dy){
+  const set=new Set(uids), members=uids.map(byUid).filter(p=>p && p.placed);
+  if (!members.length) return false;
+  const ok=d=>members.every(p=>canPlaceAt(p, p.x+dx*d, p.y+dy*d, set));
+  let step=32, moved=0;
+  while (step>=0.02){
+    while (moved+step<=MAXLEN && ok(step)){
+      for (const p of members){ p.x+=dx*step; p.y+=dy*step; }
+      moved+=step;
+    }
+    step/=2;
+  }
+  for (const p of members){ p.x=+p.x.toFixed(2); p.y=+p.y.toFixed(2); }
+  return moved>0.02;
+}
+function unplaceSel(){
+  const uids=selUids().filter(u=>{ const p=byUid(u); return p && p.placed; });
+  if (!uids.length) return toast('Select a placed piece first','warn');
+  pushUndo();
+  for (const u of uids) byUid(u).placed=false;
+  UI.sel=null; UI.selSet.clear();
+  renderAll(); persist();
+  toast(uids.length>1 ? uids.length+' pieces returned to the tray' : 'Piece returned to the tray');
+}
+function flipBundleSel(){
+  const uids=selUids().filter(u=>byUid(u).placed);
+  if (uids.length<2) return toast('Select a bundle first (Alt+click a piece)','warn');
+  const set=new Set(uids), members=uids.map(byUid);
+  let gx1=1e9, gx2=-1e9;
+  for (const p of members){ const bb=instShape(p).bb; if (p.x<gx1) gx1=p.x; if (p.x+bb.w>gx2) gx2=p.x+bb.w; }
+  pushUndo();
+  for (const p of members){
+    p.fx=!p.fx; p.rot=((-p.rot)%360+360)%360;
+    p.x=gx1+gx2-p.x-instShape(p).bb.w;
+  }
+  // hair-width separation inside the group (quantized vertices), then validate vs outside
+  for (let pass=0; pass<3; pass++){
+    let clean=true;
+    for (let i=0;i<members.length;i++) for (let j=i+1;j<members.length;j++){
+      if (!polysOverlap(instPoly(members[i]),instPoly(members[j]))) continue;
+      (members[i].x>members[j].x?members[i]:members[j]).x+=0.02; clean=false;
+    }
+    if (clean) break;
+  }
+  if (!members.every(p=>canPlaceAt(p, p.x, p.y, set))){
+    applySnap(UI.undo.pop());
+    renderAll();
+    return toast('No room to flip the bundle here','warn');
+  }
+  renderAll(); selectMany(uids); persist();
+  toast('Bundle flipped');
+}
+function alignGroupSel(edge){
+  const uids=selUids().filter(u=>byUid(u).placed);
+  if (uids.length<2) return toast('Shift-click 2+ placed pieces to align','warn');
+  const set=new Set(uids), members=uids.map(byUid);
+  pushUndo();
+  if (edge==='l'){ const t=Math.min(...members.map(p=>p.x));                             members.forEach(p=>p.x=t); }
+  if (edge==='r'){ const t=Math.max(...members.map(p=>p.x+instShape(p).bb.w));           members.forEach(p=>p.x=+(t-instShape(p).bb.w).toFixed(2)); }
+  if (edge==='t'){ const t=Math.min(...members.map(p=>p.y));                             members.forEach(p=>p.y=t); }
+  if (edge==='b'){ const t=Math.max(...members.map(p=>p.y+instShape(p).bb.h));           members.forEach(p=>p.y=+(t-instShape(p).bb.h).toFixed(2)); }
+  if (!members.every(p=>canPlaceAt(p, p.x, p.y, set)) ||
+      members.some((p,i)=>members.some((q,j)=>j>i && polysOverlap(instPoly(p),instPoly(q))))){
+    applySnap(UI.undo.pop());
+    renderAll();
+    return toast('Align would overlap — reverted','warn');
+  }
+  renderAll(); selectMany(uids); persist();
+  toast('Aligned');
+}
+function marrySel(){
+  const uids=selUids();
+  if (uids.length<2) return toast('Shift-click 2+ pieces to marry them','warn');
+  const id='m'+(marrySeq++);
+  for (const u of uids) byUid(u).marry=id;
+  persist(); renderHint();
+  toast(uids.length+' pieces married — they now move as one');
+}
+function unmarrySel(){
+  const uids=selUids().filter(u=>byUid(u).marry);
+  if (!uids.length) return toast('Selection has no married pieces','warn');
+  const ids=new Set(uids.map(u=>byUid(u).marry));
+  for (const p of S.pieces) if (ids.has(p.marry)) delete p.marry;
+  persist(); renderHint();
+  toast('Marry removed');
+}
+
 /* ---- restore points ---- */
 const RP_KEY='seamline-marker-restorepoints';
 const rpEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -2940,7 +3171,7 @@ $('bFlipX').onclick=()=>flipSel('x');
 $('bFlipY').onclick=()=>flipSel('y');
 $('bSlideL').onclick=()=>buttSel(-1,0);
 $('bSlideU').onclick=()=>buttSel(0,-1);
-$('bUnplace').onclick=()=>{ if(UI.sel!=null) unplace(UI.sel); else toast('Select a piece first','warn'); };
+$('bUnplace').onclick=()=>{ if(UI.sel!=null || UI.selSet.size) unplaceSel(); else toast('Select a piece first','warn'); };
 $('bZoomFit').onclick=fitView;
 $('bZoomIn').onclick=()=>zoomAt(UI.vb.x+UI.vb.w/2, UI.vb.y+UI.vb.h/2, 1/1.25);
 $('bZoomOut').onclick=()=>zoomAt(UI.vb.x+UI.vb.w/2, UI.vb.y+UI.vb.h/2, 1.25);
@@ -2960,6 +3191,16 @@ $('themeToggle').onclick=()=>applyTheme(
   document.documentElement.getAttribute('data-theme')==='light' ? 'dark' : 'light');
 $('effort').addEventListener('input',e=>{ UI.effort=+e.target.value; $('effortVal').textContent=UI.effort; });
 $('layRule').addEventListener('change',e=>{ UI.layRule=e.target.value; if (UI.dockTab==='options') renderOrderDock(); });
+
+/* Tier-2 group / bundle wiring */
+$('bBundle').onclick=()=>{ if (UI.sel!=null) selectBundle(UI.sel); else toast('Click a piece first, then Bundle','warn'); };
+$('bBundleFlip').onclick=flipBundleSel;
+$('bAlL').onclick=()=>alignGroupSel('l');
+$('bAlR').onclick=()=>alignGroupSel('r');
+$('bAlT').onclick=()=>alignGroupSel('t');
+$('bAlB').onclick=()=>alignGroupSel('b');
+$('bMarry').onclick=marrySel;
+$('bUnmarry').onclick=unmarrySel;
 
 /* Tier-1 tool wiring */
 $('bFit').onclick=fitPiece;
@@ -3028,7 +3269,7 @@ window.addEventListener('keydown', e=>{
     case 'F': flipSel('y'); break;
     case 'l': case 'L': buttSel(-1,0); break;
     case 'u': case 'U': buttSel(0,-1); break;
-    case 'Delete': case 'Backspace': if(UI.sel!=null) unplace(UI.sel); break;
+    case 'Delete': case 'Backspace': if(UI.sel!=null || UI.selSet.size) unplaceSel(); break;
     case 'Escape':
       if (UI.measure) clearMeasure();
       else if (UI.zoomwin) toggleZoomWin();
