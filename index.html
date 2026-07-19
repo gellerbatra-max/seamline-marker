@@ -171,9 +171,6 @@
     border-radius:5px; padding:5px 7px; font-size:11.5px; flex:none;
   }
   #tbSpacer{flex:1; min-width:4px}
-  .more-wrap{position:relative; flex:none}
-  #bMore{border-color:var(--edge)}
-  #bMore.on{background:var(--hover); border-color:var(--acc-hi); color:var(--acc-hi)}
   #morePanel{
     position:absolute; top:calc(100% + 6px); right:0; z-index:40;
     background:var(--panel); border:1px solid var(--edge); border-radius:10px;
@@ -184,6 +181,39 @@
   #morePanel .tb{width:100%; justify-content:flex-start}
   #morePanel .mini-sel{width:100%}
   #morePanel .msep{height:1px; background:var(--edge); margin:4px 2px}
+
+  /* ---------- ribbon tabs (Gerber-style File/Piece/Marker/Fabric/View) ---------- */
+  #rtabs{display:flex; gap:1px; flex:none}
+  .rtab{
+    padding:6px 13px; font-size:12px; font-weight:600; color:var(--mut);
+    border-radius:6px 6px 0 0; border:1px solid transparent; border-bottom:none;
+  }
+  .rtab:hover{color:var(--ink); background:var(--panel)}
+  .rtab.on{color:var(--acc-hi); background:var(--panel); border-color:var(--edge)}
+  .rtab.dis{opacity:.4; cursor:not-allowed}
+  #ribbonRow{
+    display:flex; align-items:center; gap:5px; padding:5px 10px;
+    background:var(--panel); border-bottom:1px solid var(--edge); flex:none;
+    min-height:40px; position:relative; z-index:9;
+  }
+  #toolbar.mode-cutplan + #ribbonRow{display:none}
+  .rpane{display:flex; align-items:center; gap:5px; flex-wrap:wrap}
+  .rpane[hidden]{display:none !important}
+  .rnote{font-size:11px; color:var(--mut); opacity:.7; margin-left:6px}
+
+  /* ---------- thumbnail minimap ---------- */
+  #thumb{
+    position:absolute; right:12px; bottom:58px; width:216px; z-index:6;
+    background:var(--panel); border:1px solid var(--edge); border-radius:8px;
+    padding:5px; box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  #thumb[hidden]{display:none !important}
+  #thumb svg{display:block; width:100%; height:60px; cursor:crosshair}
+
+  /* ---------- measure / zoom-window mode + approval chip ---------- */
+  #cv.measuring{cursor:crosshair}
+  .chip.appr.needs{background:var(--warn); color:#241a05}
+  .chip.appr.ok{background:var(--good); color:#0a2214}
 
   /* ---------- workspace: tray dock | canvas | right dock ---------- */
   #workspace{flex:1; display:flex; min-height:0; position:relative}
@@ -502,44 +532,75 @@
     <button class="on" id="wsMarkerBtn" data-ws="marker">Marker</button>
   </div>
   <div class="tsep"></div>
+  <div id="rtabs" class="ws-only">
+    <button class="rtab on" data-rtab="file">File</button>
+    <button class="rtab" data-rtab="piece">Piece</button>
+    <button class="rtab" data-rtab="marker">Marker</button>
+    <button class="rtab" data-rtab="fabric">Fabric</button>
+    <button class="rtab dis" disabled title="Split piece · placement templates · cut sequencing — planned">Advanced</button>
+    <button class="rtab" data-rtab="view">View</button>
+  </div>
+  <div id="tbSpacer"></div>
   <button class="tb" id="bNew" title="New order — model, sizes, fabric (N)"><span class="ic">▤</span>New Order</button>
   <button class="tb" id="bSave" title="Save marker to a .json file (Ctrl+S)"><span class="ic">⬇</span>Save</button>
-  <div class="tsep ws-only"></div>
+  <button class="tb ws-only" id="bUndo" title="Undo (Ctrl+Z)"><span class="ic">↶</span></button>
+  <button class="tb ws-only" id="bRedo" title="Redo (Ctrl+Y)"><span class="ic">↷</span></button>
   <button class="tb primary ws-only" id="bNest" title="Automatically place all unplaced pieces (AutoMark)"><span class="ic">⚡</span>Auto-Nest</button>
-  <div class="sliderwrap ws-only" title="Nesting effort — higher tries more rotations and packs tighter">
-    effort <input type="range" id="effort" min="0" max="100" value="60"><b id="effortVal">60</b>
+  <button class="tb" id="bHelp" title="Quick start & shortcuts (?)"><span class="ic">?</span></button>
+</div>
+<div id="ribbonRow" class="ws-only">
+  <div class="rpane" data-rpane="file">
+    <button class="tb" id="bOpen" title="Open a saved marker (.json)"><span class="ic">⌂</span>Open marker…</button>
+    <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
+    <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
   </div>
-  <button class="tb ws-only" id="bCompact" title="Slide every placed piece left, then up — tighten the marker"><span class="ic">⇤</span>Compact</button>
-  <div class="tsep ws-only"></div>
-  <button class="tb ws-only" id="bRotL" title="Rotate counter-clockwise (Shift+R)"><span class="ic">⟲</span><span class="kbd">⇧R</span></button>
-  <button class="tb ws-only" id="bRotR" title="Rotate clockwise (R)"><span class="ic">⟳</span><span class="kbd">R</span></button>
-  <button class="tb ws-only" id="bFlipX" title="Flip horizontally (F)"><span class="ic">⇋</span><span class="kbd">F</span></button>
-  <button class="tb ws-only" id="bFlipY" title="Flip vertically (Shift+F)"><span class="ic">⇵</span><span class="kbd">⇧F</span></button>
-  <button class="tb ws-only" id="bSlideL" title="Slide selected piece left until it butts (L)"><span class="ic">←</span><span class="kbd">L</span></button>
-  <button class="tb ws-only" id="bSlideU" title="Slide selected piece up until it butts (U)"><span class="ic">↑</span><span class="kbd">U</span></button>
-  <button class="tb ws-only" id="bUnplace" title="Return selected piece to the tray (Del)"><span class="ic">✕</span><span class="kbd">Del</span></button>
-  <div id="tbSpacer"></div>
-  <div class="more-wrap">
-    <button class="tb" id="bMore" title="More tools">More <span class="ic" style="width:auto">▾</span></button>
-    <div id="morePanel" hidden>
-      <button class="tb" id="bOpen" title="Open a saved marker (.json)"><span class="ic">⌂</span>Open marker…</button>
-      <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
-      <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
-      <div class="msep ws-only"></div>
-      <button class="tb ws-only" id="bClear" title="Return all pieces to the tray"><span class="ic">⟲</span>Return All</button>
-      <select class="mini-sel ws-only" id="layRule" title="Lay rule — which rotations pieces allow.&#10;Strict: each piece follows its own rule (one-way fabric)&#10;Relaxed: all pieces may turn 90°&#10;Free: any angle (no nap/direction)">
-        <option value="strict">Lay: strict</option>
-        <option value="relaxed">Lay: 90° ok</option>
-        <option value="free">Lay: free</option>
-      </select>
-      <button class="tb tgl on ws-only" id="tGrid" title="Show 10 cm grid"><span class="ic">▦</span>Grid</button>
-      <button class="tb tgl on ws-only" id="tSnap" title="Snap positions to 0.5 cm"><span class="ic">⌗</span>Snap</button>
-      <button class="tb tgl ws-only" id="tButt" title="Auto-butt: after you drop a piece, slide it left then up until it touches"><span class="ic">⇱</span>Auto-butt</button>
-      <div class="msep ws-only"></div>
-      <button class="tb ws-only" id="bUndo" title="Undo (Ctrl+Z)"><span class="ic">↶</span>Undo</button>
-      <button class="tb ws-only" id="bRedo" title="Redo (Ctrl+Y)"><span class="ic">↷</span>Redo</button>
-      <button class="tb" id="bHelp" title="Quick start & shortcuts (?)"><span class="ic">?</span>Help</button>
+  <div class="rpane" data-rpane="piece" hidden>
+    <button class="tb" id="bRotL" title="Rotate counter-clockwise (Shift+R)"><span class="ic">⟲</span><span class="kbd">⇧R</span></button>
+    <button class="tb" id="bRotR" title="Rotate clockwise (R)"><span class="ic">⟳</span><span class="kbd">R</span></button>
+    <button class="tb" id="bFlipX" title="Flip horizontally (F)"><span class="ic">⇋</span><span class="kbd">F</span></button>
+    <button class="tb" id="bFlipY" title="Flip vertically (Shift+F)"><span class="ic">⇵</span><span class="kbd">⇧F</span></button>
+    <button class="tb" id="bSlideL" title="Slide selected piece left until it butts (L)"><span class="ic">←</span><span class="kbd">L</span></button>
+    <button class="tb" id="bSlideU" title="Slide selected piece up until it butts (U)"><span class="ic">↑</span><span class="kbd">U</span></button>
+    <div class="tsep"></div>
+    <button class="tb" id="bFit" title="Fit piece — let the nester find the best spot for the selected piece"><span class="ic">◨</span>Fit piece</button>
+    <button class="tb" id="bDup" title="Duplicate the selected placed piece as an extra — then click the fabric to place the copy"><span class="ic">⧉</span>Duplicate</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bUnplace" title="Return selected piece to the tray (Del)"><span class="ic">✕</span>Return<span class="kbd">Del</span></button>
+    <button class="tb" id="bUnplaceSmall" title="Return every placed piece smaller than 20% of the largest — nest big, hand-finish small"><span class="ic">⋱</span>Unplace small</button>
+    <button class="tb" id="bClear" title="Return all pieces to the tray"><span class="ic">⟲</span>Return all</button>
+  </div>
+  <div class="rpane" data-rpane="marker" hidden>
+    <div class="sliderwrap" title="Nesting effort — higher tries more placement orders and packs tighter">
+      effort <input type="range" id="effort" min="0" max="100" value="60"><b id="effortVal">60</b>
     </div>
+    <button class="tb" id="bCompact" title="Slide every placed piece left, then up — tighten the marker"><span class="ic">⇤</span>Compact</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bMFlipX" title="Flip the whole marker end-for-end (mirror on the length axis)"><span class="ic">⇋</span>Flip X</button>
+    <button class="tb" id="bMFlipY" title="Flip the whole marker across the fabric width"><span class="ic">⇵</span>Flip Y</button>
+    <button class="tb" id="bMFlipXY" title="Flip the whole marker both ways (= rotate 180°)"><span class="ic">⤨</span>Flip XY</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bMeasPt" title="Measure point to point — click two points on the fabric"><span class="ic">⤢</span>Pt↔Pt</button>
+    <button class="tb" id="bMeasPP" title="Measure the closest gap between two pieces — click piece A, then piece B"><span class="ic">↹</span>Piece↔Piece</button>
+    <button class="tb" id="bMeasPE" title="Measure a piece to the fabric edges — click a piece"><span class="ic">⇤</span>Piece↔Edge</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bNeedsApp" title="Flag this marker as needing supervisor approval (saved with the file)"><span class="ic">!</span>Needs approval</button>
+    <button class="tb" id="bApprove" title="Approve this marker (saved with the file)"><span class="ic">✓</span>Approve</button>
+  </div>
+  <div class="rpane" data-rpane="fabric" hidden>
+    <select class="mini-sel" id="layRule" title="Rotation rule — which rotations pieces allow.&#10;Strict: each piece follows its own rule (one-way fabric)&#10;Relaxed: all pieces may turn 90°&#10;Free: any angle (no nap/direction)">
+      <option value="strict">Rotation: strict</option>
+      <option value="relaxed">Rotation: 90° ok</option>
+      <option value="free">Rotation: free</option>
+    </select>
+    <button class="tb" id="bEditOrder" title="Change fabric width, buffer, sizes or pieces"><span class="ic">✎</span>Edit order…</button>
+    <span class="rnote">width · buffer · end allowance live in the header and Options dock — splice · plaid &amp; stripe · block fuse planned</span>
+  </div>
+  <div class="rpane" data-rpane="view" hidden>
+    <button class="tb" id="bZoomWin" title="Zoom window — drag a rectangle to zoom into it (W)"><span class="ic">◱</span>Zoom window<span class="kbd">W</span></button>
+    <button class="tb tgl on" id="tThumb" title="Show the whole-marker thumbnail (click it to jump the view)"><span class="ic">▭</span>Thumbnail</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bRestore" title="Store &amp; restore named snapshots of this marker"><span class="ic">⟲</span>Restore points…</button>
+    <button class="tb" id="bOptions" title="Grid, snap, theme and marker options (right dock)"><span class="ic">◑</span>Options dock</button>
   </div>
 </div>
 
@@ -561,8 +622,10 @@
         <g id="gPieces"></g>
         <g id="gOverlay"></g>
         <g id="gRulers"></g>
+        <g id="gMeasure"></g>
         <g id="ghost"></g>
       </svg>
+      <div id="thumb" hidden><svg id="thumbSvg" preserveAspectRatio="xMidYMid meet"></svg></div>
       <div id="canvasHint">◧ click a tray piece → click fabric to place · drag to move · scroll = zoom · drag bg = pan</div>
       <div id="zoomCtl">
         <button id="bZoomOut" title="Zoom out (−)">－</button>
@@ -637,6 +700,7 @@
     <div class="hside">
       <span id="stPieces">0/0 pcs</span>
       <div class="chip unmade" id="statusChip">UNMADE</div>
+      <div class="chip appr" id="apprChip" hidden></div>
     </div>
   </div>
   <button id="themeToggle" title="Toggle light / dark">☾</button>
@@ -679,16 +743,16 @@
   <div class="dlg-body">
     <h4>WORKFLOW</h4>
     <ol>
-      <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, set each piece's lay direction and <b>fabric category</b> (any code — A/B/C, 1/2/3, BD/Gst/FR…), choose fabric width/buffer/lay rule, review the summary. Pieces sharing a fabric code cut from the same fabric; chips above the tray filter the tray and scope Auto-Nest to one fabric at a time.</li>
+      <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, set each piece's lay direction and <b>fabric category</b> (any code — A/B/C, 1/2/3, BD/Gst/FR…), choose fabric width/buffer/rotation rule, review the summary. Pieces sharing a fabric code cut from the same fabric; chips above the tray filter the tray and scope Auto-Nest to one fabric at a time.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
-      <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, lay rule, buffer, width, end allowance and the theme.</li>
+      <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, or save the marker as JSON.</li>
       <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
     <h4>RULES</h4>
     <ul>
       <li>Pieces can never overlap — an invalid drop bounces back.</li>
-      <li>Each piece carries a lay rule: body pieces are two-way (0/180°), small parts turn 90°, bindings are free. The <b>Lay</b> selector can relax this for non-directional fabric.</li>
+      <li>Each piece carries a lay direction: body pieces are two-way (0/180°), small parts turn 90°, bindings are free. The <b>Rotation rule</b> selector (Fabric tab) can relax this for non-directional fabric. <i>Note: in Gerber terms this is piece rotation — Gerber's "Layrules" (saved placement templates) are a planned feature.</i></li>
       <li><b>Buffer</b> keeps a minimum gap between pieces for the cutter.</li>
       <li>Status: <b>MADE</b> = all placed · <b>PARTIAL</b> = some · <b>UNMADE</b> = none.</li>
     </ul>
@@ -707,6 +771,17 @@
     <p style="margin-top:14px; color:var(--mut)">Part of the <b>Seamline</b> apparel suite · workflow modeled on the classic marker pipeline: order → placement → status → plot/cut.</p>
   </div>
   <div class="dlg-foot"><button class="btn primary" data-close="dlgHelp">Got it</button></div>
+</dialog>
+
+<!-- ---------- Restore points ---------- -->
+<dialog id="dlgRestore">
+  <div class="dlg-head">Restore points <button class="x" data-close="dlgRestore">✕</button></div>
+  <div class="dlg-body" id="rpBody"></div>
+  <div class="dlg-foot">
+    <button class="btn" id="rpStore">＋ Store now</button>
+    <span style="flex:1"></span>
+    <button class="btn primary" data-close="dlgRestore">Close</button>
+  </div>
 </dialog>
 
 <div id="toasts"></div>
@@ -993,6 +1068,7 @@ function migrateMarker(m){
     if (!p.fab) p.fab = 'A';   // markers saved before fabric categories
   }
   if (m.endAllow==null) m.endAllow = 4;   // markers saved before the end-allowance field
+  if (m.approval==null) m.approval = 'none';   // markers saved before the approval flag
   return m;
 }
 const pieceDir = inst => inst.dir || (defByKey[inst.defKey]||{}).rot || 'two';
@@ -1235,6 +1311,12 @@ function renderStats(){
   const cls = st.total&&st.placed===st.total ? 'made' : st.placed>0 ? 'partial' : 'unmade';
   chip.className = 'chip '+cls;
   chip.textContent = cls.toUpperCase();
+  // approval flag (Gerber "Needs Approval" analog) — set on the Marker ribbon tab
+  const ac=$('apprChip'), appr=S.approval||'none';
+  ac.hidden = appr==='none';
+  if (appr==='needs'){ ac.className='chip appr needs'; ac.textContent='NEEDS APPROVAL'; }
+  else if (appr==='approved'){ ac.className='chip appr ok'; ac.textContent='APPROVED'; }
+  if ($('bNeedsApp')){ $('bNeedsApp').classList.toggle('on', appr==='needs'); $('bApprove').classList.toggle('on', appr==='approved'); }
   // hero utilization: colour thresholds so the number that drives tuning reads
   // at a glance — good ≥60%, warn ≥35%, bad below (matches the MADE/status feel)
   const pct = st.placed ? st.util*100 : 0;
@@ -1285,7 +1367,7 @@ function renderOrderDock(){
       ${garments} garment${garments===1?'':'s'} · ${pcsPerG} pcs/garment · <b>${garments*pcsPerG} pieces</b></div></div>`;
   }).join('');
   b.innerHTML = `<div class="dsec-lbl">ORDER · READ-ONLY</div>${lines}` +
-    `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Lay rule <b>${UI.layRule}</b></div>` +
+    `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Rotation rule <b>${UI.layRule}</b></div>` +
     `<button id="dockEdit">✎ Edit order…</button>` +
     `<div class="dnote">Inspect without risking the marker.</div>`;
 }
@@ -1343,7 +1425,7 @@ function optionsHTML(){
       <button class="dbtn${UI.autobutt?' on':''}" data-opt="autobutt">⇱ Auto-butt</button>
     </div></div>
     <div class="dbox">
-      <label class="orow">Lay rule
+      <label class="orow">Rotation rule
         <select id="optLay">
           <option value="strict"${UI.layRule==='strict'?' selected':''}>strict</option>
           <option value="relaxed"${UI.layRule==='relaxed'?' selected':''}>90° ok</option>
@@ -1360,7 +1442,8 @@ function optionsHTML(){
 function shortcutsHTML(){
   const rows=[['Rotate cw / ccw','R / ⇧R'],['Flip h / v','F / ⇧F'],['Nudge 1 cm','← ↑ → ↓'],
     ['Butt left / up','L / U'],['Return to tray','Del'],['Cancel / deselect','Esc'],
-    ['Undo / redo','⌃Z / ⌃Y'],['Zoom in/out/fit','+ − 0'],['New order','N'],['Cut Plan','P']];
+    ['Undo / redo','⌃Z / ⌃Y'],['Zoom in/out/fit','+ − 0'],['Zoom window','W'],
+    ['New order','N'],['Cut Plan','P']];
   return `<div class="dsec-lbl">KEYBOARD</div>` +
     rows.map(r=>`<div class="sc-row"><span>${r[0]}</span><span>${r[1]}</span></div>`).join('');
 }
@@ -1372,6 +1455,7 @@ function renderAll(){
   renderOverlay(st.len);
   renderTray();
   renderHint();
+  if (typeof renderThumb==='function') renderThumb();
 }
 
 function renderHint(){
@@ -1398,7 +1482,10 @@ const byUid = uid => S.pieces.find(p=>p.uid===uid);
 /* =====================================================================
    VIEW (zoom / pan)
    ===================================================================== */
-function setVB(){ cv.setAttribute('viewBox', `${UI.vb.x} ${UI.vb.y} ${UI.vb.w} ${UI.vb.h}`); }
+function setVB(){
+  cv.setAttribute('viewBox', `${UI.vb.x} ${UI.vb.y} ${UI.vb.w} ${UI.vb.h}`);
+  if (typeof updateThumbVP==='function') updateThumbVP();
+}
 // Piece-label rescaling is coalesced to one per animation frame so a fast
 // wheel-zoom burst doesn't re-render 250 pieces on every tick.
 let _labelRAF=null;
@@ -1451,6 +1538,9 @@ function onDown(e){
   if (e.button!==0) return;
   const w = worldPt(e);
 
+  if (UI.zoomwin){ UI.zw={x0:w.x, y0:w.y, x1:w.x, y1:w.y}; capturePtr(e); return; }
+  if (UI.measure){ measureClick(w, e.target.closest && e.target.closest('g.pc')); return; }
+
   if (UI.carry!=null){ tryDropCarry(w); return; }
 
   const g = e.target.closest && e.target.closest('g.pc');
@@ -1472,6 +1562,13 @@ function startPan(e){
 function onMove(e){
   const w=worldPt(e);
   $('coords').textContent = `x ${w.x.toFixed(1)}  y ${(S.width-w.y).toFixed(1)} cm`;   // 0,0 = bottom-left
+  if (UI.zw){
+    UI.zw.x1=w.x; UI.zw.y1=w.y;
+    const z=UI.zw, zx=Math.min(z.x0,z.x1), zy=Math.min(z.y0,z.y1);
+    gMeasure.innerHTML=`<rect x="${zx}" y="${zy}" width="${Math.abs(z.x1-z.x0)}" height="${Math.abs(z.y1-z.y0)}"
+      fill="var(--acc)" fill-opacity=".12" stroke="var(--acc-hi)" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
+    return;
+  }
   if (UI.pan){
     const scale = UI.vb.w/cv.clientWidth;
     UI.vb.x = UI.pan.vx - (e.clientX-UI.pan.mx)*scale;
@@ -1490,6 +1587,14 @@ function onMove(e){
   if (UI.carry!=null) updateGhost(w);
 }
 function onUp(e){
+  if (UI.zw){
+    const z=UI.zw; UI.zw=null; gMeasure.innerHTML='';
+    const x=Math.min(z.x0,z.x1), y=Math.min(z.y0,z.y1),
+          w2=Math.abs(z.x1-z.x0), h2=Math.abs(z.y1-z.y0);
+    if (w2>2 && h2>2) applyZoomRect(x,y,w2,h2);
+    toggleZoomWin();
+    return;
+  }
   if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); return; }
   if (UI.drag){
     const d=UI.drag, inst=byUid(d.uid); UI.drag=null;
@@ -1578,8 +1683,7 @@ $('dockBody').addEventListener('click', e=>{
     const o=opt.dataset.opt;
     if (o==='light'||o==='dark') applyTheme(o);
     else if (o==='grid'||o==='snap'||o==='autobutt'){
-      UI[o]=!UI[o]; const tb={grid:'tGrid',snap:'tSnap',autobutt:'tButt'}[o];
-      $(tb).classList.toggle('on',UI[o]); if(o==='grid') renderFabric(markerStats().len);
+      UI[o]=!UI[o]; if(o==='grid') renderFabric(markerStats().len);
     }
     renderOrderDock();
     return;
@@ -1847,6 +1951,8 @@ async function autoNest(quiet){
   if (!tray.length) return toast(UI.fabricFilter?`Nothing to nest on fabric ${UI.fabricFilter}`:'Nothing to nest — tray is empty','warn');
   cancelCarry();
   pushUndo();
+  if (typeof storeRP==='function' && S.pieces.some(p=>p.placed))
+    storeRP('before nest — '+S.name, true);   // automatic rollback point
   UI.nestAbort=false;
   const dlg=$('dlgNest'); dlg.showModal();
   const t0=performance.now();
@@ -2098,7 +2204,7 @@ function renderWizard(){
         <option value="0.3"${W.buffer===0.3?' selected':''}>0.3 cm</option>
         <option value="0.5"${W.buffer===0.5?' selected':''}>0.5 cm</option>
         <option value="1"${W.buffer===1?' selected':''}>1.0 cm</option></select></div>
-      <div class="frow"><label>Lay rule</label><select id="wLay">
+      <div class="frow"><label>Rotation rule</label><select id="wLay">
         <option value="strict"${UI.layRule==='strict'?' selected':''}>strict — each piece follows its own rule</option>
         <option value="relaxed"${UI.layRule==='relaxed'?' selected':''}>90° allowed — non-directional weave</option>
         <option value="free"${UI.layRule==='free'?' selected':''}>free — any angle</option></select></div>
@@ -2217,7 +2323,6 @@ function setWorkspace(mode){
   $('wsMarkerBtn').classList.toggle('on', !cutplan);
   $('wsCutplanBtn').classList.toggle('on', cutplan);
   $('toolbar').classList.toggle('mode-cutplan', cutplan);
-  closeMore();
   if (cutplan) renderPlan();
   else setTimeout(fitView, 0);   // canvas was display:none — needs a fresh size read
 }
@@ -2559,16 +2664,265 @@ $('pCalc').onclick=calcCutPlan;
 $('wsMarkerBtn').onclick=()=>setWorkspace('marker');
 $('wsCutplanBtn').onclick=openPlanDialog;
 
-/* ---- More ▾ overflow menu ---- */
-function closeMore(){ $('morePanel').hidden=true; $('bMore').classList.remove('on'); }
-$('bMore').onclick=e=>{ e.stopPropagation();
-  const open=$('morePanel').hidden;
-  $('morePanel').hidden=!open; $('bMore').classList.toggle('on',open);
-};
-$('morePanel').addEventListener('click', e=>{
-  if (e.target.closest('button') && e.target.id!=='bMore') closeMore();
+/* ---- ribbon tabs (Gerber-style) ---- */
+$('rtabs').addEventListener('click', e=>{
+  const b=e.target.closest('.rtab'); if(!b || b.disabled) return;
+  document.querySelectorAll('#rtabs .rtab').forEach(x=>x.classList.toggle('on', x===b));
+  document.querySelectorAll('#ribbonRow .rpane').forEach(p=>p.hidden = p.dataset.rpane!==b.dataset.rtab);
 });
-document.addEventListener('click', e=>{ if (!e.target.closest('.more-wrap')) closeMore(); });
+
+/* =====================================================================
+   TIER-1 TOOLS — measure, zoom window, minimap, marker flips,
+   unplace-small, fit piece, duplicate, restore points, approval
+   ===================================================================== */
+const gMeasure=$('gMeasure');
+UI.measure=null; UI.zoomwin=false; UI.zw=null; UI.thumb=true;
+
+/* ---- measure ---- */
+const mFs=()=>Math.max(2.5, UI.vb.w/cv.clientWidth*11);
+const mLine=(a,b)=>`<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="var(--warn)" stroke-width="${mFs()/8}" stroke-dasharray="${mFs()/3} ${mFs()/4}"/>`+
+  `<circle cx="${a[0]}" cy="${a[1]}" r="${mFs()/5}" fill="var(--warn)"/><circle cx="${b[0]}" cy="${b[1]}" r="${mFs()/5}" fill="var(--warn)"/>`;
+const mText=(x,y,t)=>`<text x="${x}" y="${y}" font-size="${mFs()}" fill="var(--warn)" font-weight="700" paint-order="stroke" stroke="var(--panel2)" stroke-width="${mFs()/4}">${t}</text>`;
+function setMeasure(mode){
+  if (UI.measure && UI.measure.mode===mode) return clearMeasure();
+  cancelCarry(); if (UI.zoomwin) toggleZoomWin();
+  UI.measure={mode, pts:[], uidA:null};
+  gMeasure.innerHTML='';
+  for (const [id,m] of [['bMeasPt','pt'],['bMeasPP','pp'],['bMeasPE','pe']])
+    $(id).classList.toggle('on', m===mode);
+  cv.classList.add('measuring');
+  setFooterStatus(mode==='pt' ? 'Measure: click two points — Esc to exit'
+    : mode==='pp' ? 'Measure: click the first piece — Esc to exit'
+    : 'Measure: click a piece to measure to the fabric edges — Esc to exit','ok');
+}
+function clearMeasure(){
+  UI.measure=null; gMeasure.innerHTML=''; cv.classList.remove('measuring');
+  for (const id of ['bMeasPt','bMeasPP','bMeasPE']) $(id).classList.remove('on');
+  renderHint();
+}
+function closestPS(p,a,b){
+  const vx=b[0]-a[0], vy=b[1]-a[1], wx=p[0]-a[0], wy=p[1]-a[1];
+  const L2=vx*vx+vy*vy; let t=L2>0 ? (wx*vx+wy*vy)/L2 : 0; t=Math.max(0,Math.min(1,t));
+  const q=[a[0]+t*vx, a[1]+t*vy], dx=p[0]-q[0], dy=p[1]-q[1];
+  return {d2:dx*dx+dy*dy, q};
+}
+function minDistPolys(A,B){
+  let best={d2:1e18, p:null, q:null};
+  for (const P of A) for (let j=0;j<B.length;j++){
+    const r=closestPS(P,B[j],B[(j+1)%B.length]); if (r.d2<best.d2) best={d2:r.d2, p:P, q:r.q};
+  }
+  for (const P of B) for (let j=0;j<A.length;j++){
+    const r=closestPS(P,A[j],A[(j+1)%A.length]); if (r.d2<best.d2) best={d2:r.d2, p:r.q, q:P};
+  }
+  return {d:Math.sqrt(best.d2), p:best.p, q:best.q};
+}
+function measureClick(w, g){
+  const M=UI.measure;
+  if (M.mode==='pt'){
+    M.pts.push([w.x,w.y]);
+    if (M.pts.length===2){
+      const [a,b]=M.pts, dx=b[0]-a[0], dy=b[1]-a[1], d=Math.hypot(dx,dy);
+      gMeasure.innerHTML = mLine(a,b) + mText((a[0]+b[0])/2, (a[1]+b[1])/2 - mFs()/2, d.toFixed(1)+' cm');
+      setFooterStatus(`Distance ${d.toFixed(2)} cm  ·  dx ${Math.abs(dx).toFixed(2)}  dy ${Math.abs(dy).toFixed(2)} — click again for a new pair`,'ok');
+      M.pts=[];
+    } else { gMeasure.innerHTML=`<circle cx="${w.x}" cy="${w.y}" r="${mFs()/5}" fill="var(--warn)"/>`; }
+    return;
+  }
+  if (M.mode==='pp'){
+    if (!g) return setFooterStatus('Click a piece','warn');
+    const uid=+g.dataset.uid;
+    if (M.uidA==null){ M.uidA=uid; select(uid); setFooterStatus('Now click the second piece','ok'); return; }
+    if (uid===M.uidA) return;
+    const A=instPoly(byUid(M.uidA)), B=instPoly(byUid(uid));
+    if (polysOverlap(A,B)){ gMeasure.innerHTML=''; setFooterStatus('Pieces touch or overlap — gap 0 cm','warn'); }
+    else {
+      const r=minDistPolys(A,B);
+      gMeasure.innerHTML = mLine(r.p,r.q) + mText((r.p[0]+r.q[0])/2, (r.p[1]+r.q[1])/2 - mFs()/2, r.d.toFixed(2)+' cm');
+      setFooterStatus(`Closest gap ${r.d.toFixed(2)} cm — click the first piece of a new pair`,'ok');
+    }
+    M.uidA=null; select(null);
+    return;
+  }
+  if (M.mode==='pe'){
+    if (!g) return setFooterStatus('Click a piece','warn');
+    const p=byUid(+g.dataset.uid), poly=instPoly(p);
+    let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
+    for (const t of poly){ if(t[0]<x1)x1=t[0]; if(t[0]>x2)x2=t[0]; if(t[1]<y1)y1=t[1]; if(t[1]>y2)y2=t[1]; }
+    const len=markerStats().len, W=S.width, cy=(y1+y2)/2, cx=(x1+x2)/2;
+    const dL=x1, dT=y1, dB=W-y2, dE=len-x2;
+    gMeasure.innerHTML =
+      mLine([0,cy],[x1,cy]) + mText(x1/2, cy-mFs()/2, dL.toFixed(1)) +
+      mLine([cx,0],[cx,y1]) + mText(cx+mFs()/3, y1/2, dT.toFixed(1)) +
+      mLine([cx,y2],[cx,W]) + mText(cx+mFs()/3, (y2+W)/2, dB.toFixed(1)) +
+      (dE>0.01 ? mLine([x2,cy],[len,cy]) + mText((x2+len)/2, cy-mFs()/2, dE.toFixed(1)) : '');
+    setFooterStatus(`To edges — start ${dL.toFixed(1)} · top ${dT.toFixed(1)} · bottom ${dB.toFixed(1)} · marker end ${Math.max(0,dE).toFixed(1)} cm`,'ok');
+    return;
+  }
+}
+
+/* ---- zoom window ---- */
+function toggleZoomWin(){
+  UI.zoomwin=!UI.zoomwin;
+  if (UI.zoomwin && UI.measure) clearMeasure();
+  $('bZoomWin').classList.toggle('on', UI.zoomwin);
+  cv.classList.toggle('measuring', UI.zoomwin || !!UI.measure);
+  if (UI.zoomwin) setFooterStatus('Zoom window: drag a rectangle on the canvas','ok');
+}
+function applyZoomRect(x,y,w,h){
+  const ar=cv.clientWidth/cv.clientHeight;
+  let W2=w, H2=h;
+  if (W2/H2 < ar) W2=H2*ar; else H2=W2/ar;
+  UI.vb={x:x-(W2-w)/2, y:y-(H2-h)/2, w:W2, h:H2};
+  setVB(); scheduleLabelRefresh();
+}
+
+/* ---- thumbnail minimap ---- */
+function renderThumb(){
+  const t=$('thumb');
+  if (!UI.thumb || !S){ t.hidden=true; return; }
+  t.hidden=false;
+  const st=markerStats(), L=Math.max(320, st.len+40), W=S.width;
+  let body='';
+  for (const p of S.pieces){
+    if (!p.placed) continue;
+    const sh=instShape(p);
+    body+=`<path d="${fmtPoly(sh.pts)}" transform="translate(${p.x},${p.y})" fill="${sizeCol(p)}" fill-opacity=".85"/>`;
+  }
+  $('thumbSvg').setAttribute('viewBox', `-2 -2 ${L+4} ${W+4}`);
+  $('thumbSvg').innerHTML =
+    `<rect x="0" y="0" width="${L}" height="${W}" fill="var(--panel2)" stroke="var(--edge)" vector-effect="non-scaling-stroke"/>` + body +
+    (st.len>0 ? `<line x1="${st.len}" y1="0" x2="${st.len}" y2="${W}" stroke="var(--bad)" stroke-dasharray="6 4" vector-effect="non-scaling-stroke"/>` : '') +
+    `<rect id="thumbVP" fill="none" stroke="var(--acc-hi)" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+  updateThumbVP();
+}
+function updateThumbVP(){
+  const r=document.getElementById('thumbVP'); if (!r) return;
+  r.setAttribute('x',UI.vb.x); r.setAttribute('y',UI.vb.y);
+  r.setAttribute('width',UI.vb.w); r.setAttribute('height',UI.vb.h);
+}
+$('thumb').addEventListener('pointerdown', e=>{
+  const svg=$('thumbSvg'), pt=svg.createSVGPoint();
+  pt.x=e.clientX; pt.y=e.clientY;
+  const m=svg.getScreenCTM(); if (!m) return;
+  const p=pt.matrixTransform(m.inverse());
+  UI.vb.x=p.x-UI.vb.w/2; UI.vb.y=p.y-UI.vb.h/2;
+  setVB();
+  e.stopPropagation(); e.preventDefault();
+});
+
+/* ---- whole-marker flips ---- */
+function flipMarker(ax){
+  const placed=S.pieces.filter(p=>p.placed);
+  if (!placed.length) return toast('Nothing to flip — marker is empty','warn');
+  pushUndo();
+  const L=markerStats().len, W=S.width;
+  // exact mirror — no rounding, so butted pieces stay exactly butted
+  for (const p of placed){
+    if (ax.includes('x')){
+      p.fx=!p.fx; p.rot=((-p.rot)%360+360)%360;
+      p.x=L-p.x-instShape(p).bb.w;
+    }
+    if (ax.includes('y')){
+      p.fy=!p.fy; p.rot=((-p.rot)%360+360)%360;
+      p.y=W-p.y-instShape(p).bb.h;
+    }
+  }
+  // shape vertices are quantized to 0.01 cm per piece frame, so a mirror can
+  // leave hair-width (≤0.01 cm) interpenetrations — separate any such pair
+  for (let pass=0; pass<3; pass++){
+    let clean=true;
+    for (let i=0;i<placed.length;i++) for (let j=i+1;j<placed.length;j++){
+      const A=placed[i], B=placed[j];
+      if (!polysOverlap(instPoly(A),instPoly(B))) continue;
+      (A.x>B.x?A:B).x += 0.02;
+      clean=false;
+    }
+    if (clean) break;
+  }
+  renderAll(); persist();
+  toast('Marker flipped '+ax.toUpperCase());
+}
+
+/* ---- unplace small / fit piece / duplicate ---- */
+function unplaceSmall(){
+  const placed=S.pieces.filter(p=>p.placed);
+  if (!placed.length) return toast('Nothing placed','warn');
+  const amax=Math.max(...placed.map(p=>instShape(p).area));
+  const small=placed.filter(p=>instShape(p).area < amax*0.2);
+  if (!small.length) return toast('No pieces below 20% of the largest','warn');
+  pushUndo();
+  for (const p of small) p.placed=false;
+  UI.sel=null; renderAll(); persist();
+  toast(small.length+' small piece(s) returned to the tray');
+}
+function fitPiece(){
+  withSel(inst=>{
+    const wasPlaced=inst.placed;
+    inst.placed=false;
+    const spot=bestSpotFor(inst, markerStats().len);
+    inst.placed=wasPlaced;
+    if (!spot) return toast('No spot found for this piece','warn');
+    pushUndo();
+    inst.rot=spot.rot; inst.x=spot.x; inst.y=spot.y; inst.placed=true;
+    gravity(inst);
+    if (UI.carry===inst.uid) cancelCarry();
+    renderAll(); select(inst.uid); persist();
+    toast('Piece fitted');
+  });
+}
+function duplicatePlaced(){
+  if (UI.sel==null) return toast('Select a placed piece first','warn');
+  const p=byUid(UI.sel);
+  if (!p || !p.placed) return toast('Select a placed piece first','warn');
+  pushUndo();
+  const c={...p, uid:uidSeq++, placed:false, extra:true};
+  S.pieces.push(c);
+  UI.sel=null; UI.carry=c.uid;
+  cv.classList.add('carrying');
+  renderAll(); renderHint();
+  toast('Duplicate created — click the fabric to place it');
+}
+
+/* ---- restore points ---- */
+const RP_KEY='seamline-marker-restorepoints';
+const rpEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function loadRPs(){ try{ return JSON.parse(localStorage.getItem(RP_KEY))||[]; }catch{ return []; } }
+function saveRPs(l){ try{ localStorage.setItem(RP_KEY, JSON.stringify(l)); }catch{} }
+function storeRP(label, quiet){
+  const l=loadRPs();
+  l.unshift({label: label || (S.name+' — '+new Date().toLocaleString()), marker: JSON.parse(JSON.stringify(S))});
+  while (l.length>8) l.pop();
+  saveRPs(l);
+  if (!quiet) toast('Restore point stored');
+}
+function renderRPBody(){
+  const l=loadRPs();
+  $('rpBody').innerHTML = l.length
+    ? l.map((r,i)=>`<div class="sc-row"><span>${rpEsc(r.label)}</span><span>
+        <button class="btn mini" data-rp-go="${i}">Restore</button>
+        <button class="btn mini" data-rp-del="${i}">✕</button></span></div>`).join('')
+    : '<div class="dnote">No restore points yet. One is stored automatically before every Auto-Nest; use “Store now” for manual points.</div>';
+}
+function restoreRP(i){
+  const r=loadRPs()[i]; if (!r) return;
+  S=migrateMarker(JSON.parse(JSON.stringify(r.marker)));
+  for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+  UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
+  $('markerName').value=S.name;
+  renderAll(); fitView(); persist();
+  $('dlgRestore').close();
+  toast('Restored: '+r.label);
+}
+
+/* ---- approval status ---- */
+function setApproval(v){
+  if (!S) return;
+  S.approval = S.approval===v ? 'none' : v;
+  persist(); renderStats();
+  if (S.approval==='needs') toast('Marked as needing approval','warn');
+  else if (S.approval==='approved') toast('Marker approved');
+  else toast('Approval flag cleared');
+}
 
 /* toolbar wiring */
 $('bNew').onclick=openOrderDialog;
@@ -2605,13 +2959,34 @@ function applyTheme(mode){
 $('themeToggle').onclick=()=>applyTheme(
   document.documentElement.getAttribute('data-theme')==='light' ? 'dark' : 'light');
 $('effort').addEventListener('input',e=>{ UI.effort=+e.target.value; $('effortVal').textContent=UI.effort; });
-$('layRule').addEventListener('change',e=>{ UI.layRule=e.target.value; });
-for (const [id,key] of [['tGrid','grid'],['tSnap','snap'],['tButt','autobutt']]){
-  $(id).addEventListener('click',()=>{
-    UI[key]=!UI[key]; $(id).classList.toggle('on',UI[key]);
-    if (key==='grid') renderFabric(markerStats().len);
-  });
-}
+$('layRule').addEventListener('change',e=>{ UI.layRule=e.target.value; if (UI.dockTab==='options') renderOrderDock(); });
+
+/* Tier-1 tool wiring */
+$('bFit').onclick=fitPiece;
+$('bDup').onclick=duplicatePlaced;
+$('bUnplaceSmall').onclick=unplaceSmall;
+$('bMFlipX').onclick=()=>flipMarker('x');
+$('bMFlipY').onclick=()=>flipMarker('y');
+$('bMFlipXY').onclick=()=>flipMarker('xy');
+$('bMeasPt').onclick=()=>setMeasure('pt');
+$('bMeasPP').onclick=()=>setMeasure('pp');
+$('bMeasPE').onclick=()=>setMeasure('pe');
+$('bNeedsApp').onclick=()=>setApproval('needs');
+$('bApprove').onclick=()=>setApproval('approved');
+$('bZoomWin').onclick=toggleZoomWin;
+$('bEditOrder').onclick=openOrderDialog;
+$('bOptions').onclick=()=>{ UI.dockTab='options'; renderOrderDock(); };
+$('tThumb').onclick=()=>{
+  UI.thumb=!UI.thumb; $('tThumb').classList.toggle('on',UI.thumb); renderThumb();
+};
+$('bRestore').onclick=()=>{ renderRPBody(); $('dlgRestore').showModal(); };
+$('rpStore').onclick=()=>{ storeRP(); renderRPBody(); };
+$('rpBody').addEventListener('click', e=>{
+  const go=e.target.closest('[data-rp-go]');
+  if (go) return restoreRP(+go.dataset.rpGo);
+  const del=e.target.closest('[data-rp-del]');
+  if (del){ const l=loadRPs(); l.splice(+del.dataset.rpDel,1); saveRPs(l); renderRPBody(); }
+});
 $('markerName').addEventListener('change',()=>{ S.name=$('markerName').value.trim()||S.name; persist(); });
 
 // End allowance: recompute consumption live, non-destructive.
@@ -2654,7 +3029,13 @@ window.addEventListener('keydown', e=>{
     case 'l': case 'L': buttSel(-1,0); break;
     case 'u': case 'U': buttSel(0,-1); break;
     case 'Delete': case 'Backspace': if(UI.sel!=null) unplace(UI.sel); break;
-    case 'Escape': if(UI.carry!=null) cancelCarry(); else select(null); break;
+    case 'Escape':
+      if (UI.measure) clearMeasure();
+      else if (UI.zoomwin) toggleZoomWin();
+      else if (UI.carry!=null) cancelCarry();
+      else select(null);
+      break;
+    case 'w': case 'W': toggleZoomWin(); break;
     case 'ArrowLeft':  e.preventDefault(); nudgeSel(e.shiftKey?-0.1:-1,0); break;
     case 'ArrowRight': e.preventDefault(); nudgeSel(e.shiftKey?0.1:1,0); break;
     case 'ArrowUp':    e.preventDefault(); nudgeSel(0,e.shiftKey?-0.1:-1); break;
