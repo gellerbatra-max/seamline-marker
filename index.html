@@ -213,6 +213,10 @@
   /* ---------- measure / zoom-window mode + approval chip ---------- */
   #cv.measuring{cursor:crosshair}
   #gCut{pointer-events:none}
+  #gZones{pointer-events:none}
+  #gSplice{pointer-events:none}
+  .tb:disabled{opacity:.4; cursor:not-allowed}
+  .tb:disabled:hover{background:none; border-color:transparent}
   .chip.appr.needs{background:var(--warn); color:#241a05}
   .chip.appr.ok{background:var(--good); color:#0a2214}
 
@@ -283,6 +287,7 @@
   .pc:hover path{stroke:#000}
   .pc.sel path{stroke:var(--acc-hi); stroke-width:2.2px; fill-opacity:.95}
   .pc.bad path{fill:var(--bad) !important; fill-opacity:.75}
+  .pc.violation path{stroke:var(--bad); stroke-width:2.4px; stroke-dasharray:5 2.5}
   .pc text{pointer-events:none; fill:var(--pc-ink); font-weight:600; transition:opacity .1s}
   .pc.small text{opacity:0}
   .pc.small:hover text, .pc.small.sel text{opacity:1}
@@ -606,7 +611,15 @@
       <option value="free">Rotation: free</option>
     </select>
     <button class="tb" id="bEditOrder" title="Change fabric width, buffer, sizes or pieces"><span class="ic">✎</span>Edit order…</button>
-    <span class="rnote">width · buffer · end allowance live in the header and Options dock — splice · plaid &amp; stripe · block fuse planned</span>
+    <div class="tsep"></div>
+    <button class="tb tgl" id="bMarkZone" title="Mark a fabric-defect zone — drag a rectangle; pieces will keep clear of it"><span class="ic">▨</span>Mark defect zone</button>
+    <button class="tb" id="bClearZones" title="Remove all defect zones"><span class="ic">⌦</span>Clear zones</button>
+    <div class="tsep"></div>
+    <button class="tb tgl" id="bAddSplice" title="Add a splice line — click where the fabric roll joins; no piece may straddle it"><span class="ic">╎</span>Add splice</button>
+    <button class="tb" id="bAutoSplice" title="Place splices automatically every roll length"><span class="ic">⚡</span>Auto splice…</button>
+    <button class="tb" id="bClearSplice" title="Remove all splice lines"><span class="ic">⌦</span>Clear splices</button>
+    <button class="tb" id="bNudge" title="Shift straddling pieces clear of their splice" hidden><span class="ic">⤨</span>Nudge offenders</button>
+    <span class="rnote">plaid &amp; stripe · block fuse — planned</span>
   </div>
   <div class="rpane" data-rpane="advanced" hidden>
     <button class="tb tgl" id="tCutPath" title="Show the knife path — cut order, plunge points, travel direction and dry-haul"><span class="ic">✂</span>Knife path</button>
@@ -648,8 +661,10 @@
       <svg id="cv" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
         <g id="gFab"></g>
         <g id="gGrid"></g>
+        <g id="gZones"></g>
         <g id="gPieces"></g>
         <g id="gOverlay"></g>
+        <g id="gSplice"></g>
         <g id="gRulers"></g>
         <g id="gMeasure"></g>
         <g id="gCut"></g>
@@ -777,6 +792,7 @@
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, copy it 1:1 to the clipboard, or save the marker as JSON. On the <b>Advanced</b> tab, sequence the cut (<b>Auto sequence</b> = banded serpentine sweep; <b>Pick order</b> = click pieces in order; <b>Knife path</b> shows plunge points, direction and dry-haul) and <b>Generate Cut Data</b> as HPGL (.plt) for the cutter or DXF R12 for CAM import — entity order is the cut order.</li>
+      <li><b>Fabric</b> tab — for spreading: <b>Mark defect zone</b> (drag over a flaw; pieces keep clear) and <b>Add splice</b> / <b>Auto splice</b> (roll joins no piece may straddle). Guides added over placed pieces flag them in red and block cut-data export until you move them clear (or <b>Nudge offenders</b>).</li>
       <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
     <h4>RULES</h4>
@@ -801,6 +817,16 @@
     <p style="margin-top:14px; color:var(--mut)">Part of the <b>Seamline</b> apparel suite · workflow modeled on the classic marker pipeline: order → placement → status → plot/cut.</p>
   </div>
   <div class="dlg-foot"><button class="btn primary" data-close="dlgHelp">Got it</button></div>
+</dialog>
+
+<!-- ---------- Auto-splice ---------- -->
+<dialog id="dlgSplice">
+  <div class="dlg-head">Auto splice <button class="x" data-close="dlgSplice">✕</button></div>
+  <div class="dlg-body">
+    <div class="frow"><label>Fabric roll length</label><span><input id="rollLen" type="number" min="50" step="10" value="1000"> cm</span></div>
+    <p class="note">A splice is placed at each roll length along the marker, nudged to the nearest clear gap so no piece straddles a join.</p>
+  </div>
+  <div class="dlg-foot"><button class="btn" data-close="dlgSplice">Cancel</button><span style="flex:1"></span><button class="btn primary" id="rollGo">Place splices</button></div>
 </dialog>
 
 <!-- ---------- Restore points ---------- -->
@@ -1055,7 +1081,8 @@ const UI = {
 };
 const $ = id => document.getElementById(id);
 const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
-      gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost');
+      gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost'),
+      gZones=$('gZones'), gSplice=$('gSplice');
 
 // lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…], dir:{pieceKey0:'two'|'four'|'free'}}]
 // dir overrides a piece's lay direction for this order; absent = the piece's natural default.
@@ -1063,6 +1090,7 @@ function newOrder(lines, name, width, buffer){
   const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
   S = { name, width, buffer, endAllow:prevEnd, pieces:[],
         cut:{ mode:'auto', order:[], params:{ bandW:50, dir:'ccw' } },
+        zones:[], splices:[], overlaps:[], spread:{ type:'single', fold:'none' },
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
                                excl:[...(L.excl||[])], dir:{...(L.dir||{})}, fab:{...(L.fab||{})} })) };
   S.lines.forEach((L, li)=>{
@@ -1104,8 +1132,19 @@ function migrateMarker(m){
   // markers saved before cut sequencing
   if (!m.cut) m.cut = { mode:'auto', order:[], params:{} };
   m.cut.params = Object.assign({ bandW:50, dir:'ccw' }, m.cut.params||{});
+  // Tier 4 fabric handling — guides live in their own arrays, never in pieces.
+  if (!m.zones)   m.zones   = [];   // no-place defect rectangles {id,x,y,w,h} world coords
+  if (!m.splices) m.splices = [];   // splice lines {id,x} on the length axis (no y-flip)
+  for (const z of m.zones)   if (!z.id) z.id = uid();
+  for (const s of m.splices) if (!s.id) s.id = uid();
+  // provisioned-but-inert: fields the deferred overlap/spread features will use,
+  // so those increments need no further migration
+  if (!m.overlaps) m.overlaps = [];
+  if (!m.spread)   m.spread   = { type:'single', fold:'none' };
+  for (const p of m.pieces) if (p.ol==null) p.ol = 0;
   return m;
 }
+const uid = () => 'g'+(uidSeq++);   // stable string id for guides (zones/splices)
 const pieceDir = inst => inst.dir || (defByKey[inst.defKey]||{}).rot || 'two';
 const pieceFab = inst => inst.fab || 'A';
 // distinct fabric codes in the current marker, in first-seen order
@@ -1149,6 +1188,24 @@ function canPlaceAt(inst, x, y, skip){
     if (!poly) poly = sh.pts.map(p=>[p[0]+x, p[1]+y]);
     if (tooClose(poly, instPoly(o), tol)) return false;
   }
+  // ---- Tier 4: fabric guides (append-only; empty arrays = Tier 1-3 code path) ----
+  // No-place defect zones: same bbox-obstacle rule as a blocked piece, so
+  // clearance near a defect matches clearance near a block.
+  if (S.zones && S.zones.length){
+    const gap = Math.max(S.buffer, inst.buf||0);
+    const t = gap>0 ? gap-0.005 : 0;
+    for (const z of S.zones){
+      if (!(z.x+z.w+t <= x || x+bb.w+t <= z.x || z.y+z.h+t <= y || y+bb.h+t <= z.y)) return false;
+    }
+  }
+  // Splice lines: no piece may straddle a roll join. Raw bbox (never the buffer
+  // gap, so a splice legally sits in a gap between two pieces); strict interior,
+  // so a piece touching the line at its edge is allowed.
+  if (S.splices && S.splices.length){
+    for (const s of S.splices){
+      if (x+0.01 < s.x && s.x < x+bb.w-0.01) return false;
+    }
+  }
   return true;
 }
 function slideDir(inst, dx, dy){
@@ -1167,6 +1224,8 @@ function slideDir(inst, dx, dy){
 const snapPieces = () => JSON.stringify({
   pieces: S.pieces.map(p=>[p.uid,p.placed?1:0,p.x,p.y,p.rot,p.fx?1:0,p.fy?1:0]),
   cut: S.cut ? { mode:S.cut.mode, order:S.cut.order.slice() } : null,   // slice — never alias
+  zones: (S.zones||[]).map(z=>({...z})),        // deep-clone — guide edits share one undo history
+  splices: (S.splices||[]).map(s=>({...s})),
 });
 function pushUndo(){ UI.undo.push(snapPieces()); if (UI.undo.length>100) UI.undo.shift(); UI.redo=[]; }
 function applySnap(s){
@@ -1176,6 +1235,9 @@ function applySnap(s){
   for (const p of S.pieces){ const r=map.get(p.uid); if(!r) continue;
     p.placed=!!r[1]; p.x=r[2]; p.y=r[3]; p.rot=r[4]; p.fx=!!r[5]; p.fy=!!r[6]; }
   if (!Array.isArray(snap) && snap.cut && S.cut){ S.cut.mode=snap.cut.mode; S.cut.order=snap.cut.order.slice(); }
+  if (!Array.isArray(snap) && snap.zones)   S.zones   = snap.zones.map(z=>({...z}));
+  if (!Array.isArray(snap) && snap.splices) S.splices = snap.splices.map(s=>({...s}));
+  if (typeof validateMarker==='function') validateMarker(true);
 }
 function undo(){ if(!UI.undo.length) return toast('Nothing to undo','warn');
   UI.redo.push(snapPieces()); applySnap(UI.undo.pop()); UI.sel=null; renderAll(); persist(); }
@@ -1281,7 +1343,10 @@ function pieceMarkup(inst, cls){
 
 function renderPieces(){
   let h='';
-  for (const p of S.pieces) if (p.placed) h += pieceMarkup(p, (UI.selSet.has(p.uid)||p.uid===UI.sel)?'sel':'');
+  for (const p of S.pieces) if (p.placed){
+    const cls=((UI.selSet.has(p.uid)||p.uid===UI.sel)?'sel ':'')+(p.violation?'violation':'');
+    h += pieceMarkup(p, cls.trim());
+  }
   gPieces.innerHTML = h;
 }
 
@@ -1510,8 +1575,10 @@ function shortcutsHTML(){
 function renderAll(){
   const st = renderStats();
   renderFabric(st.len);
+  if (typeof validateMarker==='function') validateMarker(true);   // set violation flags before pieces draw
   renderPieces();
   renderOverlay(st.len);
+  if (typeof renderGuides==='function') renderGuides();
   renderTray();
   renderHint();
   if (typeof renderThumb==='function') renderThumb();
@@ -1554,7 +1621,7 @@ function setVB(){
 let _labelRAF=null;
 function scheduleLabelRefresh(){
   if (_labelRAF) return;
-  _labelRAF = requestAnimationFrame(()=>{ _labelRAF=null; if (S){ updateLabelScale(); renderPieces(); } });
+  _labelRAF = requestAnimationFrame(()=>{ _labelRAF=null; if (S){ updateLabelScale(); renderPieces(); if (typeof renderGuides==='function') renderGuides(); } });
 }
 function fitView(){
   const cw=cv.clientWidth, ch=cv.clientHeight;
@@ -1649,12 +1716,20 @@ function onDown(e){
   }
   if (UI.zoomwin){ UI.zw={x0:w.x, y0:w.y, x1:w.x, y1:w.y}; capturePtr(e); return; }
   if (UI.measure){ measureClick(w, e.target.closest && e.target.closest('g.pc')); return; }
+  // Tier 4 guide interaction
+  if (UI.spliceMode){ addSpliceAt(w.x); return; }
+  if (UI.zoneMode){ UI.zoneDraw={x0:w.x, y0:w.y, x1:w.x, y1:w.y}; capturePtr(e); return; }
+  if (UI.carry==null){
+    const gh=guideHitTest(w, e);
+    if (gh){ startGuideDrag(gh, w, e); return; }
+  }
 
   if (UI.carry!=null){ tryDropCarry(w); return; }
 
   const g = e.target.closest && e.target.closest('g.pc');
   if (g){
     const uid=+g.dataset.uid, inst=byUid(uid);
+    if (UI.selZone!=null||UI.selSplice!=null){ UI.selZone=UI.selSplice=null; renderGuides(); }
     if (e.altKey){ selectBundle(uid); return; }              // Alt+click = select bundle
     if (e.shiftKey){ selToggle(uid); return; }               // Shift+click = add/remove
     // clicking a member of a multi-selection grabs the whole group
@@ -1667,6 +1742,7 @@ function onDown(e){
               moved:false, el:g, valid:true, members };
     capturePtr(e);
   } else {
+    if (UI.selZone!=null||UI.selSplice!=null){ UI.selZone=UI.selSplice=null; renderGuides(); }
     if (e.shiftKey){ UI.mq={x0:w.x, y0:w.y, x1:w.x, y1:w.y}; capturePtr(e); return; }   // marquee
     select(null);
     startPan(e);
@@ -1687,6 +1763,14 @@ function onMove(e){
       fill="var(--acc)" fill-opacity=".12" stroke="var(--acc-hi)" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
     return;
   }
+  if (UI.zoneDraw){
+    UI.zoneDraw.x1=w.x; UI.zoneDraw.y1=w.y;
+    const zd=UI.zoneDraw, x=Math.min(zd.x0,zd.x1), y=Math.min(zd.y0,zd.y1);
+    gSplice.innerHTML=`<rect x="${x}" y="${y}" width="${Math.abs(zd.x1-zd.x0)}" height="${Math.abs(zd.y1-zd.y0)}"
+      fill="var(--bad)" fill-opacity="0.12" stroke="var(--bad)" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
+    return;
+  }
+  if (UI.guideDrag){ applyGuideDrag(w); return; }
   if (UI.pan){
     const scale = UI.vb.w/cv.clientWidth;
     UI.vb.x = UI.pan.vx - (e.clientX-UI.pan.mx)*scale;
@@ -1727,6 +1811,20 @@ function onMove(e){
   if (UI.carry!=null) updateGhost(w);
 }
 function onUp(e){
+  if (UI.zoneDraw){
+    const zd=UI.zoneDraw; UI.zoneDraw=null;
+    const x=Math.min(zd.x0,zd.x1), y=Math.min(zd.y0,zd.y1),
+          ww=Math.abs(zd.x1-zd.x0), hh=Math.abs(zd.y1-zd.y0);
+    if (ww>=2 && hh>=2){
+      pushUndo();
+      const z={ id:uid(), x:+x.toFixed(1), y:+y.toFixed(1), w:+ww.toFixed(1), h:+hh.toFixed(1) };
+      clampZone(z); S.zones.push(z); UI.selZone=z.id; UI.selSplice=null;
+      toggleZoneMode(false); renderAll(); persist();
+      setFooterStatus('Defect zone added — pieces will keep clear of it','ok');
+    } else { gSplice.innerHTML=''; renderGuides(); }
+    return;
+  }
+  if (UI.guideDrag){ endGuideDrag(); return; }
   if (UI.zw){
     const z=UI.zw; UI.zw=null; gMeasure.innerHTML='';
     const x=Math.min(z.x0,z.x1), y=Math.min(z.y0,z.y1),
@@ -2214,6 +2312,7 @@ function openJSON(file){
       S=migrateMarker(doc.marker);
       for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
       UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
+      UI.selZone=UI.selSplice=null; if (typeof resetGuideModes==='function') resetGuideModes();
       $('markerName').value=S.name;
       renderAll(); fitView(); persist();
       toast('Marker loaded: '+S.name);
@@ -2848,6 +2947,7 @@ $('wsCutplanBtn').onclick=openPlanDialog;
 /* ---- ribbon tabs (Gerber-style) ---- */
 $('rtabs').addEventListener('click', e=>{
   const b=e.target.closest('.rtab'); if(!b || b.disabled) return;
+  if (typeof resetGuideModes==='function') resetGuideModes();   // leaving/entering a tab clears canvas modes
   document.querySelectorAll('#rtabs .rtab').forEach(x=>x.classList.toggle('on', x===b));
   document.querySelectorAll('#ribbonRow .rpane').forEach(p=>p.hidden = p.dataset.rpane!==b.dataset.rtab);
   if (b.dataset.rtab==='advanced' && S && S.cut){   // sync cut params into the pane
@@ -2855,6 +2955,14 @@ $('rtabs').addEventListener('click', e=>{
     $('cutDirSel').value=S.cut.params.dir;
   }
 });
+/* Tier-4 fabric-handling wiring */
+$('bMarkZone').onclick=()=>toggleZoneMode();
+$('bClearZones').onclick=()=>clearGuides('zone');
+$('bAddSplice').onclick=()=>toggleSpliceMode();
+$('bClearSplice').onclick=()=>clearGuides('splice');
+$('bNudge').onclick=nudgeOffenders;
+$('bAutoSplice').onclick=()=>$('dlgSplice').showModal();
+$('rollGo').onclick=()=>{ $('dlgSplice').close(); autoSplice(+$('rollLen').value); };
 
 /* =====================================================================
    TIER-1 TOOLS — measure, zoom window, minimap, marker flips,
@@ -3329,6 +3437,8 @@ function drawPickBadges(){
    closure back to the plunge vertex (HPGL has no closed flag); y flipped once
    at emit so machine origin is bottom-left. */
 function exportHPGL(){
+  if (typeof validateMarker==='function' && validateMarker()>0)
+    return toast('Resolve splice / defect-zone violations before exporting','warn');
   const {moves}=buildCutMoves();
   if (!moves.length) return toast('Nothing sequenced — place pieces first','warn');
   const W=S.width; let over=false;
@@ -3359,6 +3469,8 @@ function exportHPGL(){
    handles, no LWPOLYLINE, no $INSUNITS (does not exist in R12); LTYPE table
    declared before the LAYER table references it. */
 function exportDXF(){
+  if (typeof validateMarker==='function' && validateMarker()>0)
+    return toast('Resolve splice / defect-zone violations before exporting','warn');
   const {moves}=buildCutMoves();
   if (!moves.length) return toast('Nothing sequenced — place pieces first','warn');
   const W=S.width, st=markerStats(), N=v=>v.toFixed(2);
@@ -3415,6 +3527,227 @@ function copyMarker1to1(){
     });
   };
   img.src=url;
+}
+
+/* =====================================================================
+   TIER 4 — fabric handling: no-place defect zones + splice lines.
+   Guides live in S.zones / S.splices (never in S.pieces). Enforcement is
+   the two append-only branches in canPlaceAt; validateMarker() is the
+   retroactive safety net for guides dropped/dragged under placed pieces.
+   ===================================================================== */
+UI.zoneMode=false; UI.spliceMode=false; UI.selZone=null; UI.selSplice=null;
+UI.zoneDraw=null; UI.guideDrag=null; UI.violations=0;
+
+function zoneHandlePts(z){
+  const mx=z.x+z.w/2, my=z.y+z.h/2;               // 0 TL 1 TM 2 TR 3 ML 4 MR 5 BL 6 BM 7 BR
+  return [[z.x,z.y],[mx,z.y],[z.x+z.w,z.y],[z.x,my],[z.x+z.w,my],[z.x,z.y+z.h],[mx,z.y+z.h],[z.x+z.w,z.y+z.h]];
+}
+function renderGuides(){
+  if (!gZones || !S) return;
+  const W=S.width;
+  // ---- defect zones (below pieces) ----
+  if (S.zones && S.zones.length){
+    let h=`<defs><pattern id="defectHatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">`+
+      `<rect width="6" height="6" fill="var(--bad)" fill-opacity="0.10"/>`+
+      `<line x1="0" y1="0" x2="0" y2="6" stroke="var(--bad)" stroke-width="1.3" stroke-opacity="0.5"/></pattern></defs>`;
+    for (const z of S.zones){
+      const sel=UI.selZone===z.id;
+      h+=`<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="url(#defectHatch)" `+
+         `stroke="var(--bad)" stroke-width="${sel?1.8:1}" vector-effect="non-scaling-stroke"${sel?'':' stroke-dasharray="4 3"'}/>`;
+      h+=`<text x="${z.x+z.w/2}" y="${z.y+z.h/2+2}" font-size="${Math.max(3,Math.min(8,z.h*0.4))}" fill="var(--bad)" text-anchor="middle" opacity="0.75" style="pointer-events:none">defect</text>`;
+    }
+    gZones.innerHTML=h;
+  } else gZones.innerHTML='';
+  // ---- splice lines + selection handles (above pieces) ----
+  let s='';
+  const fs=Math.max(2.5, UI.vb.w/cv.clientWidth*9);
+  const sorted=[...(S.splices||[])].sort((a,b)=>a.x-b.x);
+  let prev=0;
+  for (const sp of sorted){
+    const sel=UI.selSplice===sp.id;
+    s+=`<line x1="${sp.x}" y1="0" x2="${sp.x}" y2="${W}" stroke="var(--warn)" stroke-width="${sel?2.2:1.2}" vector-effect="non-scaling-stroke" stroke-dasharray="7 5"/>`;
+    s+=`<text x="${sp.x}" y="${-fs*0.6}" font-size="${fs}" fill="var(--warn)" text-anchor="middle" style="pointer-events:none">${sp.x.toFixed(0)}${prev?` (+${(sp.x-prev).toFixed(0)})`:''}</text>`;
+    if (sel) s+=`<rect x="${sp.x-fs*0.45}" y="${-fs*1.9}" width="${fs*0.9}" height="${fs*0.9}" fill="var(--warn)"/>`;
+    prev=sp.x;
+  }
+  const z=UI.selZone!=null && S.zones ? S.zones.find(z=>z.id===UI.selZone) : null;
+  if (z){
+    const hs=Math.max(1.6, UI.vb.w/cv.clientWidth*4);
+    for (const [hx,hy] of zoneHandlePts(z))
+      s+=`<rect x="${hx-hs/2}" y="${hy-hs/2}" width="${hs}" height="${hs}" fill="var(--panel)" stroke="var(--acc)" stroke-width="1.4" vector-effect="non-scaling-stroke"/>`;
+  }
+  gSplice.innerHTML=s;
+}
+
+// Retroactive check: canPlaceAt only gates NEW placements, so a guide dropped
+// or dragged under placed pieces needs this. Sets p.violation, blocks export.
+function validateMarker(quiet){
+  let n=0;
+  const hasG=(S.splices&&S.splices.length)||(S.zones&&S.zones.length);
+  for (const p of S.pieces){
+    p.violation=false;
+    if (!hasG || !p.placed) continue;
+    const bb=instShape(p).bb, x=p.x, y=p.y;
+    let bad=false;
+    for (const sp of (S.splices||[])) if (x+0.01<sp.x && sp.x<x+bb.w-0.01){ bad=true; break; }
+    if (!bad){
+      const gap=Math.max(S.buffer,p.buf||0), t=gap>0?gap-0.005:0;
+      for (const z of (S.zones||[]))
+        if (!(z.x+z.w+t<=x || x+bb.w+t<=z.x || z.y+z.h+t<=y || y+bb.h+t<=z.y)){ bad=true; break; }
+    }
+    if (bad){ p.violation=true; n++; }
+  }
+  UI.violations=n;
+  for (const id of ['bExpHPGL','bExpDXF']){ const b=$(id); if(!b) continue;
+    if(!b.dataset.t) b.dataset.t=b.title;
+    b.disabled=n>0;
+    b.title = n>0 ? `${n} piece(s) violate a splice or defect zone — resolve to export` : b.dataset.t;
+  }
+  const nb=$('bNudge'); if (nb) nb.hidden = !(S.splices&&S.splices.length && n>0);
+  if (!quiet && n>0) setFooterStatus(`${n} piece(s) violate a splice / defect zone — move clear to export`,'warn');
+  return n;
+}
+
+/* ---- create / edit ---- */
+function addSpliceAt(x){
+  x=Math.max(0, +x.toFixed(1));
+  pushUndo();
+  S.splices.push({ id:uid(), x });
+  UI.selSplice=null; UI.selZone=null;
+  renderAll(); persist();
+  setFooterStatus(`Splice at ${x.toFixed(0)} cm — no piece may straddle it`,'ok');
+}
+function autoSplice(roll){
+  roll=+roll; if (!(roll>0)) return toast('Enter a roll length','warn');
+  const len=Math.max(markerStats().len, 0);
+  if (len<roll) return toast('Marker is shorter than one roll — no splice needed','warn');
+  pushUndo();
+  const win=roll*0.15;              // search window each side of the ideal join
+  let flagged=0;
+  for (let target=roll; target<len; target+=roll){
+    let best=target, ok=false;
+    for (let d=0; d<=win; d+=1){
+      for (const cand of [target-d, target+d]){
+        if (cand<=0||cand>=len) continue;
+        if (!S.pieces.some(p=>p.placed && p.x+0.01<cand && cand<p.x+instShape(p).bb.w-0.01)){ best=cand; ok=true; break; }
+      }
+      if (ok) break;
+    }
+    if (!ok) flagged++;
+    S.splices.push({ id:uid(), x:+best.toFixed(1) });
+  }
+  renderAll(); persist();
+  setFooterStatus(flagged
+    ? `Auto-splice placed — ${flagged} join(s) had no clear gap; nudge them by hand`
+    : `Auto-splice placed every ${roll} cm, each in a clear gap`, flagged?'warn':'ok');
+}
+// shift each straddling piece to the nearer clear side of its splice
+function nudgeOffenders(){
+  const bad=S.pieces.filter(p=>p.placed && p.violation);
+  if (!bad.length) return;
+  pushUndo();
+  let moved=0;
+  for (const p of bad){
+    const bb=instShape(p).bb;
+    const sp=(S.splices||[]).find(s=>p.x+0.01<s.x && s.x<p.x+bb.w-0.01);
+    if (!sp) continue;
+    const left=sp.x-bb.w-0.02, right=sp.x+0.02;   // clear left vs clear right
+    const toLeft=(sp.x-p.x) < (p.x+bb.w-sp.x);
+    const tryOrder = toLeft ? [left,right] : [right,left];
+    for (const nx of tryOrder){ if (nx>=0 && nx+bb.w<=MAXLEN && canPlaceAt(p,nx,p.y)){ p.x=nx; moved++; break; } }
+  }
+  renderAll(); persist();
+  setFooterStatus(moved?`Nudged ${moved} piece(s) clear of their splice`:'Could not auto-nudge — move by hand or re-nest','ok');
+}
+
+/* ---- guide modes + canvas interaction ---- */
+function toggleZoneMode(on){
+  UI.zoneMode = on==null ? !UI.zoneMode : on;
+  if (UI.zoneMode){ UI.spliceMode=false; if(UI.measure)clearMeasure(); if(UI.zoomwin)toggleZoomWin(); }
+  $('bMarkZone').classList.toggle('on', UI.zoneMode);
+  $('bAddSplice').classList.remove('on');
+  cv.classList.toggle('measuring', UI.zoneMode||UI.spliceMode||!!UI.measure||UI.zoomwin);
+  if (UI.zoneMode) setFooterStatus('Mark defect zone: drag a rectangle over the flaw — Esc to exit','ok');
+}
+function toggleSpliceMode(on){
+  UI.spliceMode = on==null ? !UI.spliceMode : on;
+  if (UI.spliceMode){ UI.zoneMode=false; if(UI.measure)clearMeasure(); if(UI.zoomwin)toggleZoomWin(); }
+  $('bAddSplice').classList.toggle('on', UI.spliceMode);
+  $('bMarkZone').classList.remove('on');
+  cv.classList.toggle('measuring', UI.zoneMode||UI.spliceMode||!!UI.measure||UI.zoomwin);
+  if (UI.spliceMode) setFooterStatus('Add splice: click where the fabric roll joins — Esc to exit','ok');
+}
+function resetGuideModes(){
+  UI.zoneMode=UI.spliceMode=false; UI.zoneDraw=null;
+  const a=$('bMarkZone'), b=$('bAddSplice'); if(a)a.classList.remove('on'); if(b)b.classList.remove('on');
+  cv.classList.toggle('measuring', !!UI.measure||UI.zoomwin);
+}
+function clampZone(z){
+  z.w=Math.max(1,z.w); z.h=Math.max(1,z.h);
+  z.x=Math.max(0, Math.min(z.x, MAXLEN-z.w));
+  z.y=Math.max(0, Math.min(z.y, S.width-z.h));
+}
+function resizeZone(z, s, handle, w){
+  let x0=s.x, y0=s.y, x1=s.x+s.w, y1=s.y+s.h;
+  const left=handle===0||handle===3||handle===5, right=handle===2||handle===4||handle===7;
+  const top=handle<3, bot=handle>4;
+  if (left)  x0=Math.min(w.x, x1-1);
+  if (right) x1=Math.max(w.x, x0+1);
+  if (top)   y0=Math.min(w.y, y1-1);
+  if (bot)   y1=Math.max(w.y, y0+1);
+  z.x=Math.max(0,+x0.toFixed(1)); z.y=Math.max(0,+y0.toFixed(1));
+  z.w=+(Math.min(x1,MAXLEN)-z.x).toFixed(1); z.h=+(Math.min(y1,S.width)-z.y).toFixed(1);
+}
+function guideHitTest(w, e){
+  const gtol=UI.vb.w/cv.clientWidth*6;
+  if (UI.selZone!=null && S.zones){
+    const z=S.zones.find(z=>z.id===UI.selZone);
+    if (z){ const pts=zoneHandlePts(z);
+      for (let i=0;i<8;i++) if (Math.abs(w.x-pts[i][0])<=gtol && Math.abs(w.y-pts[i][1])<=gtol) return {kind:'zone-resize', z, handle:i}; }
+  }
+  let bestSp=null, bestD=gtol;
+  for (const sp of (S.splices||[])){ const d=Math.abs(w.x-sp.x); if (d<=bestD){ bestD=d; bestSp=sp; } }
+  if (bestSp) return {kind:'splice', sp:bestSp};
+  const onPiece = e.target.closest && e.target.closest('g.pc');
+  if (!onPiece && S.zones)
+    for (let i=S.zones.length-1;i>=0;i--){ const z=S.zones[i];
+      if (w.x>=z.x && w.x<=z.x+z.w && w.y>=z.y && w.y<=z.y+z.h) return {kind:'zone-move', z}; }
+  return null;
+}
+function startGuideDrag(gh, w, e){
+  if (gh.kind==='splice'){ UI.selSplice=gh.sp.id; UI.selZone=null;
+    UI.guideDrag={kind:'splice', id:gh.sp.id, ox:w.x-gh.sp.x, start:{x:gh.sp.x}, moved:false}; }
+  else { UI.selZone=gh.z.id; UI.selSplice=null;
+    UI.guideDrag={kind:gh.kind, id:gh.z.id, handle:gh.handle, ox:w.x, oy:w.y,
+                  start:{x:gh.z.x,y:gh.z.y,w:gh.z.w,h:gh.z.h}, moved:false}; }
+  select(null);
+  capturePtr(e); renderGuides(); renderHint();
+}
+function applyGuideDrag(w){
+  const gd=UI.guideDrag; gd.moved=true;
+  if (gd.kind==='splice'){ const sp=S.splices.find(s=>s.id===gd.id); if(sp) sp.x=Math.max(0,+(w.x-gd.ox).toFixed(1)); }
+  else { const z=S.zones.find(z=>z.id===gd.id); if(!z) return; const s=gd.start;
+    if (gd.kind==='zone-move'){ z.x=+(s.x+(w.x-gd.ox)).toFixed(1); z.y=+(s.y+(w.y-gd.oy)).toFixed(1); z.w=s.w; z.h=s.h; clampZone(z); }
+    else resizeZone(z, s, gd.handle, w);
+  }
+  renderGuides();
+}
+function endGuideDrag(){
+  const gd=UI.guideDrag; UI.guideDrag=null;
+  if (!gd.moved){ renderGuides(); return; }
+  if (gd.kind==='splice'){ const sp=S.splices.find(s=>s.id===gd.id); const cur=sp.x; sp.x=gd.start.x; pushUndo(); sp.x=cur; }
+  else { const z=S.zones.find(z=>z.id===gd.id); const cur={x:z.x,y:z.y,w:z.w,h:z.h}; Object.assign(z, gd.start); pushUndo(); Object.assign(z, cur); }
+  renderAll(); persist();
+}
+function deleteSelGuide(){
+  if (UI.selSplice!=null){ pushUndo(); S.splices=S.splices.filter(s=>s.id!==UI.selSplice); UI.selSplice=null; renderAll(); persist(); toast('Splice removed'); return true; }
+  if (UI.selZone!=null){ pushUndo(); S.zones=S.zones.filter(z=>z.id!==UI.selZone); UI.selZone=null; renderAll(); persist(); toast('Defect zone removed'); return true; }
+  return false;
+}
+function clearGuides(kind){
+  if (kind==='splice'){ if(!S.splices.length) return toast('No splices to clear','warn'); pushUndo(); S.splices=[]; UI.selSplice=null; }
+  else { if(!S.zones.length) return toast('No zones to clear','warn'); pushUndo(); S.zones=[]; UI.selZone=null; }
+  renderAll(); persist();
 }
 
 /* ---- restore points ---- */
@@ -3604,9 +3937,14 @@ window.addEventListener('keydown', e=>{
     case 'F': flipSel('y'); break;
     case 'l': case 'L': buttSel(-1,0); break;
     case 'u': case 'U': buttSel(0,-1); break;
-    case 'Delete': case 'Backspace': if(UI.sel!=null || UI.selSet.size) unplaceSel(); break;
+    case 'Delete': case 'Backspace':
+      if (UI.selSplice!=null || UI.selZone!=null) deleteSelGuide();
+      else if (UI.sel!=null || UI.selSet.size) unplaceSel();
+      break;
     case 'Escape':
-      if (UI.pickSeq) endPickSeq();
+      if (UI.zoneMode||UI.spliceMode) resetGuideModes();
+      else if (UI.selSplice!=null||UI.selZone!=null){ UI.selZone=UI.selSplice=null; renderGuides(); }
+      else if (UI.pickSeq) endPickSeq();
       else if (UI.measure) clearMeasure();
       else if (UI.zoomwin) toggleZoomWin();
       else if (UI.carry!=null) cancelCarry();
