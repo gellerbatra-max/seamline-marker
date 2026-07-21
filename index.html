@@ -2940,6 +2940,90 @@ const M_mul = (m1,m2) => { const [a1,b1,c1,d1,e1,f1]=m1,[a2,b2,c2,d2,e2,f2]=m2;
   return [a1*a2+c1*b2, b1*a2+d1*b2, a1*c2+c1*d2, b1*c2+d1*d2, a1*e2+c1*f2+e1, b1*e2+d1*f2+f1]; };
 const M_apply = (m,p) => [m[0]*p[0]+m[2]*p[1]+m[4], m[1]*p[0]+m[3]*p[1]+m[5]];
 
+/* ---- open-chain stitching (Gerber-style multi-segment boundaries) ----
+   Some exporters draw a piece boundary as several open POLYLINE/LWPOLYLINE
+   segments that connect end to end rather than one closed loop, often with
+   a duplicate copy of the whole boundary on a second (seam-allowance) layer.
+   Ported from a proven reader (github ref in project notes) and adapted to
+   Seamline's [x,y] point convention and bulge-aware flattening — each open
+   segment is flattened (tessellating any bulge arcs) BEFORE stitching, so
+   stitching only ever deals with plain point chains, never re-deriving arc
+   math on a weld. Only used as a FALLBACK when the existing single-closed-
+   polyline detection finds nothing, so files that already round-trip
+   (Phase 1/2) never touch this path. */
+const MDXF_STITCH_TOL=0.01;
+// Endpoint-only matching (start/end pair, either direction) is ambiguous: a
+// closed loop split into exactly two complementary segments always shares
+// the same endpoint pair even though the two segments trace different sides.
+// Require every point to correspond (forward or reversed), not just the ends.
+function chainsMatch(a,b){
+  if (a.length!==b.length) return false;
+  const close=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1])<=MDXF_STITCH_TOL;
+  let fwd=true, rev=true;
+  for (let i=0;i<a.length && (fwd||rev);i++){
+    if (fwd && !close(a[i],b[i])) fwd=false;
+    if (rev && !close(a[i],b[b.length-1-i])) rev=false;
+  }
+  return fwd||rev;
+}
+function dedupChains(chains){
+  const kept=[];
+  for (const c of chains){
+    const dup=kept.some(u=>chainsMatch(u,c));
+    if (!dup) kept.push(c);
+  }
+  return kept;
+}
+function stitchChains(chains){
+  const used=new Array(chains.length).fill(false), loops=[];
+  for (let i=0;i<chains.length;i++){
+    if (used[i]) continue;
+    let result=chains[i].slice(); used[i]=true; let stuck=false;
+    while (!stuck){
+      const end=result[result.length-1], start=result[0];
+      if (result.length>chains[i].length && Math.hypot(end[0]-start[0],end[1]-start[1])<=MDXF_STITCH_TOL) break;
+      stuck=true;
+      for (let j=0;j<chains.length;j++){
+        if (used[j]) continue;
+        const jf=chains[j][0], jl=chains[j][chains[j].length-1];
+        if (Math.hypot(jf[0]-end[0],jf[1]-end[1])<=MDXF_STITCH_TOL){ result=result.concat(chains[j].slice(1)); used[j]=true; stuck=false; break; }
+        if (Math.hypot(jl[0]-end[0],jl[1]-end[1])<=MDXF_STITCH_TOL){ result=result.concat(chains[j].slice().reverse().slice(1)); used[j]=true; stuck=false; break; }
+      }
+    }
+    const end=result[result.length-1], start=result[0];
+    if (result.length>=4 && Math.hypot(end[0]-start[0],end[1]-start[1])<=MDXF_STITCH_TOL) loops.push(result.slice(0,-1));
+  }
+  return loops;
+}
+// Returns EVERY closed loop found (largest first) — a marker-level file may
+// have many pieces, each its own multi-segment chain.
+function stitchLoops(entities,layer='1'){
+  const onLayer=e=>String(e.layer)===String(layer);
+  let polys=entities.filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&e.vertices&&e.vertices.length>=2&&onLayer(e));
+  let usedFallback=false;
+  if (!polys.length){
+    const any=entities.filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&e.vertices&&e.vertices.length>=2);
+    if (any.length){ polys=any; usedFallback=true; }
+  }
+  let chains=polys.map(e=>flattenAamaBoundary(e.vertices,false).pts).filter(c=>c.length>=2);
+  const rawCount=chains.length;
+  chains=dedupChains(chains);
+  const dupCount=rawCount-chains.length;
+  let loops=chains.length?stitchChains(chains):[], source=null, chainsUsed=0;
+  if (loops.length){ source='polyline'; chainsUsed=rawCount; }
+  if (!loops.length){
+    let lines=entities.filter(e=>e.type==='LINE'&&onLayer(e));
+    if (!lines.length){ const any=entities.filter(e=>e.type==='LINE'); if (any.length){ lines=any; usedFallback=true; } }
+    if (lines.length>=3){
+      loops=stitchChains(lines.map(e=>[[e.x1,e.y1],[e.x2,e.y2]]));
+      if (loops.length){ source='line'; chainsUsed=lines.length; }
+    }
+  }
+  if (!loops.length) return {loops:[],dupCount,usedFallback,source:null,chainsUsed:0};
+  loops.sort((a,b)=>shoelace(b)-shoelace(a));
+  return {loops,dupCount,usedFallback,source,chainsUsed};
+}
+
 // Largest closed contour inside a BLOCK's own entities — separate from
 // aamaBoundary (that one has no any-layer fallback and doesn't check
 // e.closed; its contract is specific to AAMA pattern import).
@@ -2949,7 +3033,9 @@ function blockLargestContour(block,layer='1'){
   if(!candidates.length&&all.length){ candidates=all; usedFallback=true; }
   let bestPts=null,area=-1;
   for(const e of candidates){ const f=flattenAamaBoundary(e.vertices,true); const a=shoelace(f.pts); if(a>area){area=a;bestPts=f.pts;} }
-  return bestPts?{pts:bestPts,usedFallback}:null;
+  if (bestPts) return {pts:bestPts,usedFallback,stitched:false};
+  const st=stitchLoops(block.entities||[],layer);
+  return st.loops.length ? {pts:st.loops[0],usedFallback:st.usedFallback,stitched:true,dupCount:st.dupCount,source:st.source} : null;
 }
 const MDXF_MAX_DEPTH=8;
 function attribsToLabel(attribs){
@@ -3011,17 +3097,36 @@ function inspectMarkerDxf(text,fileName='marker.dxf'){
   let contours=closed.filter(e=>String(e.layer)==='1');
   if(!contours.length&&closed.length){ contours=closed; foreignLayers=new Set(closed.map(e=>String(e.layer))).size; }
   const blockInfo=resolveBlockInstances(dxf,'1');
-  if(!contours.length&&!blockInfo.rings.length) throw new Error('No closed contour found — this DXF has no placeable marker geometry.');
+  // Fallback for boundaries drawn as several open segments (chain-stitch) —
+  // only attempted when nothing closed was already found, so Phase 1/2 files
+  // (which always have proper closed contours) never touch this path.
+  let stitchedTop=null;
+  if(!contours.length&&!blockInfo.rings.length){
+    const st=stitchLoops(dxf.entities,'1');
+    if(st.loops.length) stitchedTop=st;
+  }
+  if(!contours.length&&!blockInfo.rings.length&&!stitchedTop) throw new Error('No closed contour found — this DXF has no placeable marker geometry.');
   const labels=dxf.entities.filter(e=>e.type==='TEXT'&&String(e.layer)==='15'&&e.text.trim())
     .map(e=>{ const m=e.text.trim().match(/^(\d+)\s+(.+?)\s+(\S+)\s+b(\d+)$/);
       return {x:e.x,y:e.y,raw:e.text.trim(),seq:m?+m[1]:null,name:m?m[2]:e.text.trim(),size:m?m[3]:'',bundle:m?+m[4]:1}; });
   // INSERT/ATTRIB entities that the block resolver actually consumed aren't
-  // "ignored" — only count what's left genuinely unhandled.
+  // "ignored" — only count what's left genuinely unhandled. Entities the
+  // stitcher successfully wove into a loop are "used", not "skipped" either.
   const consumedTypes=new Set(['POLYLINE','LWPOLYLINE','TEXT','SEQEND','INSERT','ATTRIB']);
-  const skipped=dxf.entities.filter(e=>!consumedTypes.has(e.type)).length+open.length;
+  let skipped=dxf.entities.filter(e=>!consumedTypes.has(e.type)).length+open.length;
+  if(stitchedTop) skipped=Math.max(0,skipped-stitchedTop.chainsUsed);
   const width=stamp?stamp.width:ext?ext[20]:null;
+  // Raw (pre-unit-scale) extent across everything placeable — feeds the
+  // inches/cm plausibility heuristic for files with no Seamline stamp.
+  const allRawPts=[
+    ...contours.flatMap(e=>flattenAamaBoundary(e.vertices,true).pts),
+    ...blockInfo.rings.flatMap(r=>r.pts),
+    ...(stitchedTop?stitchedTop.loops.flat():[])
+  ];
+  const rawExtent=allRawPts.length?(b=>({w:b.w,h:b.h,maxDim:Math.max(b.w,b.h)}))(bboxOf(allRawPts)):null;
   return {fileName,stamp,extWidth:ext?ext[20]:null,width,contours,labels,openCount:open.length,skipped,foreignLayers,
-    blockRings:blockInfo.rings,unresolvedInserts:blockInfo.unresolved,arrayInserts:blockInfo.arrayInserts,blockDefCount:blockInfo.blockDefCount,text};
+    blockRings:blockInfo.rings,unresolvedInserts:blockInfo.unresolved,arrayInserts:blockInfo.arrayInserts,blockDefCount:blockInfo.blockDefCount,
+    stitchedTop,rawExtent,text};
 }
 function buildMarkerDxfMarker(info,width,unitScale,flipY){
   const token=aamaHash(info.text), modelId='mdxf-'+token, scaleId='mdxf-scale-'+token;
@@ -3035,11 +3140,17 @@ function buildMarkerDxfMarker(info,width,unitScale,flipY){
     r:b.pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale]),
     presetLabel:attribsToLabel(b.attribs)
   })).filter(b=>shoelace(b.r)>0.01);
-  if(!placedRings.length&&!blockRings.length) throw new Error('Every contour degenerated after unit conversion — check the units setting.');
+  // Chain-stitched loops (open multi-segment boundaries) — already flattened
+  // absolute points in file units, same unit/flip step as the others.
+  const stitchedRings=(info.stitchedTop?.loops||[]).map(pts=>
+    pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale])
+  ).filter(r=>shoelace(r)>0.01);
+  if(!placedRings.length&&!blockRings.length&&!stitchedRings.length) throw new Error('Every contour degenerated after unit conversion — check the units setting.');
   // attach each layer-15 label to the contour whose interior (or nearest centroid) holds it
   const rings=[
     ...placedRings.map(r=>({r,bb:bboxOf(r),c:centroid(r),label:null})),
-    ...blockRings.map(b=>({r:b.r,bb:bboxOf(b.r),c:centroid(b.r),label:b.presetLabel||null}))
+    ...blockRings.map(b=>({r:b.r,bb:bboxOf(b.r),c:centroid(b.r),label:b.presetLabel||null})),
+    ...stitchedRings.map(r=>({r,bb:bboxOf(r),c:centroid(r),label:null}))
   ];
   for(const lb of info.labels){
     const p=[lb.x*unitScale,flipY?width-lb.y*unitScale:lb.y*unitScale];
@@ -3084,21 +3195,35 @@ async function refreshMarkerDxfImport(){
   box.textContent='Reading marker…';
   try{
     const info=inspectMarkerDxf(await f.text(),f.name); MDXF_IMPORT=info;
+    let unitGuess='';
     if(info.stamp){
       $('mdxfUnits').value=info.stamp.units==='MM'?'0.1':info.stamp.units==='IN'||info.stamp.units==='INCH'?'2.54':'1';
       $('mdxfFlip').checked=true;             // Seamline's exporter writes W − y
       if(info.stamp.width) $('mdxfWidth').value=info.stamp.width;
-    } else if(info.extWidth) $('mdxfWidth').value=+info.extWidth.toFixed(1);
+    } else {
+      if(info.extWidth) $('mdxfWidth').value=+info.extWidth.toFixed(1);
+      // Plausibility heuristic when there's no authoritative unit source: a
+      // real cm-scale garment panel is always bigger than ~25 (the same panel
+      // in inches is usually smaller than 25) — pre-select, never silently commit.
+      if(info.rawExtent&&info.rawExtent.maxDim>0){
+        const inches=info.rawExtent.maxDim<25;
+        $('mdxfUnits').value=inches?'2.54':'1';
+        unitGuess=`<br>Heuristic: largest contour dimension is ${info.rawExtent.maxDim.toFixed(2)} — guessed <b>${inches?'inches':'centimetres'}</b> (override if wrong).`;
+      }
+    }
     const blockCount=info.blockRings.length, unresolvedCount=info.unresolvedInserts.length;
     const reasonCounts={}; for(const u of info.unresolvedInserts) reasonCounts[u.reason]=(reasonCounts[u.reason]|0)+1;
     const reasonStr=Object.entries(reasonCounts).map(([r,n])=>`${r} ×${n}`).join(', ');
+    const stitchCount=info.stitchedTop?info.stitchedTop.loops.length:0;
     box.innerHTML=`<b>${esc(info.stamp?info.stamp.name:f.name)}</b>${info.stamp?' · Seamline export ✓':' · <span style="color:var(--warn)">no Seamline stamp — foreign DXF, check units / width / Y origin</span>'}<br>`+
-      `${info.contours.length+blockCount} placed contour${(info.contours.length+blockCount)===1?'':'s'} · ${info.labels.length} label${info.labels.length===1?'':'s'}`+
+      `${info.contours.length+blockCount+stitchCount} placed contour${(info.contours.length+blockCount+stitchCount)===1?'':'s'} · ${info.labels.length} label${info.labels.length===1?'':'s'}`+
       (blockCount?` · ${blockCount} block instance${blockCount===1?'':'s'} from ${info.blockDefCount} block definition${info.blockDefCount===1?'':'s'}`:'')+
       (info.foreignLayers?` · <span style="color:var(--warn)">contours taken from ${info.foreignLayers} non-standard layer${info.foreignLayers===1?'':'s'}</span>`:'')+
+      (stitchCount?`<br><span style="color:var(--warn)">${stitchCount} piece${stitchCount===1?'':'s'} recovered by chain-stitching open ${info.stitchedTop.source==='line'?'LINE':'polyline'} segments (${info.stitchedTop.chainsUsed} segment${info.stitchedTop.chainsUsed===1?'':'s'}${info.stitchedTop.dupCount?`, ${info.stitchedTop.dupCount} duplicate(s) removed`:''})</span>`:'')+
       (unresolvedCount?`<br><span style="color:var(--warn)">${unresolvedCount} insert${unresolvedCount===1?'':'s'} skipped (${reasonStr}) — nothing else altered</span>`:'')+
       (info.arrayInserts.length?`<br><span style="color:var(--warn)">${info.arrayInserts.length} array insert${info.arrayInserts.length===1?'':'s'} found — only the first instance is placed</span>`:'')+
-      (info.skipped?`<br><span style="color:var(--warn)">${info.skipped} unsupported / open entit${info.skipped===1?'y':'ies'} ignored (nothing was altered)</span>`:'');
+      (info.skipped?`<br><span style="color:var(--warn)">${info.skipped} unsupported / open entit${info.skipped===1?'y':'ies'} ignored (nothing was altered)</span>`:'')+
+      unitGuess;
     $('mdxfApply').disabled=false;
   }catch(err){ box.innerHTML=`<span style="color:var(--bad)">${esc(err.message||'Could not read the DXF.')}</span>`; }
 }
@@ -3132,6 +3257,7 @@ function openMarkerDxfDialog(){
 // Read-only surface for interoperability checks and regression fixtures —
 // mirrors window.SeamlineAama's pattern for the marker-DXF (placed-layout) path.
 window.SeamlineMarkerDxf=Object.freeze({inspect:inspectMarkerDxf, resolveBlocks:resolveBlockInstances, build:buildMarkerDxfMarker,
+  stitchLoops:stitchLoops,
   matrix:Object.freeze({mul:M_mul, apply:M_apply, translate:M_translate, scale:M_scale, rotate:M_rotate, ident:M_IDENT})});
 // Test-only accessor for the regression harness (tests.html). These are const/let
 // lexical globals, so they aren't reachable as window.* from the harness iframe —

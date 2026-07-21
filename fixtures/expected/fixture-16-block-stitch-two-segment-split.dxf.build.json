@@ -1,0 +1,12 @@
+{
+  "name": "fixture-16-block-stitch-two-segment-split",
+  "width": 160,
+  "scaleNames": ["STD"],
+  "defs": [
+    { "key": "M1", "name": "PIECE 1", "area": 200 }
+  ],
+  "pieces": [
+    { "defKey": "M1", "size": "STD", "bundle": 1, "x": 50, "y": 20 }
+  ],
+  "cutOrder": [0]
+}

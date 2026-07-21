@@ -1,17 +1,17 @@
 {
   "stamp": null,
   "width": null,
-  "contours": 0,
-  "blockRings": 1,
+  "contours": 1,
+  "blockRings": 0,
   "labels": 0,
   "foreignLayers": 0,
   "openCount": 0,
   "skipped": 0,
   "unresolvedReasons": [],
-  "arrayInserts": 1,
-  "blockDefCount": 1,
+  "arrayInserts": 0,
+  "blockDefCount": 0,
   "stitchedLoops": 0,
   "stitchedSource": null,
   "stitchedDupCount": 0,
-  "rawMaxDim": 10
+  "rawMaxDim": 8
 }

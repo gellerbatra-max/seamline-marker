@@ -11,5 +11,9 @@
     "circular-reference"
   ],
   "arrayInserts": 0,
-  "blockDefCount": 2
+  "blockDefCount": 2,
+  "stitchedLoops": 0,
+  "stitchedSource": null,
+  "stitchedDupCount": 0,
+  "rawMaxDim": 12
 }
