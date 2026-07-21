@@ -605,6 +605,7 @@
     <button class="tb" id="bOpenTab" title="Open a saved marker as a new editable document tab"><span class="ic">▱</span>Open in new tab…</button>
     <button class="tb" id="bCompare" title="Import a saved marker as a read-only comparison layer"><span class="ic">◫</span>Import comparison…</button>
     <button class="tb" id="bAamaImport" title="Import apparel pattern pieces from an AAMA/ASTM DXF and its grading rule table"><span class="ic">⇧</span>Import AAMA…</button>
+    <button class="tb" id="bMarkerDxf" title="Reopen a placed-marker DXF (Seamline cut data or a compatible flattened marker) with every piece at its exported position"><span class="ic">⇱</span>Import marker DXF…</button>
     <button class="tb" id="bLayers" title="Show the active and comparison layers"><span class="ic">▤</span>Layers</button>
     <div class="tsep"></div>
     <button class="tb" id="bAamaExport" title="Export one AAMA package containing the placed-marker DXF and companion .rul grade-rule table"><span class="ic">⇩</span>AAMA package</button>
@@ -896,6 +897,30 @@
   <div class="dlg-foot">
     <button class="btn" data-close="dlgAama">Cancel</button><span style="flex:1"></span>
     <button class="btn primary" id="aamaApply" disabled>Import pattern</button>
+  </div>
+</dialog>
+
+<!-- ---------- Marker-layout DXF import (placed geometry) ---------- -->
+<dialog id="dlgMarkerDxf">
+  <div class="dlg-head">Import marker DXF <button class="x" data-close="dlgMarkerDxf">✕</button></div>
+  <div class="dlg-body">
+    <div class="wcap">Reopens a placed-marker DXF — Seamline's own cut-data export round-trips exactly (positions, labels, cut order). Foreign flattened markers import as closed layer-1 contours; graded patterns belong in <b>Import AAMA…</b> instead.</div>
+    <div class="filepick">
+      <label for="mdxfFile">Marker DXF</label><input type="file" id="mdxfFile" accept=".dxf,application/dxf,text/plain">
+    </div>
+    <div class="frow"><label for="mdxfUnits">Units</label><select id="mdxfUnits">
+      <option value="1">centimetres</option><option value="0.1">millimetres</option><option value="2.54">inches</option>
+    </select></div>
+    <div class="frow"><label for="mdxfWidth">Fabric width</label><span><input id="mdxfWidth" type="number" min="20" max="500" step="0.1" value="160"> cm</span></div>
+    <div class="frow"><label for="mdxfFlip">Y origin</label><label style="display:flex;gap:6px;align-items:center"><input id="mdxfFlip" type="checkbox"> flip Y (file measures from the top selvage)</label></div>
+    <div class="frow"><label for="mdxfTarget">Open as</label><select id="mdxfTarget">
+      <option value="tab">new editable tab</option><option value="current">replace current tab</option><option value="comparison">read-only comparison layer</option>
+    </select></div>
+    <div id="mdxfSummary" class="aama-summary">Choose a DXF to inspect its contours.</div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgMarkerDxf">Cancel</button><span style="flex:1"></span>
+    <button class="btn primary" id="mdxfApply" disabled>Import marker</button>
   </div>
 </dialog>
 
@@ -1717,6 +1742,20 @@ function renderOrderDock(){
   if (UI.dockTab==='piece'){ b.innerHTML=pieceHTML(); return; }
   if (UI.dockTab==='layers'){ b.innerHTML=layersHTML(); return; }
   if (UI.dockTab==='options'){ b.innerHTML=optionsHTML(); return; }
+  if (isImportedLayout()){
+    // a marker-DXF import is a fixed layout, not an order — the line/def
+    // arithmetic (garments × pcs/garment) would misreport it
+    const bySize={};
+    for (const p of S.pieces){ const s=sizeNm(p); bySize[s]=(bySize[s]|0)+1; }
+    b.innerHTML = `<div class="dsec-lbl">IMPORTED LAYOUT · READ-ONLY</div>` +
+      `<div class="dbox"><div class="dline-hd"><span class="lett">M</span><span class="nm">${esc(S.name)}</span></div>
+      <div style="margin-top:9px">Source <b>${esc(S.aama.sourceFile)}</b><br>
+      ${Object.entries(bySize).map(([s,n])=>`${esc(s)} × ${n}`).join(' · ')}<br>
+      <b>${S.pieces.length} placed piece${S.pieces.length===1?'':'s'}</b></div></div>` +
+      `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Rotation rule <b>${UI.layRule}</b></div>` +
+      `<div class="dnote">This marker came from a placed-geometry DXF, so there is no editable order behind it. Re-import the graded patterns (Import AAMA…) to change sizes or quantities.</div>`;
+    return;
+  }
   const lines = S.lines.map((L,li)=>{
     const sc=scaleOf(L.modelId), model=modelById(L.modelId);
     const ratio = sc.names.map((s,i)=> (L.sizesQty[s]|0)>0
@@ -2841,6 +2880,142 @@ function openAamaDialog(){
 }
 // Read-only parser surface for interoperability checks and future integrations.
 window.SeamlineAama=Object.freeze({parseDxf:parseAamaDxf,parseRules:parseAamaRules,inspect:inspectAamaImport});
+
+/* ---------- marker-layout DXF import (placed geometry) ----------
+   Counterpart of exportDXF: layer-1 closed contours are ALREADY-PLACED pieces
+   (absolute coordinates), layer-15 TEXT is "seq NAME size bundle" metadata.
+   Distinct from AAMA import, which normalizes contours into pattern
+   definitions and would discard every placement. */
+let MDXF_IMPORT=null;
+const isImportedLayout=()=>!!(S&&S.aama&&S.aama.format==='Seamline marker DXF');
+function mdxfHeaderVar(pairs,name){
+  // R12 header: 9/$NAME then 10/20(/30) coords. parseAamaDxf skips code-9
+  // records, so read the raw pair stream.
+  for(let i=0;i<pairs.length;i++){
+    if(pairs[i].code!==9||pairs[i].value.trim()!==name) continue;
+    const out={};
+    for(let j=i+1;j<pairs.length&&pairs[j].code!==9&&pairs[j].code!==0;j++) out[pairs[j].code]=+pairs[j].value;
+    return out;
+  }
+  return null;
+}
+function inspectMarkerDxf(text,fileName='marker.dxf'){
+  const pairs=aamaPairs(text), dxf=parseAamaDxf(text);
+  // Seamline stamp: "Seamline Marker NAME | UNITS: CM | LEN x WID | entity order = cut order"
+  const c999=pairs.find(p=>p.code===999&&/Seamline Marker/i.test(p.value));
+  let stamp=null;
+  if(c999){
+    const m=c999.value.match(/Seamline Marker\s+(.*?)\s*\|\s*UNITS:\s*(\w+)\s*\|\s*([\d.]+)\s*x\s*([\d.]+)/i);
+    if(m) stamp={name:m[1],units:m[2].toUpperCase(),len:+m[3],width:+m[4]};
+  }
+  const ext=mdxfHeaderVar(pairs,'$EXTMAX');
+  const closed=[],open=[]; let foreignLayers=0;
+  for(const e of dxf.entities){
+    if(e.type!=='POLYLINE'&&e.type!=='LWPOLYLINE') continue;
+    if(!e.vertices||e.vertices.length<3){ open.push(e); continue; }
+    (e.closed!==false?closed:open).push(e);
+  }
+  let contours=closed.filter(e=>String(e.layer)==='1');
+  if(!contours.length&&closed.length){ contours=closed; foreignLayers=new Set(closed.map(e=>String(e.layer))).size; }
+  if(!contours.length) throw new Error('No closed contour found — this DXF has no placeable marker geometry.');
+  const labels=dxf.entities.filter(e=>e.type==='TEXT'&&String(e.layer)==='15'&&e.text.trim())
+    .map(e=>{ const m=e.text.trim().match(/^(\d+)\s+(.+?)\s+(\S+)\s+b(\d+)$/);
+      return {x:e.x,y:e.y,raw:e.text.trim(),seq:m?+m[1]:null,name:m?m[2]:e.text.trim(),size:m?m[3]:'',bundle:m?+m[4]:1}; });
+  const skipped=dxf.entities.filter(e=>!['POLYLINE','LWPOLYLINE','TEXT','SEQEND'].includes(e.type)).length+open.length;
+  const width=stamp?stamp.width:ext?ext[20]:null;
+  return {fileName,stamp,extWidth:ext?ext[20]:null,width,contours,labels,openCount:open.length,skipped,foreignLayers,text};
+}
+function buildMarkerDxfMarker(info,width,unitScale,flipY){
+  const token=aamaHash(info.text), modelId='mdxf-'+token, scaleId='mdxf-scale-'+token;
+  // flatten each contour to absolute cm coordinates in Seamline's bottom-left frame
+  const placedRings=info.contours.map(e=>{
+    let pts=flattenAamaBoundary(e.vertices,true).pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale]);
+    return pts;
+  }).filter(r=>shoelace(r)>0.01);
+  if(!placedRings.length) throw new Error('Every contour degenerated after unit conversion — check the units setting.');
+  // attach each layer-15 label to the contour whose interior (or nearest centroid) holds it
+  const rings=placedRings.map(r=>({r,bb:bboxOf(r),c:centroid(r),label:null}));
+  for(const lb of info.labels){
+    const p=[lb.x*unitScale,flipY?width-lb.y*unitScale:lb.y*unitScale];
+    let best=null,bd=Infinity;
+    for(const g of rings){ const d=(g.c[0]-p[0])**2+(g.c[1]-p[1])**2; if(d<bd){bd=d;best=g;} }
+    if(best&&!best.label) best.label=lb;
+  }
+  // one def per distinct geometry; identical outlines (same piece, same size) share it
+  const sizes=[...new Set(rings.map(g=>g.label?.size).filter(Boolean))]; if(!sizes.length) sizes.push('STD');
+  const defs=[],defByHash=new Map(),pieces=[]; let pno=0;
+  const seq=[];
+  rings.forEach((g,i)=>{
+    const base=norm(g.r), h=aamaHash(base.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(';'));
+    let def=defByHash.get(h);
+    if(!def){
+      const key='M'+(++pno), name=g.label?g.label.name:'PIECE '+pno;
+      def={key,name,key0:modelId+'/'+key,scaleId,qty:1,rot:'free',pair:false,
+        base,sizeBases:sizes.map(()=>base),area0:shoelace(base)};
+      defByHash.set(h,def); defs.push(def);
+    }
+    const si=Math.max(0,sizes.indexOf(g.label?.size||sizes[0]));
+    const p={uid:uidSeq++,defKey:def.key0,sizeIdx:si,bundle:g.label?.bundle||1,line:0,dir:'free',fab:'A',
+      placed:true,x:+g.bb.x1.toFixed(2),y:+g.bb.y1.toFixed(2),rot:0,fx:false,fy:false};
+    pieces.push(p); seq.push({uid:p.uid,seq:g.label?.seq??(i+1)});
+  });
+  const name=info.stamp?info.stamp.name:info.fileName.replace(/\.dxf$/i,'');
+  const sizesQty={}; for(const p of pieces){ const s=sizes[p.sizeIdx]; sizesQty[s]=Math.max(sizesQty[s]|0,p.bundle); }
+  const aama={version:1,format:'Seamline marker DXF',sourceFile:info.fileName,styleName:name,units:'METRIC',
+    styleMeta:{},scale:{id:scaleId,names:sizes,base:sizes[0]},
+    model:{id:modelId,name,tag:'MRK'},defs,ruleTable:null};
+  const marker={name,width,buffer:0,endAllow:4,pieces,
+    cut:{mode:'manual',order:seq.sort((a,b)=>a.seq-b.seq).map(s=>s.uid),params:{bandW:50,dir:'ccw'}},
+    zones:[],splices:[],overlaps:[],spread:{type:'single',fold:'none'},
+    lines:[{modelId,sizesQty,excl:[],dir:{},fab:{}}],aama};
+  registerMarkerResources(marker);
+  return marker;
+}
+async function refreshMarkerDxfImport(){
+  const f=$('mdxfFile').files[0], box=$('mdxfSummary');
+  $('mdxfApply').disabled=true; MDXF_IMPORT=null;
+  if(!f){ box.textContent='Choose a DXF to inspect its contours.'; return; }
+  box.textContent='Reading marker…';
+  try{
+    const info=inspectMarkerDxf(await f.text(),f.name); MDXF_IMPORT=info;
+    if(info.stamp){
+      $('mdxfUnits').value=info.stamp.units==='MM'?'0.1':info.stamp.units==='IN'||info.stamp.units==='INCH'?'2.54':'1';
+      $('mdxfFlip').checked=true;             // Seamline's exporter writes W − y
+      if(info.stamp.width) $('mdxfWidth').value=info.stamp.width;
+    } else if(info.extWidth) $('mdxfWidth').value=+info.extWidth.toFixed(1);
+    box.innerHTML=`<b>${esc(info.stamp?info.stamp.name:f.name)}</b>${info.stamp?' · Seamline export ✓':' · <span style="color:var(--warn)">no Seamline stamp — foreign DXF, check units / width / Y origin</span>'}<br>`+
+      `${info.contours.length} placed contour${info.contours.length===1?'':'s'} · ${info.labels.length} label${info.labels.length===1?'':'s'}`+
+      (info.foreignLayers?` · <span style="color:var(--warn)">contours taken from ${info.foreignLayers} non-standard layer${info.foreignLayers===1?'':'s'}</span>`:'')+
+      (info.skipped?`<br><span style="color:var(--warn)">${info.skipped} unsupported / open entit${info.skipped===1?'y':'ies'} ignored (nothing was altered)</span>`:'');
+    $('mdxfApply').disabled=false;
+  }catch(err){ box.innerHTML=`<span style="color:var(--bad)">${esc(err.message||'Could not read the DXF.')}</span>`; }
+}
+function applyMarkerDxfImport(){
+  if(!MDXF_IMPORT) return;
+  try{
+    const width=+$('mdxfWidth').value||160, unitScale=+$('mdxfUnits').value||1, flipY=$('mdxfFlip').checked;
+    const marker=buildMarkerDxfMarker(MDXF_IMPORT,width,unitScale,flipY), target=$('mdxfTarget').value;
+    if(target==='comparison'){
+      const d=activeDoc();
+      d.comparison={marker:cloneJSON(marker),name:marker.name,visible:true,opacity:.38,x:0,y:0,mode:'overlay'};
+      UI.dockTab='layers'; markActiveDirty(); renderAll(); renderOrderDock(); fitView(); persistWorkspace();
+    }else if(target==='current'){
+      const d=activeDoc(); if(d&&d.dirty&&!confirm(`Replace “${d.name}” and discard its unsaved changes?`)) return;
+      S=marker; d.marker=S; d.name=S.name; d.dirty=true; d.comparison=null; d.cutPlan=null; CP=null;
+      UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo; resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs();
+    }else addDocument(marker,{dirty:true,name:marker.name});
+    $('dlgMarkerDxf').close(); renderAll(); fitView(); persistWorkspace();
+    const placed=marker.pieces.length;
+    toast(`Marker DXF imported · ${placed} placed piece${placed===1?'':'s'}${target==='comparison'?' as comparison layer':''}${MDXF_IMPORT.skipped?` · ${MDXF_IMPORT.skipped} entities ignored`:''}`);
+  }catch(err){ toast(err.message||'Could not import the marker DXF','bad'); }
+}
+function openMarkerDxfDialog(){
+  $('mdxfFile').value=''; $('mdxfUnits').value='1'; $('mdxfFlip').checked=false;
+  $('mdxfWidth').value=S?S.width:160; $('mdxfTarget').value='tab';
+  MDXF_IMPORT=null; $('mdxfApply').disabled=true;
+  $('mdxfSummary').textContent='Choose a DXF to inspect its contours.';
+  $('dlgMarkerDxf').showModal();
+}
 function zeroAamaRuleTable(name,sizes,sample){
   sizes=[...new Set((sizes||[]).map(String))]; if(!sizes.length) sizes=[sample||'BASE'];
   if(sizes.length===1) sizes.push(sizes[0]+'-ALT'); sample=sample||sizes[0];
@@ -3077,6 +3252,8 @@ const wTotalPieces = () => W.lines.reduce((a,L)=>a+lineGarments(L)*linePcsPerGar
 const wTotalGarments = () => W.lines.reduce((a,L)=>a+lineGarments(L),0);
 
 function openOrderDialog(){
+  if (isImportedLayout())
+    return toast('Imported marker layouts have no editable order — re-import the graded patterns (Import AAMA…) to change sizes or quantities','warn');
   W={ step:1, prefix:'',
       lines: S && S.lines ? S.lines.map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty},
               excl:new Set(L.excl||[]), dir:{...(L.dir||{})}, fab:{...(L.fab||{})}})) : [],
@@ -4625,6 +4802,9 @@ $('bAamaImport').onclick=openAamaDialog;
 $('aamaDxfFile').addEventListener('change',refreshAamaImport);
 $('aamaRuleFile').addEventListener('change',refreshAamaImport);
 $('aamaApply').onclick=applyAamaImport;
+$('bMarkerDxf').onclick=openMarkerDxfDialog;
+$('mdxfFile').addEventListener('change',refreshMarkerDxfImport);
+$('mdxfApply').onclick=applyMarkerDxfImport;
 $('bAamaExport').onclick=exportAamaPackage;
 $('bLayers').onclick=()=>{ UI.dockTab='layers'; renderOrderDock(); };
 $('bSave').onclick=saveJSON;
