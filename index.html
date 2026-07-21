@@ -201,6 +201,29 @@
   .rpane[hidden]{display:none !important}
   .rnote{font-size:11px; color:var(--mut); opacity:.7; margin-left:6px}
 
+  /* ---------- document tabs ---------- */
+  #docTabs{
+    display:flex; align-items:center; gap:3px; padding:5px 9px;
+    background:var(--panel2); border-bottom:1px solid var(--edge); flex:none;
+    min-height:35px; overflow-x:auto; overflow-y:hidden;
+  }
+  #docTabs::-webkit-scrollbar{height:5px}
+  #docTabs::-webkit-scrollbar-thumb{background:var(--edge); border-radius:3px}
+  #docTabList{display:flex; align-items:center; gap:3px; min-width:0}
+  .doc-tab{
+    display:flex; align-items:center; gap:7px; min-width:120px; max-width:220px;
+    padding:6px 8px 6px 10px; border:1px solid var(--edge); border-radius:7px 7px 3px 3px;
+    background:var(--panel); color:var(--mut); flex:none;
+  }
+  .doc-tab:hover{color:var(--ink); border-color:var(--edge2)}
+  .doc-tab.on{background:var(--active); color:var(--ink); border-color:var(--acc-dim)}
+  .doc-tab .doc-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:left; font-size:11.5px; font-weight:600}
+  .doc-tab .dirty{color:var(--acc-hi); font-size:13px; line-height:1}
+  .doc-close{width:18px; height:18px; border-radius:4px; color:var(--mut); line-height:1}
+  .doc-close:hover{background:var(--hover); color:var(--bad)}
+  #bNewTab{flex:none; width:27px; height:27px; border:1px solid var(--edge); border-radius:6px; color:var(--mut); background:var(--panel)}
+  #bNewTab:hover{border-color:var(--acc); color:var(--acc)}
+
   /* ---------- thumbnail minimap ---------- */
   #thumb{
     position:absolute; right:12px; bottom:58px; width:216px; z-index:6;
@@ -215,6 +238,7 @@
   #gCut{pointer-events:none}
   #gZones{pointer-events:none}
   #gSplice{pointer-events:none}
+  #gCompare{pointer-events:none}
   .tb:disabled{opacity:.4; cursor:not-allowed}
   .tb:disabled:hover{background:none; border-color:transparent}
   .chip.appr.needs{background:var(--warn); color:#241a05}
@@ -292,6 +316,10 @@
   .pc.small text{opacity:0}
   .pc.small:hover text, .pc.small.sel text{opacity:1}
   .pc .grain{stroke:var(--pc-ink); stroke-width:.8px; vector-effect:non-scaling-stroke; opacity:.45; pointer-events:none}
+  .cmp path{fill:var(--warn); stroke:var(--warn); stroke-width:1.8px; stroke-dasharray:7 4; vector-effect:non-scaling-stroke}
+  .cmp text{fill:var(--warn-ink); font-weight:700; paint-order:stroke; stroke:var(--panel2); stroke-width:.8px; pointer-events:none}
+  .cmp .grain{stroke:var(--warn); stroke-width:.8px; vector-effect:non-scaling-stroke}
+  .cmp.diff path{fill:var(--bad); stroke:var(--bad); stroke-width:2.6px; stroke-dasharray:4 2}
   #ghost path{stroke-width:1.6px; vector-effect:non-scaling-stroke; fill-opacity:.55; pointer-events:none}
   #ghost.ok path{fill:var(--good); stroke:#2c5e46}
   #ghost.no path{fill:var(--bad); stroke:#8a3f3c}
@@ -353,6 +381,15 @@
   .dbtn.danger:hover{border-color:var(--bad); color:var(--bad)}
   .dfield{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--mut)}
   .dfield input{width:48px; background:var(--panel2); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 6px; text-align:right}
+  .layer-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--edge)}
+  .layer-row:last-child{border-bottom:none}
+  .layer-row .layer-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); font-weight:600}
+  .layer-row .layer-kind{font-size:9.5px; color:var(--mut); letter-spacing:.08em}
+  .layer-range{width:100%; accent-color:var(--acc)}
+  .layer-select{width:100%; background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 7px}
+  .layer-pos{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+  .layer-pos label{font-size:10.5px; color:var(--mut)}
+  .layer-pos input{width:100%; background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 7px; margin-top:3px}
   .orow{display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--ink); padding:4px 0}
   .orow select,.orow input{background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:4px 7px}
   .orow input{width:52px; text-align:right}
@@ -416,6 +453,14 @@
   /* Easy Order wizard */
   #dlgOrder{max-width:640px}
   #dlgOrder .dlg-body{max-height:56vh; overflow:auto; min-height:220px}
+  #dlgAama{max-width:660px}
+  #dlgAama .dlg-body{max-height:62vh; overflow:auto}
+  .filepick{display:grid; grid-template-columns:150px 1fr; align-items:center; gap:8px 12px; margin-bottom:12px}
+  .filepick label{color:var(--mut); font-size:12px}
+  .filepick input[type=file]{min-width:0; width:100%; color:var(--ink); font-size:12px}
+  .aama-summary{background:var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:10px 12px;
+    font-size:12px; line-height:1.55; color:var(--mut); margin-top:10px}
+  .aama-summary b{color:var(--ink)}
   .wsteps{display:flex; gap:4px; padding:12px 18px 0}
   .wstep{flex:1; text-align:center; font-size:10.5px; letter-spacing:.06em; color:var(--mut);
          padding:0 2px 6px; border-bottom:2px solid var(--edge); white-space:nowrap}
@@ -556,7 +601,14 @@
 </div>
 <div id="ribbonRow" class="ws-only">
   <div class="rpane" data-rpane="file">
-    <button class="tb" id="bOpen" title="Open a saved marker (.json)"><span class="ic">⌂</span>Open marker…</button>
+    <button class="tb" id="bOpen" title="Replace the active tab with a saved marker (.json)"><span class="ic">⌂</span>Open here…</button>
+    <button class="tb" id="bOpenTab" title="Open a saved marker as a new editable document tab"><span class="ic">▱</span>Open in new tab…</button>
+    <button class="tb" id="bCompare" title="Import a saved marker as a read-only comparison layer"><span class="ic">◫</span>Import comparison…</button>
+    <button class="tb" id="bAamaImport" title="Import apparel pattern pieces from an AAMA/ASTM DXF and its grading rule table"><span class="ic">⇧</span>Import AAMA…</button>
+    <button class="tb" id="bMarkerDxf" title="Reopen a placed-marker DXF (Seamline cut data or a compatible flattened marker) with every piece at its exported position"><span class="ic">⇱</span>Import marker DXF…</button>
+    <button class="tb" id="bLayers" title="Show the active and comparison layers"><span class="ic">▤</span>Layers</button>
+    <div class="tsep"></div>
+    <button class="tb" id="bAamaExport" title="Export one AAMA package containing the placed-marker DXF and companion .rul grade-rule table"><span class="ic">⇩</span>AAMA package</button>
     <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
     <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
     <button class="tb" id="bCopy1" title="Copy the plot to the clipboard at true 1:1 scale (96 dpi paste targets)"><span class="ic">⧉</span>Copy 1:1</button>
@@ -646,6 +698,11 @@
   </div>
 </div>
 
+<div id="docTabs" aria-label="Open marker documents">
+  <div id="docTabList" role="tablist"></div>
+  <button id="bNewTab" title="New marker tab" aria-label="New marker tab">＋</button>
+</div>
+
 <div id="workspace">
   <div id="wsMarker" class="ws-view">
     <div id="tray">
@@ -662,6 +719,7 @@
         <g id="gFab"></g>
         <g id="gGrid"></g>
         <g id="gZones"></g>
+        <g id="gCompare"></g>
         <g id="gPieces"></g>
         <g id="gOverlay"></g>
         <g id="gSplice"></g>
@@ -689,6 +747,7 @@
       <div id="dockTabs">
         <button class="dtab" data-dock="piece">Piece</button>
         <button class="dtab on" data-dock="order">Order</button>
+        <button class="dtab" data-dock="layers">Layers</button>
         <button class="dtab" data-dock="options">Options</button>
         <button class="dtab" data-dock="keys">Keys</button>
       </div>
@@ -791,7 +850,9 @@
     <ol>
       <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, set each piece's lay direction and <b>fabric category</b> (any code — A/B/C, 1/2/3, BD/Gst/FR…), choose fabric width/buffer/rotation rule, review the summary. Pieces sharing a fabric code cut from the same fabric; chips above the tray filter the tray and scope Auto-Nest to one fabric at a time.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
+      <li><b>Tabs &amp; comparison</b> — use <b>Open in new tab…</b> for another editable marker, or <b>Import comparison…</b> to overlay a read-only marker in the active field. The <b>Layers</b> dock controls visibility, opacity, overlay / side-by-side / difference view, and independent X/Y position. Each tab keeps its own marker, camera, history, Cut Plan, and layer setup; a dot on the tab means unsaved changes.</li>
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
+      <li><b>AAMA / ASTM</b> — use <b>Import AAMA…</b> with a pattern DXF and its companion <b>.rul / .txt</b> grade-rule table. Seamline imports layer-1 piece boundaries, piece/size metadata, curve bulges, grading identifiers and delta rules into an editable marker tab. <b>AAMA package</b> exports one ZIP containing the placed marker as an ASTM D6673-style DXF plus its companion grading table.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, copy it 1:1 to the clipboard, or save the marker as JSON. On the <b>Advanced</b> tab, sequence the cut (<b>Auto sequence</b> = banded serpentine sweep; <b>Pick order</b> = click pieces in order; <b>Knife path</b> shows plunge points, direction and dry-haul) and <b>Generate Cut Data</b> as HPGL (.plt) for the cutter or DXF R12 for CAM import — entity order is the cut order.</li>
       <li><b>Fabric</b> tab — for spreading: <b>Mark defect zone</b> (drag over a flaw; pieces keep clear) and <b>Add splice</b> / <b>Auto splice</b> (roll joins no piece may straddle). Guides added over placed pieces flag them in red and block cut-data export until you move them clear (or <b>Nudge offenders</b>).</li>
       <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size — or <b>⇪ Import buy</b> a customer cut-order (paste from Excel or load a CSV; it maps the columns and fills the grid) — plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
@@ -818,6 +879,49 @@
     <p style="margin-top:14px; color:var(--mut)">Part of the <b>Seamline</b> apparel suite · workflow modeled on the classic marker pipeline: order → placement → status → plot/cut.</p>
   </div>
   <div class="dlg-foot"><button class="btn primary" data-close="dlgHelp">Got it</button></div>
+</dialog>
+
+<!-- ---------- AAMA / ASTM DXF + grade-rule import ---------- -->
+<dialog id="dlgAama">
+  <div class="dlg-head">Import AAMA / ASTM pattern <button class="x" data-close="dlgAama">✕</button></div>
+  <div class="dlg-body">
+    <div class="wcap">Select the apparel DXF and its companion grade-rule table. Metric and English files are converted to Seamline centimetres; the source grading metadata remains attached for export.</div>
+    <div class="filepick">
+      <label for="aamaDxfFile">Pattern DXF</label><input type="file" id="aamaDxfFile" accept=".dxf,application/dxf,text/plain">
+      <label for="aamaRuleFile">Rule table</label><input type="file" id="aamaRuleFile" accept=".rul,.txt,text/plain">
+    </div>
+    <div class="frow"><label for="aamaWidth">Fabric width</label><span><input id="aamaWidth" type="number" min="20" max="500" step="0.1" value="160"> cm</span></div>
+    <div class="frow"><label for="aamaTarget">Open as</label><select id="aamaTarget"><option value="tab">new editable tab</option><option value="current">replace current tab</option></select></div>
+    <div id="aamaSummary" class="aama-summary">Choose a DXF to inspect its pieces. Add the matching rule table to create all graded sizes.</div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgAama">Cancel</button><span style="flex:1"></span>
+    <button class="btn primary" id="aamaApply" disabled>Import pattern</button>
+  </div>
+</dialog>
+
+<!-- ---------- Marker-layout DXF import (placed geometry) ---------- -->
+<dialog id="dlgMarkerDxf">
+  <div class="dlg-head">Import marker DXF <button class="x" data-close="dlgMarkerDxf">✕</button></div>
+  <div class="dlg-body">
+    <div class="wcap">Reopens a placed-marker DXF — Seamline's own cut-data export round-trips exactly (positions, labels, cut order). Foreign flattened markers import as closed layer-1 contours; graded patterns belong in <b>Import AAMA…</b> instead.</div>
+    <div class="filepick">
+      <label for="mdxfFile">Marker DXF</label><input type="file" id="mdxfFile" accept=".dxf,application/dxf,text/plain">
+    </div>
+    <div class="frow"><label for="mdxfUnits">Units</label><select id="mdxfUnits">
+      <option value="1">centimetres</option><option value="0.1">millimetres</option><option value="2.54">inches</option>
+    </select></div>
+    <div class="frow"><label for="mdxfWidth">Fabric width</label><span><input id="mdxfWidth" type="number" min="20" max="500" step="0.1" value="160"> cm</span></div>
+    <div class="frow"><label for="mdxfFlip">Y origin</label><label style="display:flex;gap:6px;align-items:center"><input id="mdxfFlip" type="checkbox"> flip Y (file measures from the top selvage)</label></div>
+    <div class="frow"><label for="mdxfTarget">Open as</label><select id="mdxfTarget">
+      <option value="tab">new editable tab</option><option value="current">replace current tab</option><option value="comparison">read-only comparison layer</option>
+    </select></div>
+    <div id="mdxfSummary" class="aama-summary">Choose a DXF to inspect its contours.</div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgMarkerDxf">Cancel</button><span style="flex:1"></span>
+    <button class="btn primary" id="mdxfApply" disabled>Import marker</button>
+  </div>
 </dialog>
 
 <!-- ---------- Import buy / cut-order ---------- -->
@@ -854,6 +958,8 @@
 
 <div id="toasts"></div>
 <input type="file" id="fileIn" accept=".json,application/json" hidden>
+<input type="file" id="tabFileIn" accept=".json,application/json" hidden>
+<input type="file" id="compareFileIn" accept=".json,application/json" hidden>
 
 <script>
 'use strict';
@@ -864,6 +970,9 @@
    ===================================================================== */
 
 /* ---------------- constants ---------------- */
+// ?test=1 (the regression harness in tests.html) — boot a clean deterministic
+// workspace and never touch the user's saved localStorage state.
+const TEST_MODE = (()=>{ try{ return new URLSearchParams(location.search).has('test'); }catch{ return false; } })();
 const MAXLEN = 3000;                       // cm, hard table length
 /* ---------------- size scales ----------------
    Each model names its scale and sizes are indexed within that scale, so a
@@ -1005,6 +1114,31 @@ for (const m of MODELS) for (const d of m.pieces){
 const defByKey = {};
 for (const m of MODELS) for (const d of m.pieces) defByKey[d.key0] = d;
 const modelById = id => MODELS.find(m=>m.id===id);
+const AAMA_RESOURCES={};
+
+// AAMA imports carry their own piece library and size scale inside the marker
+// file. Registering those resources makes imported documents behave exactly
+// like built-in orders while keeping JSON saves self-contained.
+function registerMarkerResources(marker){
+  const a=marker&&marker.aama;
+  if (!a || !a.scale || !a.model || !Array.isArray(a.defs)) return;
+  AAMA_RESOURCES[a.model.id]=a;
+  const names=(a.scale.names||[]).map(String);
+  const colors=names.map((_,i)=>shade('#C8845E', names.length<2?0:(i/(names.length-1)-.5)*.55));
+  const demo={}; if(names.length) demo[a.scale.base&&names.includes(a.scale.base)?a.scale.base:names[0]]=1;
+  SCALES[a.scale.id]={names,colors,cols:Math.min(8,Math.max(1,names.length)),base:a.scale.base||names[0],demo,
+    factors:()=>[1,1]};
+  for (const d of a.defs){
+    d.scaleId=a.scale.id;
+    d.area0=d.area0||shoelace(d.base||[]);
+    defByKey[d.key0]=d;
+  }
+  const model={id:a.model.id,name:a.model.name||a.styleName||'Imported AAMA style',tag:a.model.tag||'DXF',
+    scale:a.scale.id,pieces:a.defs};
+  const old=MODELS.find(m=>m.id===model.id);
+  if (old) Object.assign(old,model); else MODELS.push(model);
+  if (typeof CACHE!=='undefined') CACHE.clear();
+}
 
 /* ---------------- geometry core ---------------- */
 function shoelace(p){ let a=0; for (let i=0,n=p.length;i<n;i++){ const q=p[(i+1)%n]; a += p[i][0]*q[1]-q[0]*p[i][1]; } return Math.abs(a)/2; }
@@ -1064,9 +1198,10 @@ function shapeOf(defKey, sizeIdx, rot, fx, fy){
   let s = CACHE.get(k);
   if (s) return s;
   const def = defByKey[defKey];
-  const [sx, sy] = SCALES[def.scaleId].factors(sizeIdx, def);
+  const exact=def.sizeBases&&def.sizeBases[sizeIdx];
+  const [sx, sy] = exact ? [1,1] : SCALES[def.scaleId].factors(sizeIdx, def);
   const rad = rot*Math.PI/180, cos=Math.cos(rad), sin=Math.sin(rad);
-  let pts = def.base.map(([x,y])=>{
+  let pts = (exact||def.base).map(([x,y])=>{
     x*=sx; y*=sy;
     if (fx) x=-x; if (fy) y=-y;
     return [x*cos - y*sin, x*sin + y*cos];
@@ -1082,6 +1217,9 @@ const instPoly  = (i,x=i.x,y=i.y) => instShape(i).pts.map(p=>[p[0]+x, p[1]+y]);
 /* ---------------- state ---------------- */
 let S = null;
 let uidSeq = 1;
+let DOCS = [];
+let ACTIVE_DOC = null;
+let docSeq = 1;
 const UI = {
   sel:null, selSet:new Set(), carry:null,
   drag:null, pan:null, mq:null,
@@ -1094,18 +1232,97 @@ const UI = {
 const $ = id => document.getElementById(id);
 const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
       gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost'),
-      gZones=$('gZones'), gSplice=$('gSplice');
+      gZones=$('gZones'), gSplice=$('gSplice'), gCompare=$('gCompare');
+
+const activeDoc = () => DOCS.find(d=>d.id===ACTIVE_DOC) || null;
+const cloneJSON = value => value==null ? value : JSON.parse(JSON.stringify(value));
+function defaultDocUI(){
+  return { vb:{x:-30,y:-30,w:600,h:280}, grid:true, snap:true, autobutt:false,
+    layRule:'strict', effort:60, fabricFilter:null, thumb:true, dockTab:'order' };
+}
+function newDocRecord(marker, opts={}){
+  return { id:'doc'+(docSeq++), marker, name:opts.name||marker.name||'Untitled marker',
+    dirty:opts.dirty!==false, comparison:opts.comparison||null,
+    ui:Object.assign(defaultDocUI(), opts.ui||{}), undo:[], redo:[],
+    workspace:opts.workspace||'marker', cutPlan:opts.cutPlan||null };
+}
+function captureActiveDoc(){
+  const d=activeDoc(); if (!d || !S) return;
+  S.name=$('markerName').value.trim()||S.name;
+  d.marker=S; d.name=S.name; d.cutPlan=CP;
+  d.ui={ vb:{...UI.vb}, grid:UI.grid, snap:UI.snap, autobutt:UI.autobutt,
+    layRule:UI.layRule, effort:UI.effort, fabricFilter:UI.fabricFilter,
+    thumb:UI.thumb, dockTab:UI.dockTab };
+  d.undo=UI.undo; d.redo=UI.redo;
+}
+function resetTransientUI(){
+  UI.sel=null; UI.selSet=new Set(); UI.carry=null; UI.drag=null; UI.pan=null; UI.mq=null;
+  UI.measure=null; UI.zoomwin=false; UI.zw=null; UI.pickSeq=null;
+  UI.selZone=null; UI.selSplice=null; UI.guideDrag=null; UI.zoneDraw=null;
+  if (typeof resetGuideModes==='function') resetGuideModes();
+  cv.classList.remove('carrying','panning','measuring');
+}
+function renderDocumentTabs(){
+  const list=$('docTabList'); if (!list) return;
+  list.innerHTML=DOCS.map(d=>`<div class="doc-tab${d.id===ACTIVE_DOC?' on':''}" role="tab" aria-selected="${d.id===ACTIVE_DOC}" data-doc="${d.id}">
+    <button class="doc-name" data-doc-open="${d.id}" title="${esc(d.name)}">${esc(d.name)}</button>
+    <span class="dirty"${d.dirty?'':' hidden'} title="Unsaved changes">●</span>
+    <button class="doc-close" data-doc-close="${d.id}" title="Close ${esc(d.name)}" aria-label="Close ${esc(d.name)}">×</button>
+  </div>`).join('');
+}
+function syncActiveControls(){
+  $('markerName').value=S.name;
+  $('effort').value=UI.effort; $('effortVal').textContent=UI.effort;
+  $('layRule').value=UI.layRule;
+  $('tThumb').classList.toggle('on',UI.thumb);
+  document.querySelectorAll('#dockTabs .dtab').forEach(b=>b.classList.toggle('on',b.dataset.dock===UI.dockTab));
+}
+function activateDocument(id){
+  if (id===ACTIVE_DOC) return;
+  captureActiveDoc();
+  const d=DOCS.find(x=>x.id===id); if (!d) return;
+  ACTIVE_DOC=id; S=d.marker; CP=d.cutPlan; registerMarkerResources(S);
+  const u=Object.assign(defaultDocUI(),d.ui||{});
+  UI.vb={...u.vb}; UI.grid=u.grid; UI.snap=u.snap; UI.autobutt=u.autobutt;
+  UI.layRule=u.layRule; UI.effort=u.effort; UI.fabricFilter=u.fabricFilter;
+  UI.thumb=u.thumb; UI.dockTab=u.dockTab; UI.undo=d.undo||[]; UI.redo=d.redo||[];
+  resetTransientUI(); syncActiveControls(); renderDocumentTabs();
+  setWorkspace(d.workspace||'marker'); renderAll();
+  setTimeout(()=>{ setVB(); scheduleLabelRefresh(); },0);
+}
+function addDocument(marker, opts={}){
+  const d=newDocRecord(marker,opts); DOCS.push(d);
+  const prev=ACTIVE_DOC; ACTIVE_DOC=null;
+  if (prev){ ACTIVE_DOC=prev; activateDocument(d.id); }
+  else { ACTIVE_DOC=d.id; S=d.marker; CP=d.cutPlan; UI.undo=d.undo; UI.redo=d.redo;
+    Object.assign(UI,d.ui); UI.vb={...d.ui.vb}; resetTransientUI(); syncActiveControls(); renderDocumentTabs(); }
+  persistWorkspace();
+  return d;
+}
+function markActiveDirty(dirty=true){
+  const d=activeDoc(); if (!d) return;
+  d.dirty=dirty; d.name=(S&&S.name)||d.name; renderDocumentTabs();
+}
+function closeDocument(id){
+  const d=DOCS.find(x=>x.id===id); if (!d) return;
+  if (DOCS.length===1) return toast('Keep at least one marker tab open','warn');
+  if (d.dirty && !confirm(`Close “${d.name}” with unsaved changes?`)) return;
+  const ix=DOCS.indexOf(d), wasActive=id===ACTIVE_DOC;
+  DOCS.splice(ix,1);
+  if (wasActive){ ACTIVE_DOC=null; activateDocument(DOCS[Math.min(ix,DOCS.length-1)].id); }
+  else renderDocumentTabs();
+  persistWorkspace();
+}
 
 // lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…], dir:{pieceKey0:'two'|'four'|'free'}}]
 // dir overrides a piece's lay direction for this order; absent = the piece's natural default.
-function newOrder(lines, name, width, buffer){
-  const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
-  S = { name, width, buffer, endAllow:prevEnd, pieces:[],
+function buildOrderMarker(lines, name, width, buffer, endAllow=4){
+  const marker = { name, width, buffer, endAllow, pieces:[],
         cut:{ mode:'auto', order:[], params:{ bandW:50, dir:'ccw' } },
         zones:[], splices:[], overlaps:[], spread:{ type:'single', fold:'none' },
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
                                excl:[...(L.excl||[])], dir:{...(L.dir||{})}, fab:{...(L.fab||{})} })) };
-  S.lines.forEach((L, li)=>{
+  marker.lines.forEach((L, li)=>{
     const model = modelById(L.modelId), sc = scaleOf(L.modelId);
     for (let si=0; si<sc.names.length; si++){
       const q = L.sizesQty[sc.names[si]]|0;
@@ -1115,11 +1332,21 @@ function newOrder(lines, name, width, buffer){
           const dir = L.dir[d.key0] || d.rot;
           const fab = L.fab[d.key0] || 'A';   // fabric category — user codes: A/B/C, 1/2/3, BD/Gst…
           for (let k=0;k<d.qty;k++)
-            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir, fab,
+            marker.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir, fab,
                             placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
         }
     }
   });
+  // Editing quantities on an imported order must not detach its custom piece
+  // definitions or grading table from the newly rebuilt marker.
+  const imported=marker.lines.map(L=>AAMA_RESOURCES[L.modelId]).find(Boolean);
+  if(imported) marker.aama=cloneJSON(imported);
+  return marker;
+}
+function newOrder(lines, name, width, buffer){
+  const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
+  S = buildOrderMarker(lines,name,width,buffer,prevEnd);
+  const d=activeDoc(); if (d){ d.marker=S; d.name=name; d.dirty=true; }
   UI.fabricFilter=null;
   UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
   $('markerName').value = name;
@@ -1128,6 +1355,7 @@ function newOrder(lines, name, width, buffer){
 // markers saved before multi-model orders carry modelId/sizesQty at the top level;
 // markers saved before per-piece direction lack line.dir / piece.dir.
 function migrateMarker(m){
+  registerMarkerResources(m);
   if (!m.lines){
     m.lines=[{ modelId:m.modelId||'tshirt', sizesQty:m.sizesQty||{}, excl:[] }];
     delete m.modelId; delete m.sizesQty;
@@ -1353,6 +1581,43 @@ function pieceMarkup(inst, cls){
   `</g>`;
 }
 
+function comparisonLayer(){ const d=activeDoc(); return d&&d.comparison ? d.comparison : null; }
+function markerLengthOf(marker){
+  let len=0; for (const p of marker.pieces||[]) if (p.placed) len=Math.max(len,p.x+instShape(p).bb.w);
+  return len;
+}
+function comparisonOffset(layer){
+  const baseX=layer.mode==='side' ? markerStats().len+30 : 0;
+  return {x:baseX+(+layer.x||0), y:+layer.y||0};
+}
+function comparisonExtent(){
+  const layer=comparisonLayer(); if (!layer||!layer.visible) return 0;
+  const o=comparisonOffset(layer); return Math.max(0,o.x+markerLengthOf(layer.marker));
+}
+function comparisonPieceChanged(marker,p,o){
+  const q=S.pieces.find(a=>a.placed && a.defKey===p.defKey && a.sizeIdx===p.sizeIdx && a.bundle===p.bundle && a.line===p.line);
+  if (!q) return true;
+  return Math.abs(q.x-(p.x+o.x))>.1 || Math.abs(q.y-(p.y+o.y))>.1 || q.rot!==p.rot || !!q.fx!==!!p.fx || !!q.fy!==!!p.fy;
+}
+function renderComparison(){
+  const layer=comparisonLayer();
+  if (!layer||!layer.visible){ gCompare.innerHTML=''; return; }
+  const marker=layer.marker, o=comparisonOffset(layer); let h='';
+  for (const p of marker.pieces||[]) if (p.placed){
+    if (layer.mode==='difference' && !comparisonPieceChanged(marker,p,o)) continue;
+    const def=defByKey[p.defKey]; if (!def) continue;
+    const sh=instShape(p), bb=sh.bb, c=sh.c;
+    const fs=Math.min(9.5*labelUnitsPerPx,Math.max(2,Math.min(bb.w,bb.h)/4));
+    const size=(scaleOf((marker.lines[p.line]||marker.lines[0]).modelId).names[p.sizeIdx]||p.sizeIdx);
+    h+=`<g class="cmp${layer.mode==='difference'?' diff':''}" transform="translate(${p.x+o.x},${p.y+o.y})">`+
+      `<path d="${fmtPoly(sh.pts)}"/>`+
+      `<line class="grain" x1="${c[0]-Math.min(bb.w,60)*.35}" y1="${c[1]}" x2="${c[0]+Math.min(bb.w,60)*.35}" y2="${c[1]}"/>`+
+      `<text x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle">${def.name.toUpperCase()} · ${size}</text></g>`;
+  }
+  gCompare.setAttribute('opacity',Math.max(.05,Math.min(1,+layer.opacity||.35)));
+  gCompare.innerHTML=h;
+}
+
 function renderPieces(){
   let h='';
   for (const p of S.pieces) if (p.placed){
@@ -1478,7 +1743,22 @@ function renderOrderDock(){
   const b=$('dockBody');
   if (UI.dockTab==='keys'){ b.innerHTML=shortcutsHTML(); return; }
   if (UI.dockTab==='piece'){ b.innerHTML=pieceHTML(); return; }
+  if (UI.dockTab==='layers'){ b.innerHTML=layersHTML(); return; }
   if (UI.dockTab==='options'){ b.innerHTML=optionsHTML(); return; }
+  if (isImportedLayout()){
+    // a marker-DXF import is a fixed layout, not an order — the line/def
+    // arithmetic (garments × pcs/garment) would misreport it
+    const bySize={};
+    for (const p of S.pieces){ const s=sizeNm(p); bySize[s]=(bySize[s]|0)+1; }
+    b.innerHTML = `<div class="dsec-lbl">IMPORTED LAYOUT · READ-ONLY</div>` +
+      `<div class="dbox"><div class="dline-hd"><span class="lett">M</span><span class="nm">${esc(S.name)}</span></div>
+      <div style="margin-top:9px">Source <b>${esc(S.aama.sourceFile)}</b><br>
+      ${Object.entries(bySize).map(([s,n])=>`${esc(s)} × ${n}`).join(' · ')}<br>
+      <b>${S.pieces.length} placed piece${S.pieces.length===1?'':'s'}</b></div></div>` +
+      `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Rotation rule <b>${UI.layRule}</b></div>` +
+      `<div class="dnote">This marker came from a placed-geometry DXF, so there is no editable order behind it. Re-import the graded patterns (Import AAMA…) to change sizes or quantities.</div>`;
+    return;
+  }
   const lines = S.lines.map((L,li)=>{
     const sc=scaleOf(L.modelId), model=modelById(L.modelId);
     const ratio = sc.names.map((s,i)=> (L.sizesQty[s]|0)>0
@@ -1500,6 +1780,33 @@ function renderOrderDock(){
     `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Rotation rule <b>${UI.layRule}</b></div>` +
     `<button id="dockEdit">✎ Edit order…</button>` +
     `<div class="dnote">Inspect without risking the marker.</div>`;
+}
+function layersHTML(){
+  const layer=comparisonLayer();
+  const primary=`<div class="layer-row"><span title="Visible">◉</span><div class="layer-name">${esc(S.name)}<div class="layer-kind">ACTIVE · EDITABLE</div></div></div>`;
+  if (!layer) return `<div class="dsec-lbl">MARKER LAYERS</div><div class="dbox">${primary}</div>
+    <button class="dbtn" id="dockImportComparison" style="width:100%">◫ Import comparison marker…</button>
+    <div class="dnote">A comparison is read-only and shares this tab's zoom and pan.</div>`;
+  return `<div class="dsec-lbl">MARKER LAYERS</div><div class="dbox">${primary}
+    <div class="layer-row"><label title="Show comparison"><input id="cmpVisible" type="checkbox"${layer.visible?' checked':''}></label>
+      <div class="layer-name">${esc(layer.name)}<div class="layer-kind">COMPARISON · READ-ONLY</div></div>
+      <button class="doc-close" id="cmpRemove" title="Remove comparison layer">×</button></div></div>
+    <div class="dgrp"><div class="dgrp-l">View mode</div>
+      <select class="layer-select" id="cmpMode">
+        <option value="overlay"${layer.mode==='overlay'?' selected':''}>Overlay on active marker</option>
+        <option value="side"${layer.mode==='side'?' selected':''}>Side by side</option>
+        <option value="difference"${layer.mode==='difference'?' selected':''}>Highlight differences</option>
+      </select></div>
+    <div class="dgrp"><div class="dgrp-l">Opacity · ${Math.round(layer.opacity*100)}%</div>
+      <input class="layer-range" id="cmpOpacity" type="range" min="5" max="100" value="${Math.round(layer.opacity*100)}"></div>
+    <div class="dgrp"><div class="dgrp-l">Comparison position · cm</div><div class="layer-pos">
+      <label>X offset<input id="cmpX" type="number" step="1" value="${layer.x}"></label>
+      <label>Y offset<input id="cmpY" type="number" step="1" value="${layer.y}"></label>
+    </div></div>
+    <div class="dbtns"><button class="dbtn" data-cmp-nudge="-1,0">← 1</button><button class="dbtn" data-cmp-nudge="1,0">→ 1</button>
+      <button class="dbtn" data-cmp-nudge="0,-1">↑ 1</button><button class="dbtn" data-cmp-nudge="0,1">↓ 1</button>
+      <button class="dbtn" id="cmpOrigin">Align origins</button></div>
+    <div class="dnote">Zoom and pan are synchronized because both layers use the same field view. Position controls move only the read-only comparison.</div>`;
 }
 // The organised piece toolbar (AccuMark's Piece tab + Toolbox, in one place).
 function pieceHTML(){
@@ -1586,8 +1893,9 @@ function shortcutsHTML(){
 
 function renderAll(){
   const st = renderStats();
-  renderFabric(st.len);
+  renderFabric(Math.max(st.len,comparisonExtent()));
   if (typeof validateMarker==='function') validateMarker(true);   // set violation flags before pieces draw
+  renderComparison();
   renderPieces();
   renderOverlay(st.len);
   if (typeof renderGuides==='function') renderGuides();
@@ -1639,7 +1947,7 @@ function fitView(){
   const cw=cv.clientWidth, ch=cv.clientHeight;
   if (cw<50 || ch<50){ setTimeout(fitView,120); return; }   // pane not laid out yet
   const st=markerStats();
-  const L=Math.max(320, st.len+120), W=S.width;
+  const L=Math.max(320, st.len+120, comparisonExtent()+120), W=S.width;
   const pad=34;
   const ar = cw/ch;
   let w=L+2*pad, h=W+2*pad+18;
@@ -1651,7 +1959,7 @@ function zoomAt(mx,my,k){
   const v=UI.vb;
   const nw=Math.max(40, Math.min(4000, v.w*k)); const kk=nw/v.w;
   v.x = mx-(mx-v.x)*kk; v.y = my-(my-v.y)*kk; v.w=nw; v.h*=kk;
-  setVB(); scheduleLabelRefresh();
+  setVB(); scheduleLabelRefresh(); persistViewSoon();
 }
 function worldPt(e){
   const pt=cv.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
@@ -1858,7 +2166,7 @@ function onUp(e){
     else select(null);
     return;
   }
-  if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); return; }
+  if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); persistViewSoon(); return; }
   if (UI.drag){
     const d=UI.drag, inst=byUid(d.uid); UI.drag=null;
     if (!d.moved){ renderHint(); return; }
@@ -1932,12 +2240,23 @@ $('trayFabs').addEventListener('click', e=>{
 /* ---- right dock wiring ---- */
 $('dockTabs').addEventListener('click', e=>{
   const t=e.target.closest('.dtab'); if(!t) return;
-  UI.dockTab=t.dataset.dock; renderOrderDock();
+  UI.dockTab=t.dataset.dock; renderOrderDock(); persistWorkspace();
 });
 $('orderChip').addEventListener('click', ()=>{ UI.dockTab='order'; renderOrderDock(); });
 // dock body: edit-order, piece actions (data-pa), options (data-opt)
 $('dockBody').addEventListener('click', e=>{
   if (e.target.id==='dockEdit'){ openOrderDialog(); return; }
+  if (e.target.id==='dockImportComparison'){ $('compareFileIn').click(); return; }
+  if (e.target.id==='cmpRemove'){
+    const d=activeDoc(); if (d){ d.comparison=null; markActiveDirty(); renderAll(); persistWorkspace(); }
+    return;
+  }
+  if (e.target.id==='cmpOrigin'){
+    const l=comparisonLayer(); if(l){ l.x=0; l.y=0; l.mode='overlay'; markActiveDirty(); renderAll(); persistWorkspace(); }
+    return;
+  }
+  const nudge=e.target.closest('[data-cmp-nudge]');
+  if (nudge){ const l=comparisonLayer(); if(l){ const [dx,dy]=nudge.dataset.cmpNudge.split(',').map(Number); l.x+=dx; l.y+=dy; markActiveDirty(); renderAll(); persistWorkspace(); } return; }
   const pa=e.target.closest('[data-pa]');
   if (pa){
     switch(pa.dataset.pa){
@@ -1959,13 +2278,26 @@ $('dockBody').addEventListener('click', e=>{
     else if (o==='grid'||o==='snap'||o==='autobutt'){
       UI[o]=!UI[o]; if(o==='grid') renderFabric(markerStats().len);
     }
-    renderOrderDock();
+    renderOrderDock(); persistWorkspace();
     return;
+  }
+});
+// comparison layer opacity is intentionally live; the active marker is never mutated.
+$('dockBody').addEventListener('input', e=>{
+  if (e.target.id==='cmpOpacity'){
+    const l=comparisonLayer(); if(!l) return;
+    l.opacity=Math.max(.05,Math.min(1,+e.target.value/100));
+    const label=e.target.closest('.dgrp').querySelector('.dgrp-l'); if(label) label.textContent=`Opacity · ${Math.round(l.opacity*100)}%`;
+    markActiveDirty(); renderComparison(); persistWorkspace();
   }
 });
 // options: live inputs
 $('dockBody').addEventListener('change', e=>{
   const t=e.target;
+  const l=comparisonLayer();
+  if (t.id==='cmpVisible' && l){ l.visible=t.checked; markActiveDirty(); renderAll(); persistWorkspace(); return; }
+  if (t.id==='cmpMode' && l){ l.mode=t.value; markActiveDirty(); renderAll(); if(l.mode==='side') fitView(); persistWorkspace(); return; }
+  if ((t.id==='cmpX'||t.id==='cmpY') && l){ l[t.id==='cmpX'?'x':'y']=+t.value||0; markActiveDirty(); renderAll(); persistWorkspace(); return; }
   if (t.id==='pcBuf' && UI.sel!=null){
     const p=byUid(UI.sel);
     if (t.value===''){ delete p.buf; } else p.buf=Math.max(0,Math.min(5,+t.value||0));
@@ -2300,6 +2632,590 @@ function returnAll(){
 }
 
 /* =====================================================================
+   AAMA / ASTM D6673 PATTERN INTERCHANGE
+
+   The apparel exchange is a pair: an ASCII DXF (piece geometry in BLOCKS,
+   functional numeric layers) and an ASCII grade-rule table (.rul/.txt).
+   Import keeps the source table verbatim and also materializes every graded
+   size as editable Seamline geometry. Export writes an R13-compatible DXF
+   plus the companion rule table.
+   ===================================================================== */
+let AAMA_IMPORT=null;
+
+const aamaFirst=(data,code,fall='')=>{ const p=data.find(x=>x.code===code); return p?p.value:fall; };
+function aamaPairs(text){
+  const lines=String(text).replace(/^\uFEFF/,'').replace(/\r/g,'').split('\n');
+  const out=[];
+  for (let i=0;i+1<lines.length;i+=2){
+    const code=parseInt(lines[i].trim(),10);
+    if (!Number.isFinite(code)) continue;
+    out.push({code,value:lines[i+1].trimEnd()});
+  }
+  return out;
+}
+function aamaRecord(type,data){
+  const e={type,layer:String(aamaFirst(data,8,'0')).trim(),data};
+  if (type==='TEXT'||type==='MTEXT'||type==='ATTDEF'){
+    e.text=String(aamaFirst(data,1,'')); e.x=+aamaFirst(data,10,0); e.y=+aamaFirst(data,20,0);
+  } else if (type==='LINE'){
+    e.x1=+aamaFirst(data,10,0); e.y1=+aamaFirst(data,20,0);
+    e.x2=+aamaFirst(data,11,0); e.y2=+aamaFirst(data,21,0);
+  } else if (type==='POINT'){
+    e.x=+aamaFirst(data,10,0); e.y=+aamaFirst(data,20,0);
+  } else if (type==='LWPOLYLINE'){
+    e.closed=((+aamaFirst(data,70,0))&1)!==0; e.vertices=[]; let v=null;
+    for (const p of data){
+      if (p.code===10){ v={x:+p.value,y:0,bulge:0}; e.vertices.push(v); }
+      else if (p.code===20&&v) v.y=+p.value;
+      else if (p.code===42&&v) v.bulge=+p.value;
+    }
+  } else if (type==='INSERT'){
+    const has=code=>data.some(p=>p.code===code);
+    e.block=String(aamaFirst(data,2,'')).trim();
+    e.x=+aamaFirst(data,10,0); e.y=+aamaFirst(data,20,0);
+    e.sx=has(41)?+aamaFirst(data,41,1):1;
+    // DXF spec default for group 42 (Y scale) is 1, but real-world exporters often
+    // omit it entirely for a uniformly-scaled block and mean "same as X" — deliberate
+    // non-spec fallback, safer than silently squashing Y to a unit block height.
+    e.sy=has(42)?+aamaFirst(data,42,1):e.sx;
+    e.rot=+aamaFirst(data,50,0);
+    e.cols=has(70)?Math.max(1,+aamaFirst(data,70,1)||1):1;
+    e.rows=has(71)?Math.max(1,+aamaFirst(data,71,1)||1):1;
+    e.colSp=+aamaFirst(data,44,0); e.rowSp=+aamaFirst(data,45,0);
+    e.attribsFollow=(+aamaFirst(data,66,0))===1;
+    e.attribs=[];
+  }
+  return e;
+}
+function parseAamaDxf(text){
+  const pairs=aamaPairs(text);
+  if (pairs.length<4) throw new Error('The DXF does not contain ASCII group-code pairs.');
+  let section='', block=null, poly=null, openInsert=null;
+  const blocks=[], entities=[], header=[];
+  for (let i=0;i<pairs.length;){
+    if (pairs[i].code!==0){ i++; continue; }
+    const type=String(pairs[i].value).trim().toUpperCase();
+    let j=i+1; while(j<pairs.length&&pairs[j].code!==0) j++;
+    const data=pairs.slice(i+1,j);
+    if (type==='SECTION'){ section=String(aamaFirst(data,2,'')).toUpperCase(); i=j; continue; }
+    if (type==='ENDSEC'){ section=''; block=null; poly=null; openInsert=null; i=j; continue; }
+    if (section==='HEADER'){ header.push({type,data}); i=j; continue; }
+    if (section==='BLOCKS'&&type==='BLOCK'){
+      if (block) blocks.push(block);
+      block={name:String(aamaFirst(data,2,aamaFirst(data,3,'PIECE'))),
+             base:{x:+aamaFirst(data,10,0),y:+aamaFirst(data,20,0)}, entities:[]};
+      poly=null; openInsert=null; i=j; continue;
+    }
+    if (section==='BLOCKS'&&type==='ENDBLK'){
+      if (block) blocks.push(block); block=null; poly=null; openInsert=null; i=j; continue;
+    }
+    const target=block?block.entities:entities;
+    if ((section==='BLOCKS'&&block)||section==='ENTITIES'){
+      if (type==='POLYLINE'){
+        poly={type,layer:String(aamaFirst(data,8,'0')).trim(),closed:((+aamaFirst(data,70,0))&1)!==0,vertices:[],data};
+        target.push(poly); openInsert=null;
+      } else if (type==='VERTEX'&&poly){
+        poly.vertices.push({x:+aamaFirst(data,10,0),y:+aamaFirst(data,20,0),bulge:+aamaFirst(data,42,0)});
+      } else if (type==='INSERT'){
+        // block-reference placement; ATTRIB…SEQEND only follows when group 66=1 —
+        // otherwise the very next record is unrelated and must not be swallowed
+        const ins=aamaRecord(type,data);
+        target.push(ins); poly=null; openInsert=ins.attribsFollow?ins:null;
+      } else if (type==='ATTRIB'&&openInsert){
+        openInsert.attribs.push({tag:String(aamaFirst(data,2,'')).trim(),text:String(aamaFirst(data,1,''))});
+      } else if (type==='SEQEND'){ poly=null; openInsert=null; }
+      else { poly=null; openInsert=null; if (!['BLOCK','ENDBLK'].includes(type)) target.push(aamaRecord(type,data)); }
+    }
+    i=j;
+  }
+  if (block) blocks.push(block);
+  return {blocks,entities,header};
+}
+function aamaSystemText(entities){
+  const out={};
+  for (const e of entities||[]){
+    if (!['TEXT','MTEXT','ATTDEF'].includes(e.type)) continue;
+    const i=e.text.indexOf(':'); if(i<0) continue;
+    out[e.text.slice(0,i).trim().toLowerCase()]=e.text.slice(i+1).trim();
+  }
+  return out;
+}
+function parseAamaRules(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  const field=name=>{ const m=text.match(new RegExp('^\\s*'+name.replace(/ /g,'\\s+')+'\\s*:\\s*(.*?)\\s*$','im')); return m?m[1].trim():''; };
+  const count=Math.max(0,+field('NUMBER OF SIZES')||0);
+  let sizes=[];
+  const sm=text.match(/SIZE\s+LIST\s*:/i);
+  if (sm){
+    const tail=text.slice(sm.index+sm[0].length).split(/RULE\s*:/i)[0];
+    sizes=tail.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);
+    if(count) sizes=sizes.slice(0,count);
+  }
+  const rules={};
+  for (const chunk of text.split(/RULE\s*:/i).slice(1)){
+    const m=chunk.match(/\bDELTA\b[\s,]+(-?\d+)([\s\S]*)/i); if(!m) continue;
+    const nums=(m[2].match(/[-+]?(?:\d+\.?\d*|\.\d+)/g)||[]).map(Number);
+    const deltas=[]; for(let i=0;i+1<nums.length&&(sizes.length===0||deltas.length<sizes.length);i+=2) deltas.push([nums[i],nums[i+1]]);
+    rules[String(+m[1])]=deltas;
+  }
+  return {raw:text,version:field('ASTM/D13 Proposal 1 VERSION')||'D 6673-04',author:field('AUTHOR'),
+    units:(field('UNITS')||'').toUpperCase(),tableName:field('GRADE RULE TABLE'),sampleSize:field('SAMPLE SIZE'),sizes,rules};
+}
+function flattenAamaBoundary(vertices,closed=true){
+  const pts=[], source=[]; if(!vertices||vertices.length<2) return {pts,source};
+  const segs=closed?vertices.length:vertices.length-1;
+  for(let i=0;i<segs;i++){
+    const a=vertices[i], b=vertices[(i+1)%vertices.length], bulge=+a.bulge||0;
+    pts.push([a.x,a.y]); source.push(i);
+    if(Math.abs(bulge)<1e-8) continue;
+    const dx=b.x-a.x,dy=b.y-a.y,chord=Math.hypot(dx,dy); if(chord<1e-8) continue;
+    const theta=4*Math.atan(bulge), off=chord*(1-bulge*bulge)/(4*bulge);
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,cx=mx-dy/chord*off,cy=my+dx/chord*off;
+    const a0=Math.atan2(a.y-cy,a.x-cx), n=Math.max(2,Math.min(48,Math.ceil(Math.abs(theta)/(Math.PI/18))));
+    const radius=Math.hypot(a.x-cx,a.y-cy);
+    for(let k=1;k<n;k++){ const ang=a0+theta*k/n; pts.push([cx+Math.cos(ang)*radius,cy+Math.sin(ang)*radius]); source.push(null); }
+  }
+  if(!closed){ const z=vertices[vertices.length-1]; pts.push([z.x,z.y]); source.push(vertices.length-1); }
+  return {pts,source};
+}
+function aamaBoundary(block){
+  const candidates=(block.entities||[]).filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&String(e.layer)==='1'&&e.vertices&&e.vertices.length>=3);
+  let best=null,area=-1;
+  for(const e of candidates){ const f=flattenAamaBoundary(e.vertices,e.closed!==false); const a=shoelace(f.pts); if(a>area){area=a;best=e;} }
+  return best;
+}
+function aamaRuleIds(block,vertices){
+  const ids=Array(vertices.length).fill(null);
+  for(const e of block.entities||[]){
+    if (!['TEXT','MTEXT','ATTDEF'].includes(e.type)||String(e.layer)!=='1'||!/^\s*#/.test(e.text)) continue;
+    const m=e.text.match(/^\s*#\s*(-?\d+)/); if(!m) continue;
+    let at=0,bd=Infinity;
+    vertices.forEach((v,i)=>{ const d=(v.x-e.x)**2+(v.y-e.y)**2; if(d<bd){bd=d;at=i;} });
+    ids[at]=String(+m[1]);
+  }
+  return ids;
+}
+function gradedAamaVertices(base,ids,table,sizeIndex){
+  const known=ids.map((id,i)=>id!=null&&table.rules[id]&&table.rules[id][sizeIndex] ? i : -1).filter(i=>i>=0);
+  if(!known.length) return base.map(v=>({...v}));
+  const deltaAt=i=>table.rules[ids[i]][sizeIndex];
+  const out=[];
+  for(let i=0;i<base.length;i++){
+    let d=ids[i]!=null&&table.rules[ids[i]]&&table.rules[ids[i]][sizeIndex] ? deltaAt(i) : null;
+    if(!d){
+      let pi=known[0],ni=known[0],pd=1e9,nd=1e9;
+      for(const k of known){ const back=(i-k+base.length)%base.length, fwd=(k-i+base.length)%base.length;
+        if(back<pd){pd=back;pi=k;} if(fwd<nd){nd=fwd;ni=k;} }
+      const a=deltaAt(pi),b=deltaAt(ni),t=(pd+nd)>0?pd/(pd+nd):0;
+      d=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+    }
+    out.push({x:base[i].x+d[0],y:base[i].y+d[1],bulge:base[i].bulge||0});
+  }
+  return out;
+}
+const aamaSlug=s=>String(s||'piece').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,34)||'piece';
+function aamaHash(text){ let h=2166136261; for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
+function inspectAamaImport(dxfText,ruleText,dxfName='pattern.dxf'){
+  const dxf=parseAamaDxf(dxfText), table=ruleText?parseAamaRules(ruleText):null, style=aamaSystemText(dxf.entities);
+  let blocks=dxf.blocks.filter(b=>aamaBoundary(b));
+  if(!blocks.length){
+    blocks=dxf.entities.filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&String(e.layer)==='1'&&e.vertices?.length>=3)
+      .map((e,i)=>({name:'ENTITY-'+(i+1),entities:[e]}));
+  }
+  if(!blocks.length) throw new Error('No closed piece boundary was found on AAMA layer 1.');
+  const groups=new Map();
+  for(const b of blocks){
+    const meta=aamaSystemText(b.entities), name=meta['piece name']||b.name||'Piece';
+    if(!groups.has(name)) groups.set(name,[]); groups.get(name).push({block:b,meta,size:meta['size name']||''});
+  }
+  const blockSizes=[...new Set(blocks.map(b=>aamaSystemText(b.entities)['size name']).filter(Boolean))];
+  const sample=(table&&table.sampleSize)||style['sample size']||blockSizes[0]||'BASE';
+  const sizes=(table&&table.sizes.length?table.sizes:blockSizes.length?blockSizes:[sample]).map(String);
+  const units=((table&&table.units)||style.units||'METRIC').toUpperCase();
+  return {dxf,table,style,groups,sample,sizes,units,dxfText,dxfName};
+}
+function buildAamaMarker(info,width){
+  const token=aamaHash(info.dxfText+'|'+(info.table?.raw||'')), scaleId='aama-scale-'+token, modelId='aama-'+token;
+  const unitToCm=info.units==='ENGLISH'?2.54:.1;
+  const defs=[]; let pno=0;
+  for(const [pieceName,entries] of info.groups){
+    const baseEntry=entries.find(e=>e.size===info.sample)||entries[0], boundary=aamaBoundary(baseEntry.block);
+    if(!boundary) continue;
+    const baseVerts=boundary.vertices.map(v=>({...v})), baseIds=aamaRuleIds(baseEntry.block,baseVerts);
+    const sizeBases=[], sourceBySize=[];
+    for(let si=0;si<info.sizes.length;si++){
+      const explicit=entries.find(e=>e.size===info.sizes[si]), ev=explicit&&aamaBoundary(explicit.block);
+      const raw=ev ? ev.vertices.map(v=>({...v})) : info.table ? gradedAamaVertices(baseVerts,baseIds,info.table,si) : baseVerts.map(v=>({...v}));
+      const flat=flattenAamaBoundary(raw,ev?ev.closed!==false:boundary.closed!==false);
+      sizeBases.push(norm(flat.pts.map(([x,y])=>[x*unitToCm,y*unitToCm]))); sourceBySize.push(flat.source);
+    }
+    const baseIndex=Math.max(0,info.sizes.indexOf(info.sample)), meta=baseEntry.meta;
+    const q=(meta.quantity||'1,0').split(/[\s,]+/).map(Number), right=Math.max(0,q[0]||0),left=Math.max(0,q[1]||0);
+    const rot=+meta.rotation||0, dir=rot===90?'four':rot>0&&rot<180?'free':'two';
+    const flatBase=flattenAamaBoundary(baseVerts,boundary.closed!==false), ruleIds=flatBase.source.map(i=>i==null?null:baseIds[i]);
+    const key='P'+(++pno), key0=modelId+'/'+key;
+    defs.push({key,name:pieceName,key0,scaleId,qty:Math.max(1,right+left),rot:dir,pair:left>0&&right+left>1,
+      base:sizeBases[baseIndex]||sizeBases[0],sizeBases,area0:shoelace(sizeBases[baseIndex]||sizeBases[0]),
+      aama:{blockName:baseEntry.block.name,pieceName,quantity:meta.quantity||'1,0',ruleIds,sourceBySize,
+        systemText:meta,extraBoundaries:Math.max(0,baseEntry.block.entities.filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&String(e.layer)==='1').length-1)}});
+  }
+  if(!defs.length) throw new Error('The AAMA file did not produce any usable pattern pieces.');
+  const styleName=info.style['style name']||info.dxfName.replace(/\.dxf$/i,'')||'Imported AAMA style';
+  const aama={version:1,format:'ASTM D6673-04',sourceFile:info.dxfName,styleName,units:info.units,
+    styleMeta:info.style,scale:{id:scaleId,names:info.sizes,base:info.sample},
+    model:{id:modelId,name:styleName,tag:'DXF'},defs,
+    ruleTable:info.table?{...info.table}:null};
+  registerMarkerResources({aama});
+  const sizesQty={}; info.sizes.forEach(s=>sizesQty[s]=1);
+  const marker=buildOrderMarker([{modelId,sizesQty,excl:[],dir:{},fab:{}}],styleName,+width||160,0,4);
+  marker.aama=aama; registerMarkerResources(marker);
+  return marker;
+}
+async function refreshAamaImport(){
+  const dxfFile=$('aamaDxfFile').files[0], ruleFile=$('aamaRuleFile').files[0], box=$('aamaSummary');
+  $('aamaApply').disabled=true; AAMA_IMPORT=null;
+  if(!dxfFile){ box.textContent='Choose a DXF to inspect its pieces. Add the matching rule table to create all graded sizes.'; return; }
+  box.textContent='Reading pattern…';
+  try{
+    const [dxfText,ruleText]=await Promise.all([dxfFile.text(),ruleFile?ruleFile.text():Promise.resolve('')]);
+    const info=inspectAamaImport(dxfText,ruleText,dxfFile.name); AAMA_IMPORT=info;
+    const extra=[...info.groups.values()].reduce((n,g)=>n+g.reduce((a,e)=>a+Math.max(0,e.block.entities.filter(x=>(x.type==='POLYLINE'||x.type==='LWPOLYLINE')&&String(x.layer)==='1').length-1),0),0);
+    box.innerHTML=`<b>${esc(info.style['style name']||dxfFile.name)}</b><br>${info.groups.size} pattern piece${info.groups.size===1?'':'s'} · ${info.sizes.length} size${info.sizes.length===1?'':'s'} (${info.sizes.map(esc).join(' · ')}) · ${esc(info.units)}<br>`+
+      (info.table?`Rule table <b>${esc(info.table.tableName||ruleFile.name)}</b> · ${Object.keys(info.table.rules).length} delta rule${Object.keys(info.table.rules).length===1?'':'s'}`:`<span style="color:var(--warn)">No rule table selected — only DXF sizes / the sample size can be created.</span>`)+
+      (extra?`<br><span style="color:var(--warn)">${extra} secondary layer-1 boundary element${extra===1?'':'s'} will remain outside the editable outer contour.</span>`:'');
+    $('aamaApply').disabled=false;
+  }catch(err){ box.innerHTML=`<span style="color:var(--bad)">${esc(err.message||'Could not read the AAMA files.')}</span>`; }
+}
+function applyAamaImport(){
+  if(!AAMA_IMPORT) return;
+  try{
+    const marker=buildAamaMarker(AAMA_IMPORT,+$('aamaWidth').value||160), target=$('aamaTarget').value;
+    if(target==='current'){
+      const d=activeDoc(); if(d&&d.dirty&&!confirm(`Replace “${d.name}” and discard its unsaved changes?`)) return;
+      S=marker; d.marker=S; d.name=S.name; d.dirty=true; d.comparison=null; d.cutPlan=null; CP=null;
+      UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo; resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs();
+    }else addDocument(marker,{dirty:true,name:marker.name});
+    $('dlgAama').close(); renderAll(); fitView(); persistWorkspace();
+    toast(`Imported ${marker.aama.defs.length} AAMA piece${marker.aama.defs.length===1?'':'s'} · ${marker.aama.scale.names.length} graded size${marker.aama.scale.names.length===1?'':'s'}`);
+  }catch(err){ toast(err.message||'Could not import the AAMA pattern','bad'); }
+}
+function openAamaDialog(){
+  $('aamaDxfFile').value=''; $('aamaRuleFile').value=''; $('aamaWidth').value=S?S.width:160;
+  $('aamaTarget').value='tab'; AAMA_IMPORT=null; $('aamaApply').disabled=true;
+  $('aamaSummary').textContent='Choose a DXF to inspect its pieces. Add the matching rule table to create all graded sizes.';
+  $('dlgAama').showModal();
+}
+// Read-only parser surface for interoperability checks and future integrations.
+window.SeamlineAama=Object.freeze({parseDxf:parseAamaDxf,parseRules:parseAamaRules,inspect:inspectAamaImport});
+
+/* ---------- marker-layout DXF import (placed geometry) ----------
+   Counterpart of exportDXF: layer-1 closed contours are ALREADY-PLACED pieces
+   (absolute coordinates), layer-15 TEXT is "seq NAME size bundle" metadata.
+   Distinct from AAMA import, which normalizes contours into pattern
+   definitions and would discard every placement. */
+let MDXF_IMPORT=null;
+const isImportedLayout=()=>!!(S&&S.aama&&S.aama.format==='Seamline marker DXF');
+function mdxfHeaderVar(pairs,name){
+  // R12 header: 9/$NAME then 10/20(/30) coords. parseAamaDxf skips code-9
+  // records, so read the raw pair stream.
+  for(let i=0;i<pairs.length;i++){
+    if(pairs[i].code!==9||pairs[i].value.trim()!==name) continue;
+    const out={};
+    for(let j=i+1;j<pairs.length&&pairs[j].code!==9&&pairs[j].code!==0;j++) out[pairs[j].code]=+pairs[j].value;
+    return out;
+  }
+  return null;
+}
+/* ---- BLOCK/INSERT placement resolution (vendor marker DXFs) ----
+   A block-based marker places pieces via BLOCK (geometry, once) + INSERT
+   (block name, insertion point, X/Y scale, rotation — mirror is just a
+   negative scale, no separate flag). Distinct 2x3 affine helpers, not
+   shapeOf's trig, because the composition/convention differ. */
+const M_IDENT = [1,0,0,1,0,0];
+const M_translate = (x,y) => [1,0,0,1,x,y];
+const M_scale = (sx,sy) => [sx,0,0,sy,0,0];
+const M_rotate = deg => { const r=deg*Math.PI/180, c=Math.cos(r), s=Math.sin(r); return [c,s,-s,c,0,0]; };
+// M_mul(m1,m2): combined(p) = m1(m2(p)) — m2 applied first
+const M_mul = (m1,m2) => { const [a1,b1,c1,d1,e1,f1]=m1,[a2,b2,c2,d2,e2,f2]=m2;
+  return [a1*a2+c1*b2, b1*a2+d1*b2, a1*c2+c1*d2, b1*c2+d1*d2, a1*e2+c1*f2+e1, b1*e2+d1*f2+f1]; };
+const M_apply = (m,p) => [m[0]*p[0]+m[2]*p[1]+m[4], m[1]*p[0]+m[3]*p[1]+m[5]];
+
+// Largest closed contour inside a BLOCK's own entities — separate from
+// aamaBoundary (that one has no any-layer fallback and doesn't check
+// e.closed; its contract is specific to AAMA pattern import).
+function blockLargestContour(block,layer='1'){
+  const all=(block.entities||[]).filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&e.vertices&&e.vertices.length>=3&&e.closed!==false);
+  let candidates=all.filter(e=>String(e.layer)===String(layer)), usedFallback=false;
+  if(!candidates.length&&all.length){ candidates=all; usedFallback=true; }
+  let bestPts=null,area=-1;
+  for(const e of candidates){ const f=flattenAamaBoundary(e.vertices,true); const a=shoelace(f.pts); if(a>area){area=a;bestPts=f.pts;} }
+  return bestPts?{pts:bestPts,usedFallback}:null;
+}
+const MDXF_MAX_DEPTH=8;
+function attribsToLabel(attribs){
+  if(!attribs||!attribs.length) return null;
+  const byTag={}; for(const a of attribs) byTag[a.tag.toLowerCase()]=a.text;
+  const pick=(...keys)=>{ for(const k of keys){ if(byTag[k]!=null&&byTag[k]!=='') return byTag[k]; } return null; };
+  const name=pick('piece name','name','piece'), size=pick('size name','size'),
+    bundle=pick('bundle','ply','plynum'), seq=pick('seq','sequence','cut seq','cutseq');
+  if(!name&&!size&&!bundle&&!seq) return null;
+  return {name:name||null, size:size||'', bundle:bundle?+bundle||1:1, seq:seq!=null?+seq:null, raw:attribs.map(a=>`${a.tag}:${a.text}`).join(' ')};
+}
+// Recursively resolves BLOCK+INSERT into placed, absolute (block-local-unit)
+// rings. Every failure is per-insert and non-fatal: it's counted and the
+// rest of the file keeps resolving. Array inserts place their base instance
+// and are reported separately — they're not fully dropped, just simplified.
+function resolveBlockInstances(dxf,contourLayer='1'){
+  const byName=new Map(dxf.blocks.map(b=>[b.name,b]));
+  const rings=[], unresolved=[], arrayInserts=[];
+  function walk(entities,parentT,visiting,depth){
+    for(const e of entities){
+      if(e.type!=='INSERT') continue;
+      if(depth>=MDXF_MAX_DEPTH){ unresolved.push({block:e.block,reason:'max-depth'}); continue; }
+      const block=byName.get(e.block);
+      if(!block){ unresolved.push({block:e.block,reason:'missing-block'}); continue; }
+      if(visiting.has(e.block)){ unresolved.push({block:e.block,reason:'circular-reference'}); continue; }
+      if(e.cols>1||e.rows>1) arrayInserts.push({block:e.block});
+      const base=block.base||{x:0,y:0};
+      const T=M_mul(parentT, M_mul(M_translate(e.x,e.y), M_mul(M_rotate(e.rot), M_mul(M_scale(e.sx,e.sy), M_translate(-base.x,-base.y)))));
+      const nested=(block.entities||[]).filter(x=>x.type==='INSERT');
+      const boundary=blockLargestContour(block,contourLayer);
+      if(boundary) rings.push({pts:boundary.pts.map(p=>M_apply(T,p)), blockName:e.block, attribs:e.attribs, usedFallback:boundary.usedFallback});
+      else if(!nested.length) unresolved.push({block:e.block,reason:'no-contour'});
+      if(nested.length){
+        visiting.add(e.block);
+        walk(block.entities,T,visiting,depth+1);
+        visiting.delete(e.block);
+      }
+    }
+  }
+  walk(dxf.entities, M_IDENT, new Set(), 0);
+  return {rings,unresolved,arrayInserts,blockDefCount:byName.size};
+}
+function inspectMarkerDxf(text,fileName='marker.dxf'){
+  const pairs=aamaPairs(text), dxf=parseAamaDxf(text);
+  // Seamline stamp: "Seamline Marker NAME | UNITS: CM | LEN x WID | entity order = cut order"
+  const c999=pairs.find(p=>p.code===999&&/Seamline Marker/i.test(p.value));
+  let stamp=null;
+  if(c999){
+    const m=c999.value.match(/Seamline Marker\s+(.*?)\s*\|\s*UNITS:\s*(\w+)\s*\|\s*([\d.]+)\s*x\s*([\d.]+)/i);
+    if(m) stamp={name:m[1],units:m[2].toUpperCase(),len:+m[3],width:+m[4]};
+  }
+  const ext=mdxfHeaderVar(pairs,'$EXTMAX');
+  const closed=[],open=[]; let foreignLayers=0;
+  for(const e of dxf.entities){
+    if(e.type!=='POLYLINE'&&e.type!=='LWPOLYLINE') continue;
+    if(!e.vertices||e.vertices.length<3){ open.push(e); continue; }
+    (e.closed!==false?closed:open).push(e);
+  }
+  let contours=closed.filter(e=>String(e.layer)==='1');
+  if(!contours.length&&closed.length){ contours=closed; foreignLayers=new Set(closed.map(e=>String(e.layer))).size; }
+  const blockInfo=resolveBlockInstances(dxf,'1');
+  if(!contours.length&&!blockInfo.rings.length) throw new Error('No closed contour found — this DXF has no placeable marker geometry.');
+  const labels=dxf.entities.filter(e=>e.type==='TEXT'&&String(e.layer)==='15'&&e.text.trim())
+    .map(e=>{ const m=e.text.trim().match(/^(\d+)\s+(.+?)\s+(\S+)\s+b(\d+)$/);
+      return {x:e.x,y:e.y,raw:e.text.trim(),seq:m?+m[1]:null,name:m?m[2]:e.text.trim(),size:m?m[3]:'',bundle:m?+m[4]:1}; });
+  // INSERT/ATTRIB entities that the block resolver actually consumed aren't
+  // "ignored" — only count what's left genuinely unhandled.
+  const consumedTypes=new Set(['POLYLINE','LWPOLYLINE','TEXT','SEQEND','INSERT','ATTRIB']);
+  const skipped=dxf.entities.filter(e=>!consumedTypes.has(e.type)).length+open.length;
+  const width=stamp?stamp.width:ext?ext[20]:null;
+  return {fileName,stamp,extWidth:ext?ext[20]:null,width,contours,labels,openCount:open.length,skipped,foreignLayers,
+    blockRings:blockInfo.rings,unresolvedInserts:blockInfo.unresolved,arrayInserts:blockInfo.arrayInserts,blockDefCount:blockInfo.blockDefCount,text};
+}
+function buildMarkerDxfMarker(info,width,unitScale,flipY){
+  const token=aamaHash(info.text), modelId='mdxf-'+token, scaleId='mdxf-scale-'+token;
+  // flatten each top-level contour to absolute cm coordinates in Seamline's bottom-left frame
+  const placedRings=info.contours.map(e=>{
+    let pts=flattenAamaBoundary(e.vertices,true).pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale]);
+    return pts;
+  }).filter(r=>shoelace(r)>0.01);
+  // BLOCK/INSERT-resolved rings are already placed in file units — same unit/flip step
+  const blockRings=(info.blockRings||[]).map(b=>({
+    r:b.pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale]),
+    presetLabel:attribsToLabel(b.attribs)
+  })).filter(b=>shoelace(b.r)>0.01);
+  if(!placedRings.length&&!blockRings.length) throw new Error('Every contour degenerated after unit conversion — check the units setting.');
+  // attach each layer-15 label to the contour whose interior (or nearest centroid) holds it
+  const rings=[
+    ...placedRings.map(r=>({r,bb:bboxOf(r),c:centroid(r),label:null})),
+    ...blockRings.map(b=>({r:b.r,bb:bboxOf(b.r),c:centroid(b.r),label:b.presetLabel||null}))
+  ];
+  for(const lb of info.labels){
+    const p=[lb.x*unitScale,flipY?width-lb.y*unitScale:lb.y*unitScale];
+    let best=null,bd=Infinity;
+    for(const g of rings){ const d=(g.c[0]-p[0])**2+(g.c[1]-p[1])**2; if(d<bd){bd=d;best=g;} }
+    if(best&&!best.label) best.label=lb;
+  }
+  // one def per distinct geometry; identical outlines (same piece, same size) share it
+  const sizes=[...new Set(rings.map(g=>g.label?.size).filter(Boolean))]; if(!sizes.length) sizes.push('STD');
+  const defs=[],defByHash=new Map(),pieces=[]; let pno=0;
+  const seq=[];
+  rings.forEach((g,i)=>{
+    const base=norm(g.r), h=aamaHash(base.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(';'));
+    let def=defByHash.get(h);
+    if(!def){
+      const key='M'+(++pno), name=(g.label&&g.label.name)?g.label.name:'PIECE '+pno;
+      def={key,name,key0:modelId+'/'+key,scaleId,qty:1,rot:'free',pair:false,
+        base,sizeBases:sizes.map(()=>base),area0:shoelace(base)};
+      defByHash.set(h,def); defs.push(def);
+    }
+    const si=Math.max(0,sizes.indexOf(g.label?.size||sizes[0]));
+    const p={uid:uidSeq++,defKey:def.key0,sizeIdx:si,bundle:g.label?.bundle||1,line:0,dir:'free',fab:'A',
+      placed:true,x:+g.bb.x1.toFixed(2),y:+g.bb.y1.toFixed(2),rot:0,fx:false,fy:false};
+    pieces.push(p); seq.push({uid:p.uid,seq:g.label?.seq??(i+1)});
+  });
+  const name=info.stamp?info.stamp.name:info.fileName.replace(/\.dxf$/i,'');
+  const sizesQty={}; for(const p of pieces){ const s=sizes[p.sizeIdx]; sizesQty[s]=Math.max(sizesQty[s]|0,p.bundle); }
+  const aama={version:1,format:'Seamline marker DXF',sourceFile:info.fileName,styleName:name,units:'METRIC',
+    styleMeta:{},scale:{id:scaleId,names:sizes,base:sizes[0]},
+    model:{id:modelId,name,tag:'MRK'},defs,ruleTable:null};
+  const marker={name,width,buffer:0,endAllow:4,pieces,
+    cut:{mode:'manual',order:seq.sort((a,b)=>a.seq-b.seq).map(s=>s.uid),params:{bandW:50,dir:'ccw'}},
+    zones:[],splices:[],overlaps:[],spread:{type:'single',fold:'none'},
+    lines:[{modelId,sizesQty,excl:[],dir:{},fab:{}}],aama};
+  registerMarkerResources(marker);
+  return marker;
+}
+async function refreshMarkerDxfImport(){
+  const f=$('mdxfFile').files[0], box=$('mdxfSummary');
+  $('mdxfApply').disabled=true; MDXF_IMPORT=null;
+  if(!f){ box.textContent='Choose a DXF to inspect its contours.'; return; }
+  box.textContent='Reading marker…';
+  try{
+    const info=inspectMarkerDxf(await f.text(),f.name); MDXF_IMPORT=info;
+    if(info.stamp){
+      $('mdxfUnits').value=info.stamp.units==='MM'?'0.1':info.stamp.units==='IN'||info.stamp.units==='INCH'?'2.54':'1';
+      $('mdxfFlip').checked=true;             // Seamline's exporter writes W − y
+      if(info.stamp.width) $('mdxfWidth').value=info.stamp.width;
+    } else if(info.extWidth) $('mdxfWidth').value=+info.extWidth.toFixed(1);
+    const blockCount=info.blockRings.length, unresolvedCount=info.unresolvedInserts.length;
+    const reasonCounts={}; for(const u of info.unresolvedInserts) reasonCounts[u.reason]=(reasonCounts[u.reason]|0)+1;
+    const reasonStr=Object.entries(reasonCounts).map(([r,n])=>`${r} ×${n}`).join(', ');
+    box.innerHTML=`<b>${esc(info.stamp?info.stamp.name:f.name)}</b>${info.stamp?' · Seamline export ✓':' · <span style="color:var(--warn)">no Seamline stamp — foreign DXF, check units / width / Y origin</span>'}<br>`+
+      `${info.contours.length+blockCount} placed contour${(info.contours.length+blockCount)===1?'':'s'} · ${info.labels.length} label${info.labels.length===1?'':'s'}`+
+      (blockCount?` · ${blockCount} block instance${blockCount===1?'':'s'} from ${info.blockDefCount} block definition${info.blockDefCount===1?'':'s'}`:'')+
+      (info.foreignLayers?` · <span style="color:var(--warn)">contours taken from ${info.foreignLayers} non-standard layer${info.foreignLayers===1?'':'s'}</span>`:'')+
+      (unresolvedCount?`<br><span style="color:var(--warn)">${unresolvedCount} insert${unresolvedCount===1?'':'s'} skipped (${reasonStr}) — nothing else altered</span>`:'')+
+      (info.arrayInserts.length?`<br><span style="color:var(--warn)">${info.arrayInserts.length} array insert${info.arrayInserts.length===1?'':'s'} found — only the first instance is placed</span>`:'')+
+      (info.skipped?`<br><span style="color:var(--warn)">${info.skipped} unsupported / open entit${info.skipped===1?'y':'ies'} ignored (nothing was altered)</span>`:'');
+    $('mdxfApply').disabled=false;
+  }catch(err){ box.innerHTML=`<span style="color:var(--bad)">${esc(err.message||'Could not read the DXF.')}</span>`; }
+}
+function applyMarkerDxfImport(){
+  if(!MDXF_IMPORT) return;
+  try{
+    const width=+$('mdxfWidth').value||160, unitScale=+$('mdxfUnits').value||1, flipY=$('mdxfFlip').checked;
+    const marker=buildMarkerDxfMarker(MDXF_IMPORT,width,unitScale,flipY), target=$('mdxfTarget').value;
+    if(target==='comparison'){
+      const d=activeDoc();
+      d.comparison={marker:cloneJSON(marker),name:marker.name,visible:true,opacity:.38,x:0,y:0,mode:'overlay'};
+      UI.dockTab='layers'; markActiveDirty(); renderAll(); renderOrderDock(); fitView(); persistWorkspace();
+    }else if(target==='current'){
+      const d=activeDoc(); if(d&&d.dirty&&!confirm(`Replace “${d.name}” and discard its unsaved changes?`)) return;
+      S=marker; d.marker=S; d.name=S.name; d.dirty=true; d.comparison=null; d.cutPlan=null; CP=null;
+      UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo; resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs();
+    }else addDocument(marker,{dirty:true,name:marker.name});
+    $('dlgMarkerDxf').close(); renderAll(); fitView(); persistWorkspace();
+    const placed=marker.pieces.length, unresolvedCount=MDXF_IMPORT.unresolvedInserts.length;
+    toast(`Marker DXF imported · ${placed} placed piece${placed===1?'':'s'}${target==='comparison'?' as comparison layer':''}`+
+      `${unresolvedCount?` · ${unresolvedCount} insert${unresolvedCount===1?'':'s'} skipped`:''}${MDXF_IMPORT.skipped?` · ${MDXF_IMPORT.skipped} entities ignored`:''}`);
+  }catch(err){ toast(err.message||'Could not import the marker DXF','bad'); }
+}
+function openMarkerDxfDialog(){
+  $('mdxfFile').value=''; $('mdxfUnits').value='1'; $('mdxfFlip').checked=false;
+  $('mdxfWidth').value=S?S.width:160; $('mdxfTarget').value='tab';
+  MDXF_IMPORT=null; $('mdxfApply').disabled=true;
+  $('mdxfSummary').textContent='Choose a DXF to inspect its contours.';
+  $('dlgMarkerDxf').showModal();
+}
+// Read-only surface for interoperability checks and regression fixtures —
+// mirrors window.SeamlineAama's pattern for the marker-DXF (placed-layout) path.
+window.SeamlineMarkerDxf=Object.freeze({inspect:inspectMarkerDxf, resolveBlocks:resolveBlockInstances, build:buildMarkerDxfMarker,
+  matrix:Object.freeze({mul:M_mul, apply:M_apply, translate:M_translate, scale:M_scale, rotate:M_rotate, ident:M_IDENT})});
+// Test-only accessor for the regression harness (tests.html). These are const/let
+// lexical globals, so they aren't reachable as window.* from the harness iframe —
+// exposed ONLY under ?test=1, so the production window stays untouched.
+if (TEST_MODE) window.__seamlineTest=Object.freeze({
+  getS:()=>S, instShape, instPoly, defByKey, sizeNm });
+function zeroAamaRuleTable(name,sizes,sample){
+  sizes=[...new Set((sizes||[]).map(String))]; if(!sizes.length) sizes=[sample||'BASE'];
+  if(sizes.length===1) sizes.push(sizes[0]+'-ALT'); sample=sample||sizes[0];
+  const now=new Date(),pad=n=>String(n).padStart(2,'0');
+  return `ASTM/D13 Proposal 1 VERSION:D 6673-04\r\nAUTHOR:Seamline_Marker\r\nCREATION DATE:${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}\r\nCREATION TIME:${pad(now.getHours())}:${pad(now.getMinutes())}\r\nUNITS:METRIC\r\nGRADE RULE TABLE:${name}\r\nSAMPLE SIZE:${sample}\r\nNUMBER OF SIZES:${sizes.length}\r\nSIZE LIST:${sizes.join(' ')}\r\nRULE: DELTA 0 ${sizes.map(()=> '0,0').join(' ')}\r\n`;
+}
+const aamaAscii=s=>String(s??'').replace(/[^\x20-\x7E]/g,'-');
+function aamaZip(files){
+  const enc=new TextEncoder(), table=new Uint32Array(256);
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?0xEDB88320^(c>>>1):c>>>1; table[n]=c>>>0; }
+  const crc=bytes=>{ let c=0xFFFFFFFF; for(const b of bytes)c=table[(c^b)&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  const u16=n=>new Uint8Array([n&255,(n>>>8)&255]), u32=n=>new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);
+  const join=parts=>{ const out=new Uint8Array(parts.reduce((a,p)=>a+p.length,0)); let at=0; for(const p of parts){out.set(p,at);at+=p.length;} return out; };
+  const now=new Date(),time=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1),date=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  const locals=[],central=[]; let offset=0;
+  for(const f of files){
+    const name=enc.encode(f.name),data=typeof f.data==='string'?enc.encode(f.data):f.data,sum=crc(data);
+    const local=join([u32(0x04034b50),u16(20),u16(0),u16(0),u16(time),u16(date),u32(sum),u32(data.length),u32(data.length),u16(name.length),u16(0),name,data]);
+    locals.push(local);
+    central.push(join([u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(time),u16(date),u32(sum),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]));
+    offset+=local.length;
+  }
+  const directory=join(central),end=join([u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(directory.length),u32(offset),u16(0)]);
+  return new Blob([...locals,directory,end],{type:'application/zip'});
+}
+function exportAamaPackage(){
+  if(typeof validateMarker==='function'&&validateMarker()>0) return toast('Resolve splice / defect-zone violations before exporting','warn');
+  const placed=S.pieces.filter(p=>p.placed); if(!placed.length) return toast('Place or auto-nest pieces before AAMA export','warn');
+  const imported=S.aama, table=imported&&imported.ruleTable, units=(table?.units||imported?.units||'METRIC').toUpperCase();
+  const unit=units==='ENGLISH' ? 1/2.54 : 10, N=v=>(v*unit).toFixed(units==='ENGLISH'?4:2);
+  const style=aamaAscii(S.name||imported?.styleName||'MARKER'), tableName=aamaAscii(table?.tableName||style+'-RULES');
+  const sizes=table?.sizes?.length?table.sizes:[...new Set(S.lines.flatMap(L=>scaleOf(L.modelId).names))];
+  const sample=table?.sampleSize||imported?.scale?.base||sizes[0]||'BASE';
+  const ruleText=table?.raw?.trim()?table.raw.replace(/\r?\n/g,'\r\n')+'\r\n':zeroAamaRuleTable(tableName,sizes,sample);
+  const st=markerStats(), L=[],push=(...x)=>L.push(...x.map(String));
+  const textEntity=(layer,x,y,h,text)=>push('0','TEXT','8',layer,'10',N(x),'20',N(y),'30','0.0','40',N(h),'1',aamaAscii(text));
+  push('999',`Seamline AAMA/ASTM marker | ${style} | ${units}`,
+    '0','SECTION','2','HEADER','9','$ACADVER','1','AC1012','9','$EXTMIN','10','0.0','20','0.0','30','0.0',
+    '9','$EXTMAX','10',N(Math.max(st.len,1)),'20',N(S.width),'30','0.0','0','ENDSEC');
+  push('0','SECTION','2','TABLES','0','TABLE','2','LTYPE','70','1','0','LTYPE','2','CONTINUOUS','70','64','3','Solid line','72','65','73','0','40','0.0','0','ENDTAB',
+    '0','TABLE','2','LAYER','70','4');
+  for(const [layer,col] of [['1',1],['5',3],['7',5],['15',7]]) push('0','LAYER','2',layer,'70','64','62',col,'6','CONTINUOUS');
+  push('0','ENDTAB','0','ENDSEC','0','SECTION','2','BLOCKS');
+  const blocks=[];
+  placed.forEach((p,i)=>{
+    const def=defByKey[p.defKey], sh=instShape(p), poly=instPoly(p), block=`M${String(i+1).padStart(4,'0')}_${aamaSlug(def.name)}`;
+    blocks.push(block); push('0','BLOCK','8','0','2',block,'70','0','10','0.0','20','0.0','30','0.0','3',block,'1','');
+    push('0','POLYLINE','8','1','66','1','10','0.0','20','0.0','30','0.0','70','1');
+    for(const pt of poly) push('0','VERTEX','8','1','10',N(pt[0]),'20',N(S.width-pt[1]),'30','0.0');
+    push('0','SEQEND','8','1');
+    const cx=p.x+sh.c[0],cy=S.width-(p.y+sh.c[1]), fs=Math.max(.15,Math.min(.5,Math.min(sh.bb.w,sh.bb.h)/7));
+    textEntity('1',cx,cy,fs,`Piece Name:${def.aama?.pieceName||def.name}`);
+    textEntity('1',cx,cy-fs*1.4,fs,`Size Name:${sizeNm(p)}`);
+    textEntity('1',cx,cy-fs*2.8,fs,'Quantity:1,0');
+    textEntity('1',cx,cy-fs*4.2,fs,`Rotation:${pieceDir(p)==='four'?90:pieceDir(p)==='free'?1:180}`);
+    const ids=def.aama?.ruleIds||[];
+    poly.forEach((pt,vi)=>{ const id=ids[vi]; if(id!=null) textEntity('1',pt[0],S.width-pt[1],.08,`# ${id}`); });
+    if(!table) poly.forEach(pt=>textEntity('1',pt[0],S.width-pt[1],.08,'# 0'));
+    push('0','LINE','8','5','10',N(p.x),'20',N(cy),'30','0.0','11',N(p.x+sh.bb.w),'21',N(cy),'31','0.0');
+    push('0','LINE','8','7','10',N(p.x+sh.bb.w*.15),'20',N(cy),'30','0.0','11',N(p.x+sh.bb.w*.85),'21',N(cy),'31','0.0');
+    textEntity('15',cx,cy+fs*1.5,fs,`${i+1} ${def.name} ${sizeNm(p)} b${p.bundle}`);
+    push('0','ENDBLK','8','0');
+  });
+  push('0','ENDSEC','0','SECTION','2','ENTITIES');
+  const sys=[`Style Name:${style}`,`Creation Date:${new Date().toISOString().slice(0,10)}`,'Author:Seamline;Marker;2',
+    `Sample Size:${sample}`,`Grade Rule Table:${tableName}`,`Units:${units}`,'ASTM/D13Proposal 1 Version:D 6673-04'];
+  sys.forEach((t,i)=>textEntity('1',0,Math.max(0,S.width-i*.35),.22,t));
+  for(const b of blocks) push('0','INSERT','8','0','2',b,'10','0.0','20','0.0','30','0.0');
+  push('0','ENDSEC','0','EOF');
+  const base=(S.name||'marker').replace(/[^A-Za-z0-9._-]+/g,'-');
+  const dxfText=L.join('\r\n')+'\r\n';
+  download(base+'.aama.zip','application/zip',aamaZip([
+    {name:base+'.dxf',data:dxfText},{name:base+'.rul',data:ruleText}
+  ]));
+  toast(`AAMA package exported · ${placed.length} placed piece${placed.length===1?'':'s'} · ZIP contains DXF + RUL`);
+}
+
+/* =====================================================================
    FILE I/O
    ===================================================================== */
 function download(name, mime, data){
@@ -2310,27 +3226,53 @@ function download(name, mime, data){
 }
 function saveJSON(){
   S.name = $('markerName').value.trim() || S.name;
-  const doc={ app:'seamline-marker', version:1, saved:new Date().toISOString(), marker:S };
+  const layer=comparisonLayer();
+  const doc={ app:'seamline-marker', version:2, saved:new Date().toISOString(), marker:S,
+    comparisonLayer:layer ? cloneJSON(layer) : null };
   download((S.name||'marker')+'.seamline.json','application/json',
     new Blob([JSON.stringify(doc,null,1)],{type:'application/json'}));
+  markActiveDirty(false); persistWorkspace();
   toast('Marker saved');
 }
-function openJSON(file){
+function readMarkerFile(file, done){
   const rd=new FileReader();
   rd.onload=()=>{
     try{
       const doc=JSON.parse(rd.result);
       if (doc.app!=='seamline-marker' || !doc.marker) throw 0;
-      S=migrateMarker(doc.marker);
-      for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
-      UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
-      UI.selZone=UI.selSplice=null; if (typeof resetGuideModes==='function') resetGuideModes();
-      $('markerName').value=S.name;
-      renderAll(); fitView(); persist();
-      toast('Marker loaded: '+S.name);
+      const marker=migrateMarker(doc.marker);
+      if (doc.comparisonLayer&&doc.comparisonLayer.marker)
+        doc.comparisonLayer.marker=migrateMarker(doc.comparisonLayer.marker);
+      for (const p of marker.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+      done(marker,doc);
     }catch{ toast('Not a Seamline marker file','bad'); }
   };
   rd.readAsText(file);
+}
+function openJSON(file){
+  const d=activeDoc();
+  if (d&&d.dirty&&!confirm(`Replace “${d.name}” and discard its unsaved changes?`)) return;
+  readMarkerFile(file,(marker,doc)=>{
+    S=marker; d.marker=S; d.name=S.name; d.dirty=false; d.comparison=doc.comparisonLayer||null;
+    UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo;
+    resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs(); persistWorkspace();
+    toast('Marker loaded here: '+S.name);
+  });
+}
+function openJSONInTab(file){
+  readMarkerFile(file,(marker,doc)=>{
+    const d=addDocument(marker,{dirty:false,comparison:doc.comparisonLayer||null,name:marker.name});
+    d.dirty=false; renderAll(); fitView(); renderDocumentTabs(); persistWorkspace();
+    toast('Opened in new tab: '+marker.name);
+  });
+}
+function importComparison(file){
+  readMarkerFile(file,(marker)=>{
+    const d=activeDoc();
+    d.comparison={marker:cloneJSON(marker),name:marker.name||file.name,visible:true,opacity:.38,x:0,y:0,mode:'overlay'};
+    UI.dockTab='layers'; markActiveDirty(); renderAll(); renderOrderDock(); fitView(); persistWorkspace();
+    toast('Comparison layer imported: '+d.comparison.name);
+  });
 }
 function plotSVGString(pxPerCm=4){
   const st=markerStats(), W=S.width, L=Math.max(st.len, 50);
@@ -2383,14 +3325,20 @@ function exportPNG(){
 }
 
 /* ---- autosave ---- */
-let persistT=null;
-function persist(){
+let persistT=null, viewPersistT=null;
+function persistWorkspace(){
+  if (TEST_MODE) return;   // never write over the user's saved state from a test run
   try{
-    S.name=$('markerName').value.trim()||S.name;
-    localStorage.setItem('seamline-marker-autosave', JSON.stringify({marker:S}));
+    captureActiveDoc();
+    const docs=DOCS.map(d=>({id:d.id,name:d.name,dirty:d.dirty,marker:d.marker,
+      comparison:d.comparison,ui:d.ui,workspace:d.workspace,cutPlan:d.cutPlan}));
+    localStorage.setItem('seamline-marker-workspace-v2',JSON.stringify({version:2,active:ACTIVE_DOC,docs}));
+    if (S) localStorage.setItem('seamline-marker-autosave', JSON.stringify({marker:S}));
   }catch{}
 }
+function persist(){ markActiveDirty(true); persistWorkspace(); }
 function persistSoon(){ clearTimeout(persistT); persistT=setTimeout(persist,400); }
+function persistViewSoon(){ clearTimeout(viewPersistT); viewPersistT=setTimeout(persistWorkspace,350); }
 
 /* =====================================================================
    DIALOGS / TOOLBAR
@@ -2427,6 +3375,8 @@ const wTotalPieces = () => W.lines.reduce((a,L)=>a+lineGarments(L)*linePcsPerGar
 const wTotalGarments = () => W.lines.reduce((a,L)=>a+lineGarments(L),0);
 
 function openOrderDialog(){
+  if (isImportedLayout())
+    return toast('Imported marker layouts have no editable order — re-import the graded patterns (Import AAMA…) to change sizes or quantities','warn');
   W={ step:1, prefix:'',
       lines: S && S.lines ? S.lines.map(L=>({modelId:L.modelId, sizesQty:{...L.sizesQty},
               excl:new Set(L.excl||[]), dir:{...(L.dir||{})}, fab:{...(L.fab||{})}})) : [],
@@ -2615,8 +3565,10 @@ function setWorkspace(mode){
   $('wsMarkerBtn').classList.toggle('on', !cutplan);
   $('wsCutplanBtn').classList.toggle('on', cutplan);
   $('toolbar').classList.toggle('mode-cutplan', cutplan);
+  const d=activeDoc(); if (d){ d.workspace=mode; d.cutPlan=CP; }
   if (cutplan) renderPlan();
   else setTimeout(fitView, 0);   // canvas was display:none — needs a fresh size read
+  if (d) persistWorkspace();
 }
 function renderPlan(){
   const model=modelById(CP.modelId);
@@ -2755,7 +3707,10 @@ function planCSV(){
         then restores the marker that was open before the batch. ---- */
 async function nestAllPlan(){
   if (!CP.result){ toast('Calculate the plan first','warn'); return false; }
+  captureActiveDoc();
   const saved=JSON.stringify(S);
+  const savedDoc=activeDoc(), savedDirty=savedDoc.dirty, savedComparison=savedDoc.comparison,
+        savedUI=cloneJSON(savedDoc.ui), savedUndo=savedDoc.undo, savedRedo=savedDoc.redo;
   const buf=S?S.buffer:0.3;
   const head=document.querySelector('#dlgNest .dlg-head');
   const n=CP.result.markers.length;
@@ -2775,9 +3730,14 @@ async function nestAllPlan(){
   }
   head.textContent='Auto-Nest';
   S=migrateMarker(JSON.parse(saved));
+  savedDoc.marker=S; savedDoc.name=S.name; savedDoc.dirty=savedDirty; savedDoc.comparison=savedComparison;
+  savedDoc.ui=savedUI; savedDoc.undo=savedUndo; savedDoc.redo=savedRedo;
+  UI.vb={...savedUI.vb}; UI.grid=savedUI.grid; UI.snap=savedUI.snap; UI.autobutt=savedUI.autobutt;
+  UI.layRule=savedUI.layRule; UI.effort=savedUI.effort; UI.fabricFilter=savedUI.fabricFilter;
+  UI.thumb=savedUI.thumb; UI.dockTab=savedUI.dockTab; UI.undo=savedUndo; UI.redo=savedRedo;
   $('markerName').value=S.name;
-  UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
-  renderAll(); persist();
+  UI.sel=UI.carry=null;
+  renderAll(); persistWorkspace(); renderDocumentTabs();
   openPlanDialog();
   toast(`All ${n} markers nested — table now shows actual lengths`);
   return true;
@@ -2931,6 +3891,7 @@ $('planBody').addEventListener('input', e=>{
   else if (t.id==='pMaxG')   CP.maxG=Math.max(1,Math.min(24,+t.value||8));
   else if (t.id==='pWidth')  CP.width=Math.max(90,Math.min(300,+t.value||160));
   else if (t.id==='pPrefix') CP.prefix=t.value;
+  const d=activeDoc(); if(d){ d.cutPlan=CP; persistWorkspace(); }
 });
 $('planBody').addEventListener('click', e=>{
   if (e.target.id==='pNestAll'){ nestAllPlan(); return; }
@@ -3080,6 +4041,7 @@ function applyImport(){
   if (!p.colors.length) return toast('No rows matched the model sizes — check the mapping','warn');
   CP.colors = p.colors.slice(0,8).map(c=>{ const qty={}; cpSizes().forEach(s=>{ if(c.qty[s]) qty[s]=c.qty[s]; }); return {name:c.name, qty}; });
   CP.result=null; $('dlgImport').close(); renderPlan();
+  const d=activeDoc(); if (d){ d.cutPlan=CP; persistWorkspace(); }
   const tot=CP.colors.reduce((a,c)=>a+cpSizes().reduce((x,s)=>x+(c.qty[s]||0),0),0);
   toast(`Imported ${CP.colors.length} colour(s) · ${tot} garments${p.unmatched.length?` · ${p.unmatched.length} unmatched size(s) skipped`:''}`, p.unmatched.length?'warn':undefined);
 }
@@ -3932,6 +4894,7 @@ function renderRPBody(){
 function restoreRP(i){
   const r=loadRPs()[i]; if (!r) return;
   S=migrateMarker(JSON.parse(JSON.stringify(r.marker)));
+  const d=activeDoc(); d.marker=S; d.name=S.name; d.dirty=true;
   for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
   UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
   $('markerName').value=S.name;
@@ -3954,6 +4917,19 @@ function setApproval(v){
 $('bNew').onclick=openOrderDialog;
 $('bOpen').onclick=()=>$('fileIn').click();
 $('fileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSON(e.target.files[0]); e.target.value=''; });
+$('bOpenTab').onclick=()=>$('tabFileIn').click();
+$('tabFileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSONInTab(e.target.files[0]); e.target.value=''; });
+$('bCompare').onclick=()=>$('compareFileIn').click();
+$('compareFileIn').addEventListener('change',e=>{ if(e.target.files[0]) importComparison(e.target.files[0]); e.target.value=''; });
+$('bAamaImport').onclick=openAamaDialog;
+$('aamaDxfFile').addEventListener('change',refreshAamaImport);
+$('aamaRuleFile').addEventListener('change',refreshAamaImport);
+$('aamaApply').onclick=applyAamaImport;
+$('bMarkerDxf').onclick=openMarkerDxfDialog;
+$('mdxfFile').addEventListener('change',refreshMarkerDxfImport);
+$('mdxfApply').onclick=applyMarkerDxfImport;
+$('bAamaExport').onclick=exportAamaPackage;
+$('bLayers').onclick=()=>{ UI.dockTab='layers'; renderOrderDock(); };
 $('bSave').onclick=saveJSON;
 $('bExport').onclick=exportSVG;
 $('bPng').onclick=exportPNG;
@@ -3974,6 +4950,18 @@ $('bUndo').onclick=undo;
 $('bRedo').onclick=redo;
 $('bHelp').onclick=()=>$('dlgHelp').showModal();
 $('nestCancel').onclick=()=>{ UI.nestAbort=true; };
+
+/* document tabs — switching preserves marker, view, history, layer, and Cut Plan state */
+$('docTabs').addEventListener('click',e=>{
+  const close=e.target.closest('[data-doc-close]'); if(close){ closeDocument(close.dataset.docClose); return; }
+  const open=e.target.closest('[data-doc-open]'); if(open) activateDocument(open.dataset.docOpen);
+});
+$('bNewTab').onclick=()=>{
+  const marker=buildOrderMarker([{modelId:'tshirt',sizesQty:{S:1,M:2,L:1},excl:[],dir:{},fab:{}}],
+    'UNTITLED-'+docSeq,160,0,4);
+  addDocument(marker,{dirty:true,name:marker.name}); renderAll(); fitView();
+  toast('New marker tab opened');
+};
 
 /* ---- light / dark theme ---- */
 function applyTheme(mode){
@@ -4134,26 +5122,48 @@ window.addEventListener('resize', ()=>{ setVB(); scheduleLabelRefresh(); });
   try{ theme = localStorage.getItem('seamline-marker-theme')
       || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); }catch{}
   applyTheme(theme);
-  let restored=false;
+  let restored=false, fitOnBoot=false;
   try{
-    const raw=localStorage.getItem('seamline-marker-autosave');
-    if (raw){
-      const doc=JSON.parse(raw);
-      if (doc.marker && doc.marker.pieces){
-        S=migrateMarker(doc.marker);
-        for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
-        $('markerName').value=S.name;
+    // the regression harness always boots the deterministic demo marker, and
+    // must not read (or later overwrite) the user's real saved workspace
+    const workspaceRaw=TEST_MODE?null:localStorage.getItem('seamline-marker-workspace-v2');
+    if (workspaceRaw){
+      const ws=JSON.parse(workspaceRaw);
+      if (Array.isArray(ws.docs)&&ws.docs.length){
+        DOCS=ws.docs.map(saved=>{
+          const marker=migrateMarker(saved.marker);
+          const comparison=saved.comparison||null;
+          if (comparison&&comparison.marker) comparison.marker=migrateMarker(comparison.marker);
+          return {id:saved.id||'doc'+(docSeq++),name:saved.name||marker.name,dirty:saved.dirty!==false,
+            marker,comparison,ui:Object.assign(defaultDocUI(),saved.ui||{}),undo:[],redo:[],
+            workspace:saved.workspace||'marker',cutPlan:saved.cutPlan||null};
+        });
+        const nums=DOCS.map(d=>+(String(d.id).match(/\d+/)||[0])[0]); docSeq=Math.max(docSeq,...nums)+1;
+        ACTIVE_DOC=null; activateDocument(DOCS.some(d=>d.id===ws.active)?ws.active:DOCS[0].id);
         restored=true;
       }
     }
+    if (!restored && !TEST_MODE){
+      const raw=localStorage.getItem('seamline-marker-autosave');
+      if (raw){ const doc=JSON.parse(raw); if(doc.marker&&doc.marker.pieces){
+        const marker=migrateMarker(doc.marker); const d=newDocRecord(marker,{dirty:true,name:marker.name});
+        DOCS=[d]; ACTIVE_DOC=d.id; S=marker; CP=null; Object.assign(UI,d.ui); UI.vb={...d.ui.vb};
+        syncActiveControls(); renderDocumentTabs(); renderAll(); restored=true; fitOnBoot=true;
+      }}
+    }
   }catch{}
   if (!restored){
-    newOrder([{modelId:'tshirt', sizesQty:{S:1,M:2,L:1}, excl:[]}], 'TSHIRT-DEMO', 160, 0);
-  } else {
-    renderAll();
+    const marker=buildOrderMarker([{modelId:'tshirt', sizesQty:{S:1,M:2,L:1}, excl:[],dir:{},fab:{}}], 'TSHIRT-DEMO', 160, 0, 4);
+    const d=newDocRecord(marker,{dirty:false,name:marker.name});
+    DOCS=[d]; ACTIVE_DOC=d.id; S=marker; CP=null; Object.assign(UI,d.ui); UI.vb={...d.ui.vb};
+    syncActiveControls(); renderDocumentTabs(); renderAll(); fitOnBoot=true; persistWorkspace();
   }
-  fitView();
-  setTimeout(fitView, 60);   // after fonts/layout settle
+  for (const d of DOCS){
+    for (const p of d.marker.pieces||[]) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+    if(d.comparison) for(const p of d.comparison.marker.pieces||[]) if(p.uid>=uidSeq) uidSeq=p.uid+1;
+  }
+  if (fitOnBoot) fitView(); else setVB();
+  setTimeout(()=>fitOnBoot?fitView():setVB(), 60);   // after fonts/layout settle
 })();
 </script>
 </body>

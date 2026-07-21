@@ -1,0 +1,39 @@
+{
+  "name": "fixture-07-mixed-flat-and-block",
+  "width": 160,
+  "scaleNames": [
+    "STD"
+  ],
+  "defs": [
+    {
+      "key": "M1",
+      "name": "PIECE 1",
+      "area": 450
+    },
+    {
+      "key": "M2",
+      "name": "PIECE 2",
+      "area": 100
+    }
+  ],
+  "pieces": [
+    {
+      "defKey": "M1",
+      "size": "STD",
+      "bundle": 1,
+      "x": 200,
+      "y": 200
+    },
+    {
+      "defKey": "M2",
+      "size": "STD",
+      "bundle": 1,
+      "x": 5,
+      "y": 5
+    }
+  ],
+  "cutOrder": [
+    0,
+    1
+  ]
+}

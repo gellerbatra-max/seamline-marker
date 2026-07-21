@@ -1,0 +1,4 @@
+{
+  "throws": true,
+  "messageIncludes": "No closed contour found — this DXF has no placeable marker geometry."
+}

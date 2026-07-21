@@ -1,0 +1,15 @@
+{
+  "stamp": null,
+  "width": null,
+  "contours": 0,
+  "blockRings": 2,
+  "labels": 0,
+  "foreignLayers": 0,
+  "openCount": 0,
+  "skipped": 0,
+  "unresolvedReasons": [
+    "circular-reference"
+  ],
+  "arrayInserts": 0,
+  "blockDefCount": 2
+}

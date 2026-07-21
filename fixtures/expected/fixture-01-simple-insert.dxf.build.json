@@ -1,0 +1,26 @@
+{
+  "name": "fixture-01-simple-insert",
+  "width": 160,
+  "scaleNames": [
+    "STD"
+  ],
+  "defs": [
+    {
+      "key": "M1",
+      "name": "PIECE 1",
+      "area": 100
+    }
+  ],
+  "pieces": [
+    {
+      "defKey": "M1",
+      "size": "STD",
+      "bundle": 1,
+      "x": 5,
+      "y": 5
+    }
+  ],
+  "cutOrder": [
+    0
+  ]
+}

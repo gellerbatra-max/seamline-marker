@@ -1,0 +1,30 @@
+{
+  "rings": [
+    {
+      "blockName": "PIECE_A",
+      "usedFallback": false,
+      "attribs": [],
+      "pts": [
+        [
+          102,
+          103
+        ],
+        [
+          112,
+          103
+        ],
+        [
+          112,
+          113
+        ],
+        [
+          102,
+          113
+        ]
+      ]
+    }
+  ],
+  "unresolved": [],
+  "arrayInserts": [],
+  "blockDefCount": 2
+}

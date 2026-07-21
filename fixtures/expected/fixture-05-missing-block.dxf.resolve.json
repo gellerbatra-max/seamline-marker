@@ -1,0 +1,11 @@
+{
+  "rings": [],
+  "unresolved": [
+    {
+      "block": "GHOST",
+      "reason": "missing-block"
+    }
+  ],
+  "arrayInserts": [],
+  "blockDefCount": 0
+}

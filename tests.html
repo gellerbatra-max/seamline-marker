@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seamline Marker — DXF import regression harness</title>
+<style>
+  :root{ --bg:#1a1714; --panel:#241f1b; --edge:#3a332d; --txt:#e8e0d6; --mut:#9a9086;
+    --acc:#c97b5d; --ok:#5f9a6a; --bad:#c85a4a; --warn:#c9a24d; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--txt); }
+  header{ padding:14px 20px; border-bottom:1px solid var(--edge); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  h1{ font-size:16px; margin:0; font-weight:600; }
+  h1 b{ color:var(--acc); }
+  .banner{ padding:4px 12px; border-radius:6px; font-weight:600; }
+  .banner.ok{ background:rgba(95,154,106,.18); color:var(--ok); }
+  .banner.bad{ background:rgba(200,90,74,.18); color:var(--bad); }
+  .banner.run{ background:rgba(201,162,77,.18); color:var(--warn); }
+  button{ font:inherit; background:var(--panel); color:var(--txt); border:1px solid var(--edge);
+    border-radius:6px; padding:5px 11px; cursor:pointer; }
+  button:hover{ border-color:var(--acc); }
+  main{ padding:16px 20px; }
+  table{ border-collapse:collapse; width:100%; margin-bottom:22px; }
+  th,td{ text-align:left; padding:6px 10px; border-bottom:1px solid var(--edge); vertical-align:top; }
+  th{ color:var(--mut); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  td.st{ font-weight:700; white-space:nowrap; }
+  .PASS{ color:var(--ok); } .FAIL{ color:var(--bad); } .NOGOLD{ color:var(--warn); } .ERR{ color:var(--bad); }
+  .detail{ color:var(--mut); font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  .sec{ font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--mut); margin:18px 0 8px; }
+  iframe{ position:fixed; width:800px; height:500px; left:-2000px; top:0; border:0; }
+  svg{ background:#0d0b09; border:1px solid var(--edge); border-radius:4px; }
+  .prev{ display:flex; gap:12px; flex-wrap:wrap; }
+  .prev figure{ margin:0; }
+  .prev figcaption{ font-size:11px; color:var(--mut); text-align:center; margin-top:2px; }
+  code{ background:#0d0b09; padding:1px 5px; border-radius:3px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Seamline</b> Marker — DXF import regression harness</h1>
+  <span id="banner" class="banner run">booting…</span>
+  <button id="rerun">Re-run</button>
+  <button id="recordAll" title="Download normalized goldens for every fixture/mode (review, then move into fixtures/expected/)">Record all goldens</button>
+  <span class="detail" id="counts"></span>
+</header>
+<main>
+  <div class="sec">Built-in invariants</div>
+  <table id="invTbl"><thead><tr><th>Invariant</th><th>Status</th><th>Detail</th></tr></thead><tbody></tbody></table>
+
+  <div class="sec">Fixture goldens</div>
+  <table id="fixTbl"><thead><tr><th>Fixture</th><th>Mode</th><th>Status</th><th>Detail</th><th></th></tr></thead><tbody></tbody></table>
+
+  <div class="sec">Resolved geometry previews</div>
+  <div class="prev" id="prev"></div>
+</main>
+
+<iframe id="app" src="index.html?test=1"></iframe>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const round2 = n => Math.round(n*100)/100;
+const roundPts = pts => pts.map(p=>[round2(p[0]),round2(p[1])]);
+
+// ---- iframe app handle -------------------------------------------------
+const iframe=$('#app');
+function appWin(){ return iframe.contentWindow; }
+function appReady(){
+  return new Promise(res=>{
+    const t=setInterval(()=>{
+      try{ const w=appWin(); if(w && w.SeamlineMarkerDxf && w.__seamlineTest && w.__seamlineTest.getS()){ clearInterval(t); res(); } }catch{}
+    },40);
+  });
+}
+// capture a download-triggering export from the app without saving a file
+async function captureExport(fn){
+  const w=appWin(); const origDl=w.download; let text=null;
+  w.download=async(n,m,blob)=>{ text=await blob.text(); };
+  try{ fn(w); }finally{ /* leave restore to caller after await */ }
+  await new Promise(r=>setTimeout(r,60));
+  w.download=origDl;
+  return text;
+}
+async function captureAamaDxf(){
+  const w=appWin(); const origZip=w.aamaZip; let files=null;
+  w.aamaZip=(fs)=>{ files=fs; return origZip(fs); };
+  const origDl=w.download; w.download=async()=>{};
+  try{ w.exportAamaPackage(); }finally{}
+  await new Promise(r=>setTimeout(r,60));
+  w.aamaZip=origZip; w.download=origDl;
+  return files ? files.find(f=>f.name.endsWith('.dxf')).data : null;
+}
+
+// ---- normalizers (golden shapes — stable, uid-free) --------------------
+function normResolve(dxf){
+  const w=appWin(); const r=w.SeamlineMarkerDxf.resolveBlocks(dxf,'1');
+  return {
+    rings: r.rings.map(g=>({blockName:g.blockName, usedFallback:!!g.usedFallback, attribs:g.attribs||[], pts:roundPts(g.pts)})),
+    unresolved: r.unresolved, arrayInserts: r.arrayInserts, blockDefCount: r.blockDefCount
+  };
+}
+function normInspect(info){
+  return {
+    stamp: info.stamp||null, width: info.width==null?null:round2(info.width),
+    contours: info.contours.length, blockRings: info.blockRings.length, labels: info.labels.length,
+    foreignLayers: info.foreignLayers, openCount: info.openCount, skipped: info.skipped,
+    unresolvedReasons: info.unresolvedInserts.map(u=>u.reason).sort(),
+    arrayInserts: info.arrayInserts.length, blockDefCount: info.blockDefCount
+  };
+}
+function normBuild(marker){
+  const idx=new Map(marker.pieces.map((p,i)=>[p.uid,i]));
+  return {
+    name: marker.name, width: round2(marker.width),
+    scaleNames: marker.aama.scale.names,
+    defs: marker.aama.defs.map(d=>({key:d.key, name:d.name, area:round2(d.area0)})),
+    pieces: marker.pieces.map(p=>({defKey:p.defKey.split('/').pop(), size:marker.aama.scale.names[p.sizeIdx],
+      bundle:p.bundle, x:round2(p.x), y:round2(p.y)})),
+    cutOrder: marker.cut.order.map(u=>idx.get(u))
+  };
+}
+
+// ---- deep compare with numeric tolerance -------------------------------
+function diff(exp, act, path='', tol=0.011){
+  if(typeof exp==='number' && typeof act==='number'){
+    return Math.abs(exp-act)<=tol ? null : `${path}: expected ${exp}, got ${act}`;
+  }
+  if(Array.isArray(exp)||Array.isArray(act)){
+    if(!Array.isArray(exp)||!Array.isArray(act)) return `${path}: array/non-array mismatch`;
+    if(exp.length!==act.length) return `${path}.length: expected ${exp.length}, got ${act.length}`;
+    for(let i=0;i<exp.length;i++){ const d=diff(exp[i],act[i],`${path}[${i}]`,tol); if(d) return d; }
+    return null;
+  }
+  if(exp && typeof exp==='object' && act && typeof act==='object'){
+    const keys=new Set([...Object.keys(exp),...Object.keys(act)]);
+    for(const k of keys){ const d=diff(exp[k],act[k],path?`${path}.${k}`:k,tol); if(d) return d; }
+    return null;
+  }
+  return exp===act ? null : `${path}: expected ${JSON.stringify(exp)}, got ${JSON.stringify(act)}`;
+}
+
+async function fetchText(u){ const r=await fetch(u); if(!r.ok) throw new Error(r.status+' '+u); return r.text(); }
+async function fetchJSON(u){ const r=await fetch(u); if(!r.ok) return {__missing:true,status:r.status}; return r.json(); }
+
+// ---- fixture run -------------------------------------------------------
+let RECORD={};   // "<file>.<mode>" -> normalized object, for record-all
+async function runFixture(entry){
+  const w=appWin(), rows=[];
+  const text=await fetchText('fixtures/'+entry.file);
+  const dxf=w.SeamlineAama.parseDxf(text);
+  for(const mode of entry.modes){
+    let actual=null, threwMsg=null;
+    try{
+      if(mode==='resolve') actual=normResolve(dxf);
+      else if(mode==='inspect') actual=normInspect(w.SeamlineMarkerDxf.inspect(text,entry.file));
+      else if(mode==='build'){
+        const info=w.SeamlineMarkerDxf.inspect(text,entry.file);
+        actual=normBuild(w.SeamlineMarkerDxf.build(info, entry.width||160, entry.units||1, !!entry.flipY));
+      } else if(mode==='throws'){
+        try{ w.SeamlineMarkerDxf.inspect(text,entry.file); threwMsg=null; }
+        catch(e){ threwMsg=e.message; }
+      }
+    }catch(e){ rows.push({file:entry.file,mode,status:'ERR',detail:e.message}); continue; }
+
+    if(mode==='throws'){
+      const gold=await fetchJSON(`fixtures/expected/${entry.file}.throws.json`);
+      RECORD[`${entry.file}.throws`]={throws:true, messageIncludes:threwMsg};
+      if(gold.__missing){ rows.push({file:entry.file,mode,status:'NOGOLD',detail:'no golden — record'}); continue; }
+      const ok = threwMsg && threwMsg.includes(gold.messageIncludes);
+      rows.push({file:entry.file,mode,status:ok?'PASS':'FAIL',
+        detail: ok?`threw: “${gold.messageIncludes}”`:`expected throw incl “${gold.messageIncludes}”, got ${threwMsg?`“${threwMsg}”`:'no throw'}`});
+      continue;
+    }
+
+    RECORD[`${entry.file}.${mode}`]=actual;
+    const gold=await fetchJSON(`fixtures/expected/${entry.file}.${mode}.json`);
+    if(gold.__missing){ rows.push({file:entry.file,mode,status:'NOGOLD',detail:'no golden — record'}); continue; }
+    const d=diff(gold,actual);
+    rows.push({file:entry.file,mode,status:d?'FAIL':'PASS',detail:d||'matches golden'});
+  }
+  return rows;
+}
+
+// ---- built-in invariants ----------------------------------------------
+async function invRoundTrip(){
+  const w=appWin(), T=w.__seamlineTest, S=T.getS();
+  // scripted, deterministic placement (no auto-nest timing dependence):
+  // walk placed pieces along a single row, spaced by shape width + gap.
+  let x=0;
+  for(const p of S.pieces){ const sh=T.instShape(p); p.placed=true; p.x=round2(x); p.y=0; x+=sh.bb.w+3; }
+  S.cut.mode='auto';
+  const dxf=await captureExport(win=>win.exportDXF());
+  if(!dxf) return {status:'FAIL',detail:'exportDXF produced nothing'};
+  const info=w.SeamlineMarkerDxf.inspect(dxf,'roundtrip.dxf');
+  const marker=w.SeamlineMarkerDxf.build(info, info.width, 1, true);
+  const {moves}=w.buildCutMoves();
+  const orig=moves.map(m=>{ const bb=w.bboxOf(T.instPoly(m.p)); return {name:T.defByKey[m.p.defKey].name.toUpperCase(),size:T.sizeNm(m.p),bundle:m.p.bundle,x:round2(bb.x1),y:round2(bb.y1)}; });
+  const imp=marker.cut.order.map(uid=>{ const p=marker.pieces.find(q=>q.uid===uid), d=marker.aama.defs.find(dd=>dd.key0===p.defKey);
+    return {name:d.name.toUpperCase(),size:marker.aama.scale.names[p.sizeIdx],bundle:p.bundle,x:round2(p.x),y:round2(p.y)}; });
+  let maxErr=0, bad=null;
+  for(let i=0;i<Math.max(orig.length,imp.length);i++){
+    const a=orig[i],b=imp[i];
+    if(!a||!b){ bad=`length ${orig.length} vs ${imp.length}`; break; }
+    maxErr=Math.max(maxErr,Math.abs(a.x-b.x),Math.abs(a.y-b.y));
+    if(a.name!==b.name||a.size!==b.size||a.bundle!==b.bundle){ bad=`meta mismatch at ${i}: ${JSON.stringify(a)} vs ${JSON.stringify(b)}`; break; }
+  }
+  if(!bad && maxErr>0.011) bad=`max position error ${maxErr.toFixed(3)} cm`;
+  return {status:bad?'FAIL':'PASS', detail: bad || `${imp.length} pieces, 0.00 cm max error, names/sizes/bundles/cut order intact`};
+}
+async function invAama(){
+  const w=appWin(), T=w.__seamlineTest, S=T.getS();
+  // AAMA export needs placed pieces — lay them out the same deterministic way
+  let x=0; for(const p of S.pieces){ const sh=T.instShape(p); p.placed=true; p.x=round2(x); p.y=0; x+=sh.bb.w+3; }
+  const dxf=await captureAamaDxf();
+  if(!dxf) return {status:'FAIL',detail:'exportAamaPackage produced no DXF'};
+  const info=w.SeamlineAama.inspect(dxf,'','aama-export.dxf');
+  const okGroups=info.groups.size===4, okSizes=JSON.stringify([...info.sizes].sort())===JSON.stringify(['L','M','S']), okUnits=info.units==='METRIC';
+  const okBlocks=w.SeamlineAama.parseDxf(dxf).blocks.length===20;
+  const ok=okGroups&&okSizes&&okUnits&&okBlocks;
+  return {status:ok?'PASS':'FAIL',
+    detail: ok?`4 groups · sizes ${info.sizes.join('/')} · METRIC · 20 BLOCK+INSERT defs re-read cleanly`
+      :`groups ${info.groups.size}, sizes ${JSON.stringify(info.sizes)}, units ${info.units}, blocks ${w.SeamlineAama.parseDxf(dxf).blocks.length}`};
+}
+async function invUnitFlip(){
+  const w=appWin();
+  const text=await fetchText('fixtures/fixture-01-simple-insert.dxf');
+  const info=w.SeamlineMarkerDxf.inspect(text,'f01.dxf');
+  // block ring is (5,5)-(15,5)-(15,15)-(5,15) in file units; build at mm scale
+  // (×0.1) with flipY at width 3 → y' = 3 − y*0.1
+  const m=w.SeamlineMarkerDxf.build(info, 3, 0.1, true);
+  const sh=w.shapeOf ? null : null;   // not needed
+  const p=m.pieces[0];
+  // bbox min after ×0.1 scale + flip about width 3: x∈[0.5,1.5], y=3−1.5=1.5 → min y 1.5
+  const okX=Math.abs(p.x-0.5)<=0.011, okY=Math.abs(p.y-1.5)<=0.011;
+  return {status:(okX&&okY)?'PASS':'FAIL',
+    detail:(okX&&okY)?'mm scale ×0.1 + flipY@width3 → piece min (0.50, 1.50) cm'
+      :`expected (0.50,1.50), got (${p.x},${p.y})`};
+}
+
+// ---- SVG preview of resolved rings -------------------------------------
+function previewSVG(rings){
+  if(!rings.length) return '<svg width="150" height="110"></svg>';
+  let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9;
+  for(const g of rings) for(const p of g.pts){ x1=Math.min(x1,p[0]);y1=Math.min(y1,p[1]);x2=Math.max(x2,p[0]);y2=Math.max(y2,p[1]); }
+  const w=x2-x1||1,h=y2-y1||1,pad=6,sc=Math.min((150-2*pad)/w,(110-2*pad)/h);
+  const tx=v=>pad+(v-x1)*sc, ty=v=>110-pad-(v-y1)*sc;   // flip Y for display
+  const cols=['#c97b5d','#5f9a6a','#c9a24d','#6a86c9','#b06ac9'];
+  const paths=rings.map((g,i)=>`<polygon points="${g.pts.map(p=>tx(p[0])+','+ty(p[1])).join(' ')}" fill="${cols[i%cols.length]}55" stroke="${cols[i%cols.length]}" stroke-width="1"/>`).join('');
+  return `<svg width="150" height="110" viewBox="0 0 150 110">${paths}</svg>`;
+}
+
+// ---- render + orchestrate ---------------------------------------------
+function stCell(s){ const cls={PASS:'PASS',FAIL:'FAIL',NOGOLD:'NOGOLD',ERR:'ERR'}[s]||''; return `<td class="st ${cls}">${s}</td>`; }
+async function runAll(){
+  $('#banner').className='banner run'; $('#banner').textContent='running…';
+  RECORD={};
+  await appReady();
+  const w=appWin();
+  let pass=0,fail=0,nogold=0;
+
+  // invariants
+  const invBody=$('#invTbl tbody'); invBody.innerHTML='';
+  const invs=[['Phase-1 round trip (0.00 cm)',invRoundTrip],['AAMA package stability',invAama],['Unit scale + Y flip',invUnitFlip]];
+  for(const [label,fn] of invs){
+    let r; try{ r=await fn(); }catch(e){ r={status:'ERR',detail:e.message}; }
+    if(r.status==='PASS')pass++; else fail++;
+    invBody.insertAdjacentHTML('beforeend',`<tr><td>${label}</td>${stCell(r.status)}<td class="detail">${r.detail}</td></tr>`);
+  }
+
+  // fixtures
+  const manifest=await fetchJSON('fixtures/manifest.json');
+  const fixBody=$('#fixTbl tbody'); fixBody.innerHTML='';
+  const prev=$('#prev'); prev.innerHTML='';
+  if(manifest.__missing){ fixBody.innerHTML=`<tr><td colspan=5 class="detail">no fixtures/manifest.json yet</td></tr>`; }
+  else for(const entry of manifest){
+    let rows; try{ rows=await runFixture(entry); }catch(e){ rows=[{file:entry.file,mode:'-',status:'ERR',detail:e.message}]; }
+    for(const r of rows){
+      if(r.status==='PASS')pass++; else if(r.status==='NOGOLD')nogold++; else fail++;
+      fixBody.insertAdjacentHTML('beforeend',
+        `<tr><td>${r.file}</td><td>${r.mode}</td>${stCell(r.status)}<td class="detail">${r.detail}</td>
+         <td><button data-rec="${r.file}.${r.mode}">Record</button></td></tr>`);
+    }
+    // preview (resolve rings) for block-bearing fixtures
+    try{
+      const text=await fetchText('fixtures/'+entry.file);
+      const norm=normResolve(w.SeamlineAama.parseDxf(text));
+      if(norm.rings.length) prev.insertAdjacentHTML('beforeend',
+        `<figure>${previewSVG(norm.rings)}<figcaption>${entry.file.replace(/\.dxf$/,'').replace(/^fixture-\d+-/,'')}</figcaption></figure>`);
+    }catch{}
+  }
+
+  $('#counts').textContent=`${pass} pass · ${fail} fail · ${nogold} no-golden`;
+  const good=fail===0;
+  $('#banner').className='banner '+(good?(nogold?'run':'ok'):'bad');
+  $('#banner').textContent=good?(nogold?`green (${nogold} awaiting goldens)`:'all green'):`${fail} failing`;
+  window.__results={pass,fail,nogold};
+  window.__record=RECORD;
+}
+
+function download(name,obj){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+}
+document.addEventListener('click',e=>{
+  const rec=e.target.getAttribute&&e.target.getAttribute('data-rec');
+  if(rec && RECORD[rec]) download(rec+'.json', RECORD[rec]);
+});
+$('#recordAll').onclick=()=>{ for(const k in RECORD) download(k+'.json', RECORD[k]); };
+$('#rerun').onclick=runAll;
+
+iframe.addEventListener('load',()=>setTimeout(runAll,120));
+</script>
+</body>
+</html>

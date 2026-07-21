@@ -1,0 +1,26 @@
+{
+  "name": "fixture-14-mm-flat-contour",
+  "width": 20,
+  "scaleNames": [
+    "STD"
+  ],
+  "defs": [
+    {
+      "key": "M1",
+      "name": "PIECE 1",
+      "area": 50
+    }
+  ],
+  "pieces": [
+    {
+      "defKey": "M1",
+      "size": "STD",
+      "bundle": 1,
+      "x": 0,
+      "y": 15
+    }
+  ],
+  "cutOrder": [
+    0
+  ]
+}
