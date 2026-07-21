@@ -3351,6 +3351,7 @@ function applyImport(){
   if (!p.colors.length) return toast('No rows matched the model sizes — check the mapping','warn');
   CP.colors = p.colors.slice(0,8).map(c=>{ const qty={}; cpSizes().forEach(s=>{ if(c.qty[s]) qty[s]=c.qty[s]; }); return {name:c.name, qty}; });
   CP.result=null; $('dlgImport').close(); renderPlan();
+  const d=activeDoc(); if (d){ d.cutPlan=CP; persistWorkspace(); }
   const tot=CP.colors.reduce((a,c)=>a+cpSizes().reduce((x,s)=>x+(c.qty[s]||0),0),0);
   toast(`Imported ${CP.colors.length} colour(s) · ${tot} garments${p.unmatched.length?` · ${p.unmatched.length} unmatched size(s) skipped`:''}`, p.unmatched.length?'warn':undefined);
 }
