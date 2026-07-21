@@ -1,0 +1,11 @@
+{
+  "rings": [],
+  "unresolved": [
+    {
+      "block": "NC",
+      "reason": "no-contour"
+    }
+  ],
+  "arrayInserts": [],
+  "blockDefCount": 1
+}

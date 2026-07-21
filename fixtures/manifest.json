@@ -1,0 +1,16 @@
+[
+  { "file": "fixture-01-simple-insert.dxf", "modes": ["resolve", "build"], "units": 1, "flipY": false, "width": 160, "notes": "plain INSERT, translate only" },
+  { "file": "fixture-02-rotated-insert.dxf", "modes": ["resolve"], "units": 1, "flipY": false, "width": 160, "notes": "rot=90" },
+  { "file": "fixture-03-mirrored-insert.dxf", "modes": ["resolve"], "units": 1, "flipY": false, "width": 160, "notes": "sx=-1 mirror, reversed winding" },
+  { "file": "fixture-04-nested-insert.dxf", "modes": ["resolve"], "units": 1, "flipY": false, "width": 160, "notes": "container block with nested INSERT, no own contour" },
+  { "file": "fixture-05-missing-block.dxf", "modes": ["resolve", "throws"], "units": 1, "flipY": false, "width": 160, "notes": "undefined block ref; inspect throws no-contour" },
+  { "file": "fixture-06-circular-reference.dxf", "modes": ["resolve", "inspect", "build"], "units": 1, "flipY": false, "width": 160, "notes": "A->B->A; two good rings kept, one circular-reference" },
+  { "file": "fixture-07-mixed-flat-and-block.dxf", "modes": ["resolve", "inspect", "build"], "units": 1, "flipY": false, "width": 160, "notes": "top-level flat contour + BLOCK/INSERT together" },
+  { "file": "fixture-08-array-insert.dxf", "modes": ["resolve", "inspect"], "units": 1, "flipY": false, "width": 160, "notes": "cols=2 array insert: base instance placed, rest flagged" },
+  { "file": "fixture-09-max-depth-chain.dxf", "modes": ["resolve"], "units": 1, "flipY": false, "width": 160, "notes": "9-deep nest: 8 rings resolved, 9th rejected max-depth" },
+  { "file": "fixture-10-no-contour-block.dxf", "modes": ["resolve", "throws"], "units": 1, "flipY": false, "width": 160, "notes": "block has only a LINE and no nested inserts -> no-contour" },
+  { "file": "fixture-11-nonuniform-scale.dxf", "modes": ["resolve", "build"], "units": 1, "flipY": false, "width": 160, "notes": "sx=2 sy=1 -> 20x10 ring" },
+  { "file": "fixture-12-bulge-in-rotated-block.dxf", "modes": ["resolve"], "units": 1, "flipY": false, "width": 160, "notes": "bulge arc tessellated in block-local frame, then rotated 90" },
+  { "file": "fixture-13-attrib-metadata.dxf", "modes": ["resolve", "build"], "units": 1, "flipY": false, "width": 160, "notes": "ATTRIB (group 66=1) supplies piece name/size/bundle" },
+  { "file": "fixture-14-mm-flat-contour.dxf", "modes": ["inspect", "build"], "units": 0.1, "flipY": true, "width": 20, "notes": "flat mm contour built at unitScale 0.1 with Y flip" }
+]

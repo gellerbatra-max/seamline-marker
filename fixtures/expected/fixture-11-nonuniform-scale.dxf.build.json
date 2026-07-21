@@ -1,0 +1,26 @@
+{
+  "name": "fixture-11-nonuniform-scale",
+  "width": 160,
+  "scaleNames": [
+    "STD"
+  ],
+  "defs": [
+    {
+      "key": "M1",
+      "name": "PIECE 1",
+      "area": 200
+    }
+  ],
+  "pieces": [
+    {
+      "defKey": "M1",
+      "size": "STD",
+      "bundle": 1,
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "cutOrder": [
+    0
+  ]
+}

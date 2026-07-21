@@ -970,6 +970,9 @@
    ===================================================================== */
 
 /* ---------------- constants ---------------- */
+// ?test=1 (the regression harness in tests.html) — boot a clean deterministic
+// workspace and never touch the user's saved localStorage state.
+const TEST_MODE = (()=>{ try{ return new URLSearchParams(location.search).has('test'); }catch{ return false; } })();
 const MAXLEN = 3000;                       // cm, hard table length
 /* ---------------- size scales ----------------
    Each model names its scale and sizes are indexed within that scale, so a
@@ -3128,8 +3131,13 @@ function openMarkerDxfDialog(){
 }
 // Read-only surface for interoperability checks and regression fixtures —
 // mirrors window.SeamlineAama's pattern for the marker-DXF (placed-layout) path.
-window.SeamlineMarkerDxf=Object.freeze({inspect:inspectMarkerDxf, resolveBlocks:resolveBlockInstances,
+window.SeamlineMarkerDxf=Object.freeze({inspect:inspectMarkerDxf, resolveBlocks:resolveBlockInstances, build:buildMarkerDxfMarker,
   matrix:Object.freeze({mul:M_mul, apply:M_apply, translate:M_translate, scale:M_scale, rotate:M_rotate, ident:M_IDENT})});
+// Test-only accessor for the regression harness (tests.html). These are const/let
+// lexical globals, so they aren't reachable as window.* from the harness iframe —
+// exposed ONLY under ?test=1, so the production window stays untouched.
+if (TEST_MODE) window.__seamlineTest=Object.freeze({
+  getS:()=>S, instShape, instPoly, defByKey, sizeNm });
 function zeroAamaRuleTable(name,sizes,sample){
   sizes=[...new Set((sizes||[]).map(String))]; if(!sizes.length) sizes=[sample||'BASE'];
   if(sizes.length===1) sizes.push(sizes[0]+'-ALT'); sample=sample||sizes[0];
@@ -3319,6 +3327,7 @@ function exportPNG(){
 /* ---- autosave ---- */
 let persistT=null, viewPersistT=null;
 function persistWorkspace(){
+  if (TEST_MODE) return;   // never write over the user's saved state from a test run
   try{
     captureActiveDoc();
     const docs=DOCS.map(d=>({id:d.id,name:d.name,dirty:d.dirty,marker:d.marker,
@@ -5115,7 +5124,9 @@ window.addEventListener('resize', ()=>{ setVB(); scheduleLabelRefresh(); });
   applyTheme(theme);
   let restored=false, fitOnBoot=false;
   try{
-    const workspaceRaw=localStorage.getItem('seamline-marker-workspace-v2');
+    // the regression harness always boots the deterministic demo marker, and
+    // must not read (or later overwrite) the user's real saved workspace
+    const workspaceRaw=TEST_MODE?null:localStorage.getItem('seamline-marker-workspace-v2');
     if (workspaceRaw){
       const ws=JSON.parse(workspaceRaw);
       if (Array.isArray(ws.docs)&&ws.docs.length){
@@ -5132,7 +5143,7 @@ window.addEventListener('resize', ()=>{ setVB(); scheduleLabelRefresh(); });
         restored=true;
       }
     }
-    if (!restored){
+    if (!restored && !TEST_MODE){
       const raw=localStorage.getItem('seamline-marker-autosave');
       if (raw){ const doc=JSON.parse(raw); if(doc.marker&&doc.marker.pieces){
         const marker=migrateMarker(doc.marker); const d=newDocRecord(marker,{dirty:true,name:marker.name});

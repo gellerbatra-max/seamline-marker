@@ -1,0 +1,43 @@
+{
+  "rings": [
+    {
+      "blockName": "PIECE_A",
+      "usedFallback": false,
+      "attribs": [
+        {
+          "tag": "PIECE NAME",
+          "text": "FRONT"
+        },
+        {
+          "tag": "SIZE",
+          "text": "M"
+        },
+        {
+          "tag": "BUNDLE",
+          "text": "3"
+        }
+      ],
+      "pts": [
+        [
+          5,
+          5
+        ],
+        [
+          15,
+          5
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          5,
+          15
+        ]
+      ]
+    }
+  ],
+  "unresolved": [],
+  "arrayInserts": [],
+  "blockDefCount": 1
+}

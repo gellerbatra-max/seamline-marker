@@ -1,0 +1,26 @@
+{
+  "name": "fixture-13-attrib-metadata",
+  "width": 160,
+  "scaleNames": [
+    "M"
+  ],
+  "defs": [
+    {
+      "key": "M1",
+      "name": "FRONT",
+      "area": 100
+    }
+  ],
+  "pieces": [
+    {
+      "defKey": "M1",
+      "size": "M",
+      "bundle": 3,
+      "x": 5,
+      "y": 5
+    }
+  ],
+  "cutOrder": [
+    0
+  ]
+}

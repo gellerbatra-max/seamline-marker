@@ -1,0 +1,39 @@
+{
+  "name": "fixture-06-circular-reference",
+  "width": 160,
+  "scaleNames": [
+    "STD"
+  ],
+  "defs": [
+    {
+      "key": "M1",
+      "name": "PIECE 1",
+      "area": 16
+    },
+    {
+      "key": "M2",
+      "name": "PIECE 2",
+      "area": 4
+    }
+  ],
+  "pieces": [
+    {
+      "defKey": "M1",
+      "size": "STD",
+      "bundle": 1,
+      "x": 100,
+      "y": 100
+    },
+    {
+      "defKey": "M2",
+      "size": "STD",
+      "bundle": 1,
+      "x": 110,
+      "y": 100
+    }
+  ],
+  "cutOrder": [
+    0,
+    1
+  ]
+}
