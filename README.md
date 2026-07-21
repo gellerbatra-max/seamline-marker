@@ -3,6 +3,12 @@
 Interactive marker-making module of the **Seamline** apparel software bundle.
 One self-contained file — **double-click `SeamlineMarker.html`** to run it in any browser. No install, no server; work is autosaved in the browser between sessions.
 
+## V2 comparison workspace
+
+- **Document tabs** keep independent markers, Cut Plans, edits, undo/redo history, zoom/pan state, and layer settings. Open a marker in the active tab or as a new editable tab; dirty tabs are marked and require confirmation before closing.
+- **Comparison layers** import another marker into the active field as a read-only overlay. The Layers dock controls visibility, opacity, X/Y position, origin alignment, side-by-side view, and difference highlighting. Active and comparison layers share the same zoom/pan camera while the active marker remains fully editable.
+- Marker JSON v2 files can retain the comparison-layer configuration while remaining backward-compatible with v1 marker files.
+
 ## Interface
 
 A **two-colour, Claude-style** shell — a warm neutral scale (surfaces, text, borders) plus one clay accent, with different segments told apart by neutral shades rather than extra hues. **Light and dark modes** (toggle in the header, follows your OS by default, remembered per browser). Pattern pieces are shades of the clay accent, keyed to size, each keeping its size label.

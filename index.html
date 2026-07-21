@@ -201,6 +201,29 @@
   .rpane[hidden]{display:none !important}
   .rnote{font-size:11px; color:var(--mut); opacity:.7; margin-left:6px}
 
+  /* ---------- document tabs ---------- */
+  #docTabs{
+    display:flex; align-items:center; gap:3px; padding:5px 9px;
+    background:var(--panel2); border-bottom:1px solid var(--edge); flex:none;
+    min-height:35px; overflow-x:auto; overflow-y:hidden;
+  }
+  #docTabs::-webkit-scrollbar{height:5px}
+  #docTabs::-webkit-scrollbar-thumb{background:var(--edge); border-radius:3px}
+  #docTabList{display:flex; align-items:center; gap:3px; min-width:0}
+  .doc-tab{
+    display:flex; align-items:center; gap:7px; min-width:120px; max-width:220px;
+    padding:6px 8px 6px 10px; border:1px solid var(--edge); border-radius:7px 7px 3px 3px;
+    background:var(--panel); color:var(--mut); flex:none;
+  }
+  .doc-tab:hover{color:var(--ink); border-color:var(--edge2)}
+  .doc-tab.on{background:var(--active); color:var(--ink); border-color:var(--acc-dim)}
+  .doc-tab .doc-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; text-align:left; font-size:11.5px; font-weight:600}
+  .doc-tab .dirty{color:var(--acc-hi); font-size:13px; line-height:1}
+  .doc-close{width:18px; height:18px; border-radius:4px; color:var(--mut); line-height:1}
+  .doc-close:hover{background:var(--hover); color:var(--bad)}
+  #bNewTab{flex:none; width:27px; height:27px; border:1px solid var(--edge); border-radius:6px; color:var(--mut); background:var(--panel)}
+  #bNewTab:hover{border-color:var(--acc); color:var(--acc)}
+
   /* ---------- thumbnail minimap ---------- */
   #thumb{
     position:absolute; right:12px; bottom:58px; width:216px; z-index:6;
@@ -215,6 +238,7 @@
   #gCut{pointer-events:none}
   #gZones{pointer-events:none}
   #gSplice{pointer-events:none}
+  #gCompare{pointer-events:none}
   .tb:disabled{opacity:.4; cursor:not-allowed}
   .tb:disabled:hover{background:none; border-color:transparent}
   .chip.appr.needs{background:var(--warn); color:#241a05}
@@ -292,6 +316,10 @@
   .pc.small text{opacity:0}
   .pc.small:hover text, .pc.small.sel text{opacity:1}
   .pc .grain{stroke:var(--pc-ink); stroke-width:.8px; vector-effect:non-scaling-stroke; opacity:.45; pointer-events:none}
+  .cmp path{fill:var(--warn); stroke:var(--warn); stroke-width:1.8px; stroke-dasharray:7 4; vector-effect:non-scaling-stroke}
+  .cmp text{fill:var(--warn-ink); font-weight:700; paint-order:stroke; stroke:var(--panel2); stroke-width:.8px; pointer-events:none}
+  .cmp .grain{stroke:var(--warn); stroke-width:.8px; vector-effect:non-scaling-stroke}
+  .cmp.diff path{fill:var(--bad); stroke:var(--bad); stroke-width:2.6px; stroke-dasharray:4 2}
   #ghost path{stroke-width:1.6px; vector-effect:non-scaling-stroke; fill-opacity:.55; pointer-events:none}
   #ghost.ok path{fill:var(--good); stroke:#2c5e46}
   #ghost.no path{fill:var(--bad); stroke:#8a3f3c}
@@ -353,6 +381,15 @@
   .dbtn.danger:hover{border-color:var(--bad); color:var(--bad)}
   .dfield{display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--mut)}
   .dfield input{width:48px; background:var(--panel2); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 6px; text-align:right}
+  .layer-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--edge)}
+  .layer-row:last-child{border-bottom:none}
+  .layer-row .layer-name{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink); font-weight:600}
+  .layer-row .layer-kind{font-size:9.5px; color:var(--mut); letter-spacing:.08em}
+  .layer-range{width:100%; accent-color:var(--acc)}
+  .layer-select{width:100%; background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 7px}
+  .layer-pos{display:grid; grid-template-columns:1fr 1fr; gap:6px}
+  .layer-pos label{font-size:10.5px; color:var(--mut)}
+  .layer-pos input{width:100%; background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:5px 7px; margin-top:3px}
   .orow{display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--ink); padding:4px 0}
   .orow select,.orow input{background:var(--panel); border:1px solid var(--edge); border-radius:6px; color:var(--ink); padding:4px 7px}
   .orow input{width:52px; text-align:right}
@@ -556,7 +593,11 @@
 </div>
 <div id="ribbonRow" class="ws-only">
   <div class="rpane" data-rpane="file">
-    <button class="tb" id="bOpen" title="Open a saved marker (.json)"><span class="ic">⌂</span>Open marker…</button>
+    <button class="tb" id="bOpen" title="Replace the active tab with a saved marker (.json)"><span class="ic">⌂</span>Open here…</button>
+    <button class="tb" id="bOpenTab" title="Open a saved marker as a new editable document tab"><span class="ic">▱</span>Open in new tab…</button>
+    <button class="tb" id="bCompare" title="Import a saved marker as a read-only comparison layer"><span class="ic">◫</span>Import comparison…</button>
+    <button class="tb" id="bLayers" title="Show the active and comparison layers"><span class="ic">▤</span>Layers</button>
+    <div class="tsep"></div>
     <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
     <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
     <button class="tb" id="bCopy1" title="Copy the plot to the clipboard at true 1:1 scale (96 dpi paste targets)"><span class="ic">⧉</span>Copy 1:1</button>
@@ -646,6 +687,11 @@
   </div>
 </div>
 
+<div id="docTabs" aria-label="Open marker documents">
+  <div id="docTabList" role="tablist"></div>
+  <button id="bNewTab" title="New marker tab" aria-label="New marker tab">＋</button>
+</div>
+
 <div id="workspace">
   <div id="wsMarker" class="ws-view">
     <div id="tray">
@@ -662,6 +708,7 @@
         <g id="gFab"></g>
         <g id="gGrid"></g>
         <g id="gZones"></g>
+        <g id="gCompare"></g>
         <g id="gPieces"></g>
         <g id="gOverlay"></g>
         <g id="gSplice"></g>
@@ -689,6 +736,7 @@
       <div id="dockTabs">
         <button class="dtab" data-dock="piece">Piece</button>
         <button class="dtab on" data-dock="order">Order</button>
+        <button class="dtab" data-dock="layers">Layers</button>
         <button class="dtab" data-dock="options">Options</button>
         <button class="dtab" data-dock="keys">Keys</button>
       </div>
@@ -790,6 +838,7 @@
     <ol>
       <li><b>New Order</b> — a 5-step Easy Order form: add <b>one or more models</b>, set size quantities per model, untick pieces to exclude, set each piece's lay direction and <b>fabric category</b> (any code — A/B/C, 1/2/3, BD/Gst/FR…), choose fabric width/buffer/rotation rule, review the summary. Pieces sharing a fabric code cut from the same fabric; chips above the tray filter the tray and scope Auto-Nest to one fabric at a time.</li>
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
+      <li><b>Tabs &amp; comparison</b> — use <b>Open in new tab…</b> for another editable marker, or <b>Import comparison…</b> to overlay a read-only marker in the active field. The <b>Layers</b> dock controls visibility, opacity, overlay / side-by-side / difference view, and independent X/Y position. Each tab keeps its own marker, camera, history, Cut Plan, and layer setup; a dot on the tab means unsaved changes.</li>
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, copy it 1:1 to the clipboard, or save the marker as JSON. On the <b>Advanced</b> tab, sequence the cut (<b>Auto sequence</b> = banded serpentine sweep; <b>Pick order</b> = click pieces in order; <b>Knife path</b> shows plunge points, direction and dry-haul) and <b>Generate Cut Data</b> as HPGL (.plt) for the cutter or DXF R12 for CAM import — entity order is the cut order.</li>
       <li><b>Fabric</b> tab — for spreading: <b>Mark defect zone</b> (drag over a flaw; pieces keep clear) and <b>Add splice</b> / <b>Auto splice</b> (roll joins no piece may straddle). Guides added over placed pieces flag them in red and block cut-data export until you move them clear (or <b>Nudge offenders</b>).</li>
@@ -842,6 +891,8 @@
 
 <div id="toasts"></div>
 <input type="file" id="fileIn" accept=".json,application/json" hidden>
+<input type="file" id="tabFileIn" accept=".json,application/json" hidden>
+<input type="file" id="compareFileIn" accept=".json,application/json" hidden>
 
 <script>
 'use strict';
@@ -1070,6 +1121,9 @@ const instPoly  = (i,x=i.x,y=i.y) => instShape(i).pts.map(p=>[p[0]+x, p[1]+y]);
 /* ---------------- state ---------------- */
 let S = null;
 let uidSeq = 1;
+let DOCS = [];
+let ACTIVE_DOC = null;
+let docSeq = 1;
 const UI = {
   sel:null, selSet:new Set(), carry:null,
   drag:null, pan:null, mq:null,
@@ -1082,18 +1136,97 @@ const UI = {
 const $ = id => document.getElementById(id);
 const cv=$('cv'), gFab=$('gFab'), gGrid=$('gGrid'), gPieces=$('gPieces'),
       gOverlay=$('gOverlay'), gRulers=$('gRulers'), gGhost=$('ghost'),
-      gZones=$('gZones'), gSplice=$('gSplice');
+      gZones=$('gZones'), gSplice=$('gSplice'), gCompare=$('gCompare');
+
+const activeDoc = () => DOCS.find(d=>d.id===ACTIVE_DOC) || null;
+const cloneJSON = value => value==null ? value : JSON.parse(JSON.stringify(value));
+function defaultDocUI(){
+  return { vb:{x:-30,y:-30,w:600,h:280}, grid:true, snap:true, autobutt:false,
+    layRule:'strict', effort:60, fabricFilter:null, thumb:true, dockTab:'order' };
+}
+function newDocRecord(marker, opts={}){
+  return { id:'doc'+(docSeq++), marker, name:opts.name||marker.name||'Untitled marker',
+    dirty:opts.dirty!==false, comparison:opts.comparison||null,
+    ui:Object.assign(defaultDocUI(), opts.ui||{}), undo:[], redo:[],
+    workspace:opts.workspace||'marker', cutPlan:opts.cutPlan||null };
+}
+function captureActiveDoc(){
+  const d=activeDoc(); if (!d || !S) return;
+  S.name=$('markerName').value.trim()||S.name;
+  d.marker=S; d.name=S.name; d.cutPlan=CP;
+  d.ui={ vb:{...UI.vb}, grid:UI.grid, snap:UI.snap, autobutt:UI.autobutt,
+    layRule:UI.layRule, effort:UI.effort, fabricFilter:UI.fabricFilter,
+    thumb:UI.thumb, dockTab:UI.dockTab };
+  d.undo=UI.undo; d.redo=UI.redo;
+}
+function resetTransientUI(){
+  UI.sel=null; UI.selSet=new Set(); UI.carry=null; UI.drag=null; UI.pan=null; UI.mq=null;
+  UI.measure=null; UI.zoomwin=false; UI.zw=null; UI.pickSeq=null;
+  UI.selZone=null; UI.selSplice=null; UI.guideDrag=null; UI.zoneDraw=null;
+  if (typeof resetGuideModes==='function') resetGuideModes();
+  cv.classList.remove('carrying','panning','measuring');
+}
+function renderDocumentTabs(){
+  const list=$('docTabList'); if (!list) return;
+  list.innerHTML=DOCS.map(d=>`<div class="doc-tab${d.id===ACTIVE_DOC?' on':''}" role="tab" aria-selected="${d.id===ACTIVE_DOC}" data-doc="${d.id}">
+    <button class="doc-name" data-doc-open="${d.id}" title="${esc(d.name)}">${esc(d.name)}</button>
+    <span class="dirty"${d.dirty?'':' hidden'} title="Unsaved changes">●</span>
+    <button class="doc-close" data-doc-close="${d.id}" title="Close ${esc(d.name)}" aria-label="Close ${esc(d.name)}">×</button>
+  </div>`).join('');
+}
+function syncActiveControls(){
+  $('markerName').value=S.name;
+  $('effort').value=UI.effort; $('effortVal').textContent=UI.effort;
+  $('layRule').value=UI.layRule;
+  $('tThumb').classList.toggle('on',UI.thumb);
+  document.querySelectorAll('#dockTabs .dtab').forEach(b=>b.classList.toggle('on',b.dataset.dock===UI.dockTab));
+}
+function activateDocument(id){
+  if (id===ACTIVE_DOC) return;
+  captureActiveDoc();
+  const d=DOCS.find(x=>x.id===id); if (!d) return;
+  ACTIVE_DOC=id; S=d.marker; CP=d.cutPlan;
+  const u=Object.assign(defaultDocUI(),d.ui||{});
+  UI.vb={...u.vb}; UI.grid=u.grid; UI.snap=u.snap; UI.autobutt=u.autobutt;
+  UI.layRule=u.layRule; UI.effort=u.effort; UI.fabricFilter=u.fabricFilter;
+  UI.thumb=u.thumb; UI.dockTab=u.dockTab; UI.undo=d.undo||[]; UI.redo=d.redo||[];
+  resetTransientUI(); syncActiveControls(); renderDocumentTabs();
+  setWorkspace(d.workspace||'marker'); renderAll();
+  setTimeout(()=>{ setVB(); scheduleLabelRefresh(); },0);
+}
+function addDocument(marker, opts={}){
+  const d=newDocRecord(marker,opts); DOCS.push(d);
+  const prev=ACTIVE_DOC; ACTIVE_DOC=null;
+  if (prev){ ACTIVE_DOC=prev; activateDocument(d.id); }
+  else { ACTIVE_DOC=d.id; S=d.marker; CP=d.cutPlan; UI.undo=d.undo; UI.redo=d.redo;
+    Object.assign(UI,d.ui); UI.vb={...d.ui.vb}; resetTransientUI(); syncActiveControls(); renderDocumentTabs(); }
+  persistWorkspace();
+  return d;
+}
+function markActiveDirty(dirty=true){
+  const d=activeDoc(); if (!d) return;
+  d.dirty=dirty; d.name=(S&&S.name)||d.name; renderDocumentTabs();
+}
+function closeDocument(id){
+  const d=DOCS.find(x=>x.id===id); if (!d) return;
+  if (DOCS.length===1) return toast('Keep at least one marker tab open','warn');
+  if (d.dirty && !confirm(`Close “${d.name}” with unsaved changes?`)) return;
+  const ix=DOCS.indexOf(d), wasActive=id===ACTIVE_DOC;
+  DOCS.splice(ix,1);
+  if (wasActive){ ACTIVE_DOC=null; activateDocument(DOCS[Math.min(ix,DOCS.length-1)].id); }
+  else renderDocumentTabs();
+  persistWorkspace();
+}
 
 // lines: [{modelId, sizesQty:{XS..XXL}, excl:[pieceKey0,…], dir:{pieceKey0:'two'|'four'|'free'}}]
 // dir overrides a piece's lay direction for this order; absent = the piece's natural default.
-function newOrder(lines, name, width, buffer){
-  const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
-  S = { name, width, buffer, endAllow:prevEnd, pieces:[],
+function buildOrderMarker(lines, name, width, buffer, endAllow=4){
+  const marker = { name, width, buffer, endAllow, pieces:[],
         cut:{ mode:'auto', order:[], params:{ bandW:50, dir:'ccw' } },
         zones:[], splices:[], overlaps:[], spread:{ type:'single', fold:'none' },
         lines: lines.map(L=>({ modelId:L.modelId, sizesQty:{...L.sizesQty},
                                excl:[...(L.excl||[])], dir:{...(L.dir||{})}, fab:{...(L.fab||{})} })) };
-  S.lines.forEach((L, li)=>{
+  marker.lines.forEach((L, li)=>{
     const model = modelById(L.modelId), sc = scaleOf(L.modelId);
     for (let si=0; si<sc.names.length; si++){
       const q = L.sizesQty[sc.names[si]]|0;
@@ -1103,11 +1236,17 @@ function newOrder(lines, name, width, buffer){
           const dir = L.dir[d.key0] || d.rot;
           const fab = L.fab[d.key0] || 'A';   // fabric category — user codes: A/B/C, 1/2/3, BD/Gst…
           for (let k=0;k<d.qty;k++)
-            S.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir, fab,
+            marker.pieces.push({ uid:uidSeq++, defKey:d.key0, sizeIdx:si, bundle:b, line:li, dir, fab,
                             placed:false, x:0, y:0, rot:0, fx: !!(d.pair && k%2===1), fy:false });
         }
     }
   });
+  return marker;
+}
+function newOrder(lines, name, width, buffer){
+  const prevEnd = S && S.endAllow!=null ? S.endAllow : 4;   // carry end allowance across new orders
+  S = buildOrderMarker(lines,name,width,buffer,prevEnd);
+  const d=activeDoc(); if (d){ d.marker=S; d.name=name; d.dirty=true; }
   UI.fabricFilter=null;
   UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
   $('markerName').value = name;
@@ -1341,6 +1480,43 @@ function pieceMarkup(inst, cls){
   `</g>`;
 }
 
+function comparisonLayer(){ const d=activeDoc(); return d&&d.comparison ? d.comparison : null; }
+function markerLengthOf(marker){
+  let len=0; for (const p of marker.pieces||[]) if (p.placed) len=Math.max(len,p.x+instShape(p).bb.w);
+  return len;
+}
+function comparisonOffset(layer){
+  const baseX=layer.mode==='side' ? markerStats().len+30 : 0;
+  return {x:baseX+(+layer.x||0), y:+layer.y||0};
+}
+function comparisonExtent(){
+  const layer=comparisonLayer(); if (!layer||!layer.visible) return 0;
+  const o=comparisonOffset(layer); return Math.max(0,o.x+markerLengthOf(layer.marker));
+}
+function comparisonPieceChanged(marker,p,o){
+  const q=S.pieces.find(a=>a.placed && a.defKey===p.defKey && a.sizeIdx===p.sizeIdx && a.bundle===p.bundle && a.line===p.line);
+  if (!q) return true;
+  return Math.abs(q.x-(p.x+o.x))>.1 || Math.abs(q.y-(p.y+o.y))>.1 || q.rot!==p.rot || !!q.fx!==!!p.fx || !!q.fy!==!!p.fy;
+}
+function renderComparison(){
+  const layer=comparisonLayer();
+  if (!layer||!layer.visible){ gCompare.innerHTML=''; return; }
+  const marker=layer.marker, o=comparisonOffset(layer); let h='';
+  for (const p of marker.pieces||[]) if (p.placed){
+    if (layer.mode==='difference' && !comparisonPieceChanged(marker,p,o)) continue;
+    const def=defByKey[p.defKey]; if (!def) continue;
+    const sh=instShape(p), bb=sh.bb, c=sh.c;
+    const fs=Math.min(9.5*labelUnitsPerPx,Math.max(2,Math.min(bb.w,bb.h)/4));
+    const size=(scaleOf((marker.lines[p.line]||marker.lines[0]).modelId).names[p.sizeIdx]||p.sizeIdx);
+    h+=`<g class="cmp${layer.mode==='difference'?' diff':''}" transform="translate(${p.x+o.x},${p.y+o.y})">`+
+      `<path d="${fmtPoly(sh.pts)}"/>`+
+      `<line class="grain" x1="${c[0]-Math.min(bb.w,60)*.35}" y1="${c[1]}" x2="${c[0]+Math.min(bb.w,60)*.35}" y2="${c[1]}"/>`+
+      `<text x="${c[0]}" y="${c[1]}" font-size="${fs}" text-anchor="middle">${def.name.toUpperCase()} · ${size}</text></g>`;
+  }
+  gCompare.setAttribute('opacity',Math.max(.05,Math.min(1,+layer.opacity||.35)));
+  gCompare.innerHTML=h;
+}
+
 function renderPieces(){
   let h='';
   for (const p of S.pieces) if (p.placed){
@@ -1466,6 +1642,7 @@ function renderOrderDock(){
   const b=$('dockBody');
   if (UI.dockTab==='keys'){ b.innerHTML=shortcutsHTML(); return; }
   if (UI.dockTab==='piece'){ b.innerHTML=pieceHTML(); return; }
+  if (UI.dockTab==='layers'){ b.innerHTML=layersHTML(); return; }
   if (UI.dockTab==='options'){ b.innerHTML=optionsHTML(); return; }
   const lines = S.lines.map((L,li)=>{
     const sc=scaleOf(L.modelId), model=modelById(L.modelId);
@@ -1488,6 +1665,33 @@ function renderOrderDock(){
     `<div class="dbox">Fabric width <b>${S.width} cm</b><br>Cutter buffer <b>${S.buffer} cm</b><br>Rotation rule <b>${UI.layRule}</b></div>` +
     `<button id="dockEdit">✎ Edit order…</button>` +
     `<div class="dnote">Inspect without risking the marker.</div>`;
+}
+function layersHTML(){
+  const layer=comparisonLayer();
+  const primary=`<div class="layer-row"><span title="Visible">◉</span><div class="layer-name">${esc(S.name)}<div class="layer-kind">ACTIVE · EDITABLE</div></div></div>`;
+  if (!layer) return `<div class="dsec-lbl">MARKER LAYERS</div><div class="dbox">${primary}</div>
+    <button class="dbtn" id="dockImportComparison" style="width:100%">◫ Import comparison marker…</button>
+    <div class="dnote">A comparison is read-only and shares this tab's zoom and pan.</div>`;
+  return `<div class="dsec-lbl">MARKER LAYERS</div><div class="dbox">${primary}
+    <div class="layer-row"><label title="Show comparison"><input id="cmpVisible" type="checkbox"${layer.visible?' checked':''}></label>
+      <div class="layer-name">${esc(layer.name)}<div class="layer-kind">COMPARISON · READ-ONLY</div></div>
+      <button class="doc-close" id="cmpRemove" title="Remove comparison layer">×</button></div></div>
+    <div class="dgrp"><div class="dgrp-l">View mode</div>
+      <select class="layer-select" id="cmpMode">
+        <option value="overlay"${layer.mode==='overlay'?' selected':''}>Overlay on active marker</option>
+        <option value="side"${layer.mode==='side'?' selected':''}>Side by side</option>
+        <option value="difference"${layer.mode==='difference'?' selected':''}>Highlight differences</option>
+      </select></div>
+    <div class="dgrp"><div class="dgrp-l">Opacity · ${Math.round(layer.opacity*100)}%</div>
+      <input class="layer-range" id="cmpOpacity" type="range" min="5" max="100" value="${Math.round(layer.opacity*100)}"></div>
+    <div class="dgrp"><div class="dgrp-l">Comparison position · cm</div><div class="layer-pos">
+      <label>X offset<input id="cmpX" type="number" step="1" value="${layer.x}"></label>
+      <label>Y offset<input id="cmpY" type="number" step="1" value="${layer.y}"></label>
+    </div></div>
+    <div class="dbtns"><button class="dbtn" data-cmp-nudge="-1,0">← 1</button><button class="dbtn" data-cmp-nudge="1,0">→ 1</button>
+      <button class="dbtn" data-cmp-nudge="0,-1">↑ 1</button><button class="dbtn" data-cmp-nudge="0,1">↓ 1</button>
+      <button class="dbtn" id="cmpOrigin">Align origins</button></div>
+    <div class="dnote">Zoom and pan are synchronized because both layers use the same field view. Position controls move only the read-only comparison.</div>`;
 }
 // The organised piece toolbar (AccuMark's Piece tab + Toolbox, in one place).
 function pieceHTML(){
@@ -1574,8 +1778,9 @@ function shortcutsHTML(){
 
 function renderAll(){
   const st = renderStats();
-  renderFabric(st.len);
+  renderFabric(Math.max(st.len,comparisonExtent()));
   if (typeof validateMarker==='function') validateMarker(true);   // set violation flags before pieces draw
+  renderComparison();
   renderPieces();
   renderOverlay(st.len);
   if (typeof renderGuides==='function') renderGuides();
@@ -1627,7 +1832,7 @@ function fitView(){
   const cw=cv.clientWidth, ch=cv.clientHeight;
   if (cw<50 || ch<50){ setTimeout(fitView,120); return; }   // pane not laid out yet
   const st=markerStats();
-  const L=Math.max(320, st.len+120), W=S.width;
+  const L=Math.max(320, st.len+120, comparisonExtent()+120), W=S.width;
   const pad=34;
   const ar = cw/ch;
   let w=L+2*pad, h=W+2*pad+18;
@@ -1639,7 +1844,7 @@ function zoomAt(mx,my,k){
   const v=UI.vb;
   const nw=Math.max(40, Math.min(4000, v.w*k)); const kk=nw/v.w;
   v.x = mx-(mx-v.x)*kk; v.y = my-(my-v.y)*kk; v.w=nw; v.h*=kk;
-  setVB(); scheduleLabelRefresh();
+  setVB(); scheduleLabelRefresh(); persistViewSoon();
 }
 function worldPt(e){
   const pt=cv.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
@@ -1846,7 +2051,7 @@ function onUp(e){
     else select(null);
     return;
   }
-  if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); return; }
+  if (UI.pan){ UI.pan=null; cv.classList.remove('panning'); persistViewSoon(); return; }
   if (UI.drag){
     const d=UI.drag, inst=byUid(d.uid); UI.drag=null;
     if (!d.moved){ renderHint(); return; }
@@ -1920,12 +2125,23 @@ $('trayFabs').addEventListener('click', e=>{
 /* ---- right dock wiring ---- */
 $('dockTabs').addEventListener('click', e=>{
   const t=e.target.closest('.dtab'); if(!t) return;
-  UI.dockTab=t.dataset.dock; renderOrderDock();
+  UI.dockTab=t.dataset.dock; renderOrderDock(); persistWorkspace();
 });
 $('orderChip').addEventListener('click', ()=>{ UI.dockTab='order'; renderOrderDock(); });
 // dock body: edit-order, piece actions (data-pa), options (data-opt)
 $('dockBody').addEventListener('click', e=>{
   if (e.target.id==='dockEdit'){ openOrderDialog(); return; }
+  if (e.target.id==='dockImportComparison'){ $('compareFileIn').click(); return; }
+  if (e.target.id==='cmpRemove'){
+    const d=activeDoc(); if (d){ d.comparison=null; markActiveDirty(); renderAll(); persistWorkspace(); }
+    return;
+  }
+  if (e.target.id==='cmpOrigin'){
+    const l=comparisonLayer(); if(l){ l.x=0; l.y=0; l.mode='overlay'; markActiveDirty(); renderAll(); persistWorkspace(); }
+    return;
+  }
+  const nudge=e.target.closest('[data-cmp-nudge]');
+  if (nudge){ const l=comparisonLayer(); if(l){ const [dx,dy]=nudge.dataset.cmpNudge.split(',').map(Number); l.x+=dx; l.y+=dy; markActiveDirty(); renderAll(); persistWorkspace(); } return; }
   const pa=e.target.closest('[data-pa]');
   if (pa){
     switch(pa.dataset.pa){
@@ -1947,13 +2163,26 @@ $('dockBody').addEventListener('click', e=>{
     else if (o==='grid'||o==='snap'||o==='autobutt'){
       UI[o]=!UI[o]; if(o==='grid') renderFabric(markerStats().len);
     }
-    renderOrderDock();
+    renderOrderDock(); persistWorkspace();
     return;
+  }
+});
+// comparison layer opacity is intentionally live; the active marker is never mutated.
+$('dockBody').addEventListener('input', e=>{
+  if (e.target.id==='cmpOpacity'){
+    const l=comparisonLayer(); if(!l) return;
+    l.opacity=Math.max(.05,Math.min(1,+e.target.value/100));
+    const label=e.target.closest('.dgrp').querySelector('.dgrp-l'); if(label) label.textContent=`Opacity · ${Math.round(l.opacity*100)}%`;
+    markActiveDirty(); renderComparison(); persistWorkspace();
   }
 });
 // options: live inputs
 $('dockBody').addEventListener('change', e=>{
   const t=e.target;
+  const l=comparisonLayer();
+  if (t.id==='cmpVisible' && l){ l.visible=t.checked; markActiveDirty(); renderAll(); persistWorkspace(); return; }
+  if (t.id==='cmpMode' && l){ l.mode=t.value; markActiveDirty(); renderAll(); if(l.mode==='side') fitView(); persistWorkspace(); return; }
+  if ((t.id==='cmpX'||t.id==='cmpY') && l){ l[t.id==='cmpX'?'x':'y']=+t.value||0; markActiveDirty(); renderAll(); persistWorkspace(); return; }
   if (t.id==='pcBuf' && UI.sel!=null){
     const p=byUid(UI.sel);
     if (t.value===''){ delete p.buf; } else p.buf=Math.max(0,Math.min(5,+t.value||0));
@@ -2298,27 +2527,53 @@ function download(name, mime, data){
 }
 function saveJSON(){
   S.name = $('markerName').value.trim() || S.name;
-  const doc={ app:'seamline-marker', version:1, saved:new Date().toISOString(), marker:S };
+  const layer=comparisonLayer();
+  const doc={ app:'seamline-marker', version:2, saved:new Date().toISOString(), marker:S,
+    comparisonLayer:layer ? cloneJSON(layer) : null };
   download((S.name||'marker')+'.seamline.json','application/json',
     new Blob([JSON.stringify(doc,null,1)],{type:'application/json'}));
+  markActiveDirty(false); persistWorkspace();
   toast('Marker saved');
 }
-function openJSON(file){
+function readMarkerFile(file, done){
   const rd=new FileReader();
   rd.onload=()=>{
     try{
       const doc=JSON.parse(rd.result);
       if (doc.app!=='seamline-marker' || !doc.marker) throw 0;
-      S=migrateMarker(doc.marker);
-      for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
-      UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
-      UI.selZone=UI.selSplice=null; if (typeof resetGuideModes==='function') resetGuideModes();
-      $('markerName').value=S.name;
-      renderAll(); fitView(); persist();
-      toast('Marker loaded: '+S.name);
+      const marker=migrateMarker(doc.marker);
+      if (doc.comparisonLayer&&doc.comparisonLayer.marker)
+        doc.comparisonLayer.marker=migrateMarker(doc.comparisonLayer.marker);
+      for (const p of marker.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+      done(marker,doc);
     }catch{ toast('Not a Seamline marker file','bad'); }
   };
   rd.readAsText(file);
+}
+function openJSON(file){
+  const d=activeDoc();
+  if (d&&d.dirty&&!confirm(`Replace “${d.name}” and discard its unsaved changes?`)) return;
+  readMarkerFile(file,(marker,doc)=>{
+    S=marker; d.marker=S; d.name=S.name; d.dirty=false; d.comparison=doc.comparisonLayer||null;
+    UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo;
+    resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs(); persistWorkspace();
+    toast('Marker loaded here: '+S.name);
+  });
+}
+function openJSONInTab(file){
+  readMarkerFile(file,(marker,doc)=>{
+    const d=addDocument(marker,{dirty:false,comparison:doc.comparisonLayer||null,name:marker.name});
+    d.dirty=false; renderAll(); fitView(); renderDocumentTabs(); persistWorkspace();
+    toast('Opened in new tab: '+marker.name);
+  });
+}
+function importComparison(file){
+  readMarkerFile(file,(marker)=>{
+    const d=activeDoc();
+    d.comparison={marker:cloneJSON(marker),name:marker.name||file.name,visible:true,opacity:.38,x:0,y:0,mode:'overlay'};
+    UI.dockTab='layers'; markActiveDirty(); renderAll(); renderOrderDock(); fitView(); persistWorkspace();
+    toast('Comparison layer imported: '+d.comparison.name);
+  });
 }
 function plotSVGString(pxPerCm=4){
   const st=markerStats(), W=S.width, L=Math.max(st.len, 50);
@@ -2371,14 +2626,19 @@ function exportPNG(){
 }
 
 /* ---- autosave ---- */
-let persistT=null;
-function persist(){
+let persistT=null, viewPersistT=null;
+function persistWorkspace(){
   try{
-    S.name=$('markerName').value.trim()||S.name;
-    localStorage.setItem('seamline-marker-autosave', JSON.stringify({marker:S}));
+    captureActiveDoc();
+    const docs=DOCS.map(d=>({id:d.id,name:d.name,dirty:d.dirty,marker:d.marker,
+      comparison:d.comparison,ui:d.ui,workspace:d.workspace,cutPlan:d.cutPlan}));
+    localStorage.setItem('seamline-marker-workspace-v2',JSON.stringify({version:2,active:ACTIVE_DOC,docs}));
+    if (S) localStorage.setItem('seamline-marker-autosave', JSON.stringify({marker:S}));
   }catch{}
 }
+function persist(){ markActiveDirty(true); persistWorkspace(); }
 function persistSoon(){ clearTimeout(persistT); persistT=setTimeout(persist,400); }
+function persistViewSoon(){ clearTimeout(viewPersistT); viewPersistT=setTimeout(persistWorkspace,350); }
 
 /* =====================================================================
    DIALOGS / TOOLBAR
@@ -2603,8 +2863,10 @@ function setWorkspace(mode){
   $('wsMarkerBtn').classList.toggle('on', !cutplan);
   $('wsCutplanBtn').classList.toggle('on', cutplan);
   $('toolbar').classList.toggle('mode-cutplan', cutplan);
+  const d=activeDoc(); if (d){ d.workspace=mode; d.cutPlan=CP; }
   if (cutplan) renderPlan();
   else setTimeout(fitView, 0);   // canvas was display:none — needs a fresh size read
+  if (d) persistWorkspace();
 }
 function renderPlan(){
   const model=modelById(CP.modelId);
@@ -2743,7 +3005,10 @@ function planCSV(){
         then restores the marker that was open before the batch. ---- */
 async function nestAllPlan(){
   if (!CP.result){ toast('Calculate the plan first','warn'); return false; }
+  captureActiveDoc();
   const saved=JSON.stringify(S);
+  const savedDoc=activeDoc(), savedDirty=savedDoc.dirty, savedComparison=savedDoc.comparison,
+        savedUI=cloneJSON(savedDoc.ui), savedUndo=savedDoc.undo, savedRedo=savedDoc.redo;
   const buf=S?S.buffer:0.3;
   const head=document.querySelector('#dlgNest .dlg-head');
   const n=CP.result.markers.length;
@@ -2763,9 +3028,14 @@ async function nestAllPlan(){
   }
   head.textContent='Auto-Nest';
   S=migrateMarker(JSON.parse(saved));
+  savedDoc.marker=S; savedDoc.name=S.name; savedDoc.dirty=savedDirty; savedDoc.comparison=savedComparison;
+  savedDoc.ui=savedUI; savedDoc.undo=savedUndo; savedDoc.redo=savedRedo;
+  UI.vb={...savedUI.vb}; UI.grid=savedUI.grid; UI.snap=savedUI.snap; UI.autobutt=savedUI.autobutt;
+  UI.layRule=savedUI.layRule; UI.effort=savedUI.effort; UI.fabricFilter=savedUI.fabricFilter;
+  UI.thumb=savedUI.thumb; UI.dockTab=savedUI.dockTab; UI.undo=savedUndo; UI.redo=savedRedo;
   $('markerName').value=S.name;
-  UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
-  renderAll(); persist();
+  UI.sel=UI.carry=null;
+  renderAll(); persistWorkspace(); renderDocumentTabs();
   openPlanDialog();
   toast(`All ${n} markers nested — table now shows actual lengths`);
   return true;
@@ -2919,6 +3189,7 @@ $('planBody').addEventListener('input', e=>{
   else if (t.id==='pMaxG')   CP.maxG=Math.max(1,Math.min(24,+t.value||8));
   else if (t.id==='pWidth')  CP.width=Math.max(90,Math.min(300,+t.value||160));
   else if (t.id==='pPrefix') CP.prefix=t.value;
+  const d=activeDoc(); if(d){ d.cutPlan=CP; persistWorkspace(); }
 });
 $('planBody').addEventListener('click', e=>{
   if (e.target.id==='pNestAll'){ nestAllPlan(); return; }
@@ -3773,6 +4044,7 @@ function renderRPBody(){
 function restoreRP(i){
   const r=loadRPs()[i]; if (!r) return;
   S=migrateMarker(JSON.parse(JSON.stringify(r.marker)));
+  const d=activeDoc(); d.marker=S; d.name=S.name; d.dirty=true;
   for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
   UI.sel=UI.carry=null; UI.undo=[]; UI.redo=[];
   $('markerName').value=S.name;
@@ -3795,6 +4067,11 @@ function setApproval(v){
 $('bNew').onclick=openOrderDialog;
 $('bOpen').onclick=()=>$('fileIn').click();
 $('fileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSON(e.target.files[0]); e.target.value=''; });
+$('bOpenTab').onclick=()=>$('tabFileIn').click();
+$('tabFileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSONInTab(e.target.files[0]); e.target.value=''; });
+$('bCompare').onclick=()=>$('compareFileIn').click();
+$('compareFileIn').addEventListener('change',e=>{ if(e.target.files[0]) importComparison(e.target.files[0]); e.target.value=''; });
+$('bLayers').onclick=()=>{ UI.dockTab='layers'; renderOrderDock(); };
 $('bSave').onclick=saveJSON;
 $('bExport').onclick=exportSVG;
 $('bPng').onclick=exportPNG;
@@ -3815,6 +4092,18 @@ $('bUndo').onclick=undo;
 $('bRedo').onclick=redo;
 $('bHelp').onclick=()=>$('dlgHelp').showModal();
 $('nestCancel').onclick=()=>{ UI.nestAbort=true; };
+
+/* document tabs — switching preserves marker, view, history, layer, and Cut Plan state */
+$('docTabs').addEventListener('click',e=>{
+  const close=e.target.closest('[data-doc-close]'); if(close){ closeDocument(close.dataset.docClose); return; }
+  const open=e.target.closest('[data-doc-open]'); if(open) activateDocument(open.dataset.docOpen);
+});
+$('bNewTab').onclick=()=>{
+  const marker=buildOrderMarker([{modelId:'tshirt',sizesQty:{S:1,M:2,L:1},excl:[],dir:{},fab:{}}],
+    'UNTITLED-'+docSeq,160,0,4);
+  addDocument(marker,{dirty:true,name:marker.name}); renderAll(); fitView();
+  toast('New marker tab opened');
+};
 
 /* ---- light / dark theme ---- */
 function applyTheme(mode){
@@ -3975,26 +4264,46 @@ window.addEventListener('resize', ()=>{ setVB(); scheduleLabelRefresh(); });
   try{ theme = localStorage.getItem('seamline-marker-theme')
       || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); }catch{}
   applyTheme(theme);
-  let restored=false;
+  let restored=false, fitOnBoot=false;
   try{
-    const raw=localStorage.getItem('seamline-marker-autosave');
-    if (raw){
-      const doc=JSON.parse(raw);
-      if (doc.marker && doc.marker.pieces){
-        S=migrateMarker(doc.marker);
-        for (const p of S.pieces) if (p.uid>=uidSeq) uidSeq=p.uid+1;
-        $('markerName').value=S.name;
+    const workspaceRaw=localStorage.getItem('seamline-marker-workspace-v2');
+    if (workspaceRaw){
+      const ws=JSON.parse(workspaceRaw);
+      if (Array.isArray(ws.docs)&&ws.docs.length){
+        DOCS=ws.docs.map(saved=>{
+          const marker=migrateMarker(saved.marker);
+          const comparison=saved.comparison||null;
+          if (comparison&&comparison.marker) comparison.marker=migrateMarker(comparison.marker);
+          return {id:saved.id||'doc'+(docSeq++),name:saved.name||marker.name,dirty:saved.dirty!==false,
+            marker,comparison,ui:Object.assign(defaultDocUI(),saved.ui||{}),undo:[],redo:[],
+            workspace:saved.workspace||'marker',cutPlan:saved.cutPlan||null};
+        });
+        const nums=DOCS.map(d=>+(String(d.id).match(/\d+/)||[0])[0]); docSeq=Math.max(docSeq,...nums)+1;
+        ACTIVE_DOC=null; activateDocument(DOCS.some(d=>d.id===ws.active)?ws.active:DOCS[0].id);
         restored=true;
       }
     }
+    if (!restored){
+      const raw=localStorage.getItem('seamline-marker-autosave');
+      if (raw){ const doc=JSON.parse(raw); if(doc.marker&&doc.marker.pieces){
+        const marker=migrateMarker(doc.marker); const d=newDocRecord(marker,{dirty:true,name:marker.name});
+        DOCS=[d]; ACTIVE_DOC=d.id; S=marker; CP=null; Object.assign(UI,d.ui); UI.vb={...d.ui.vb};
+        syncActiveControls(); renderDocumentTabs(); renderAll(); restored=true; fitOnBoot=true;
+      }}
+    }
   }catch{}
   if (!restored){
-    newOrder([{modelId:'tshirt', sizesQty:{S:1,M:2,L:1}, excl:[]}], 'TSHIRT-DEMO', 160, 0);
-  } else {
-    renderAll();
+    const marker=buildOrderMarker([{modelId:'tshirt', sizesQty:{S:1,M:2,L:1}, excl:[],dir:{},fab:{}}], 'TSHIRT-DEMO', 160, 0, 4);
+    const d=newDocRecord(marker,{dirty:false,name:marker.name});
+    DOCS=[d]; ACTIVE_DOC=d.id; S=marker; CP=null; Object.assign(UI,d.ui); UI.vb={...d.ui.vb};
+    syncActiveControls(); renderDocumentTabs(); renderAll(); fitOnBoot=true; persistWorkspace();
   }
-  fitView();
-  setTimeout(fitView, 60);   // after fonts/layout settle
+  for (const d of DOCS){
+    for (const p of d.marker.pieces||[]) if (p.uid>=uidSeq) uidSeq=p.uid+1;
+    if(d.comparison) for(const p of d.comparison.marker.pieces||[]) if(p.uid>=uidSeq) uidSeq=p.uid+1;
+  }
+  if (fitOnBoot) fitView(); else setVB();
+  setTimeout(()=>fitOnBoot?fitView():setVB(), 60);   // after fonts/layout settle
 })();
 </script>
 </body>
