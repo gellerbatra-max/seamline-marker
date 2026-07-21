@@ -1,0 +1,12 @@
+{
+  "name": "fixture-17-chain-stitch-with-duplicate-layer",
+  "width": 160,
+  "scaleNames": ["STD"],
+  "defs": [
+    { "key": "M1", "name": "PIECE 1", "area": 1200 }
+  ],
+  "pieces": [
+    { "defKey": "M1", "size": "STD", "bundle": 1, "x": 0, "y": 0 }
+  ],
+  "cutOrder": [0]
+}

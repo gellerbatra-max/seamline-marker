@@ -1,0 +1,9 @@
+{
+  "rings": [
+    { "blockName": "SLEEVE", "usedFallback": false, "attribs": [],
+      "pts": [[50,20],[70,20],[70,30],[50,30]] }
+  ],
+  "unresolved": [],
+  "arrayInserts": [],
+  "blockDefCount": 1
+}

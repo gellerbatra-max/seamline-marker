@@ -8,10 +8,10 @@
   "openCount": 0,
   "skipped": 0,
   "unresolvedReasons": [],
-  "arrayInserts": 1,
+  "arrayInserts": 0,
   "blockDefCount": 1,
   "stitchedLoops": 0,
   "stitchedSource": null,
   "stitchedDupCount": 0,
-  "rawMaxDim": 10
+  "rawMaxDim": 20
 }

@@ -70,6 +70,29 @@ pre unit-scale/Y-flip (those are applied later by `buildMarkerDxfMarker`).
 | `fixture-12-bulge-in-rotated-block.dxf` | `bulge=0.5` edge inside a block inserted at `rot=90` | Ring tessellated **in the block-local frame first, then rotated** — the arc stays circular. Golden pins the exact tessellated point list (regression lock on flatten-then-transform). |
 | `fixture-13-attrib-metadata.dxf` | INSERT with `group 66=1` and `PIECE NAME`/`SIZE`/`BUNDLE` ATTRIBs | `build` golden: def name `FRONT`, size `M`, bundle `3` — all sourced from ATTRIB rather than a layer-15 text label. |
 | `fixture-14-mm-flat-contour.dxf` | Flat mm contour built at `unitScale=0.1`, `flipY=true`, `width=20` | `build` golden: 10×5 cm piece (area `50`) at min `(0,15)` after the millimetre conversion and Y flip. |
+| `fixture-15-chain-stitch-open-segments.dxf` | 40×30 boundary drawn as 3 open `LWPOLYLINE` segments, no closed contour anywhere | `inspect`: `stitchedLoops=1`, `stitchedSource='polyline'`; `build`: single piece, area `1200`. |
+| `fixture-16-block-stitch-two-segment-split.dxf` | A BLOCK boundary split into exactly **2** open segments, placed via one INSERT | `resolve`: 1 ring, 20×10 rectangle at `(50,20)`. **Regression guard**: an earlier endpoint-only dedup heuristic falsely treated these 2 complementary segments as duplicates of each other (any 2-segment loop split always shares one endpoint pair) and dropped the shape entirely — fixed by comparing full chain geometry, not just endpoints. |
+| `fixture-17-chain-stitch-with-duplicate-layer.dxf` | The fixture-15 boundary duplicated verbatim (6 polylines total, 3 real + 3 exact copies) | `inspect`: `stitchedDupCount=3` (the true duplicates are discarded), `stitchedLoops=1`, same 1200-area piece as fixture-15. Confirms the dedup fix still catches *real* duplicates while no longer false-positiving on fixture-16's case. |
+| `fixture-18-line-entity-fallback.dxf` | No `POLYLINE`/`LWPOLYLINE` at all — a 10×10 square drawn as 4 raw `LINE` entities | `inspect`: `stitchedSource='line'`; `build`: single piece, area `100`. |
+| `fixture-19-small-dim-no-stamp.dxf` | 8×6 contour, no Seamline stamp | `inspect`: `rawMaxDim=8` — the input the inches/cm plausibility heuristic (`<25` → guess inches) reads in `refreshMarkerDxfImport`. |
+
+Fixtures 15–19 exercise chain-stitching (open multi-segment boundaries →
+one closed loop, at both the marker level and inside a single BLOCK),
+seam-allowance duplicate-layer removal, a raw-`LINE` fallback, and the
+unit-plausibility heuristic for files with no authoritative unit source
+— ported from a proven DXF reader in a sibling project and adapted to
+Seamline's bulge-aware flattening (open segments are tessellated via
+`flattenAamaBoundary` *before* stitching, so arcs survive a weld).
+
+**Harness caching note**: `tests.html`'s `fetch()` calls use
+`{cache:'no-store'}` and the iframe's `index.html?test=1` load is
+cache-busted with a timestamp — the static server sets no
+`Cache-Control` headers, so without this a stale fixture/golden/app copy
+can silently survive even a hard reload of the harness page. This bit a
+real verification pass once (added fields were compared against
+pre-change goldens without the failure showing up until a cache-busted
+reload). If a run ever looks suspiciously all-green right after an edit,
+force-reload with a bumped query string before trusting it.
 
 ## Regression guarantee
 

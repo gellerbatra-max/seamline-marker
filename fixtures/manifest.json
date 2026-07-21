@@ -12,5 +12,10 @@
   { "file": "fixture-11-nonuniform-scale.dxf", "modes": ["resolve", "build"], "units": 1, "flipY": false, "width": 160, "notes": "sx=2 sy=1 -> 20x10 ring" },
   { "file": "fixture-12-bulge-in-rotated-block.dxf", "modes": ["resolve"], "units": 1, "flipY": false, "width": 160, "notes": "bulge arc tessellated in block-local frame, then rotated 90" },
   { "file": "fixture-13-attrib-metadata.dxf", "modes": ["resolve", "build"], "units": 1, "flipY": false, "width": 160, "notes": "ATTRIB (group 66=1) supplies piece name/size/bundle" },
-  { "file": "fixture-14-mm-flat-contour.dxf", "modes": ["inspect", "build"], "units": 0.1, "flipY": true, "width": 20, "notes": "flat mm contour built at unitScale 0.1 with Y flip" }
+  { "file": "fixture-14-mm-flat-contour.dxf", "modes": ["inspect", "build"], "units": 0.1, "flipY": true, "width": 20, "notes": "flat mm contour built at unitScale 0.1 with Y flip" },
+  { "file": "fixture-15-chain-stitch-open-segments.dxf", "modes": ["inspect", "build"], "units": 1, "flipY": false, "width": 160, "notes": "boundary drawn as 3 open LWPOLYLINE segments, no closed contour anywhere" },
+  { "file": "fixture-16-block-stitch-two-segment-split.dxf", "modes": ["resolve", "inspect", "build"], "units": 1, "flipY": false, "width": 160, "notes": "BLOCK boundary split into exactly 2 open segments — regression guard for the endpoint-only dedup false positive (2-segment loop split always shares one endpoint pair)" },
+  { "file": "fixture-17-chain-stitch-with-duplicate-layer.dxf", "modes": ["inspect", "build"], "units": 1, "flipY": false, "width": 160, "notes": "same 3-segment boundary duplicated verbatim (6 polylines) — dedup must remove exactly the 3 true duplicates, not the 2-segment case above" },
+  { "file": "fixture-18-line-entity-fallback.dxf", "modes": ["inspect", "build"], "units": 1, "flipY": false, "width": 160, "notes": "no POLYLINE/LWPOLYLINE at all — 4 raw LINE entities forming a closed square" },
+  { "file": "fixture-19-small-dim-no-stamp.dxf", "modes": ["inspect"], "units": 1, "flipY": false, "width": 160, "notes": "8x6 contour, no Seamline stamp — exercises the inches/cm plausibility heuristic input (rawExtent)" }
 ]
