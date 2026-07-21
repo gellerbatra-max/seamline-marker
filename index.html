@@ -2666,13 +2666,28 @@ function aamaRecord(type,data){
       else if (p.code===20&&v) v.y=+p.value;
       else if (p.code===42&&v) v.bulge=+p.value;
     }
+  } else if (type==='INSERT'){
+    const has=code=>data.some(p=>p.code===code);
+    e.block=String(aamaFirst(data,2,'')).trim();
+    e.x=+aamaFirst(data,10,0); e.y=+aamaFirst(data,20,0);
+    e.sx=has(41)?+aamaFirst(data,41,1):1;
+    // DXF spec default for group 42 (Y scale) is 1, but real-world exporters often
+    // omit it entirely for a uniformly-scaled block and mean "same as X" — deliberate
+    // non-spec fallback, safer than silently squashing Y to a unit block height.
+    e.sy=has(42)?+aamaFirst(data,42,1):e.sx;
+    e.rot=+aamaFirst(data,50,0);
+    e.cols=has(70)?Math.max(1,+aamaFirst(data,70,1)||1):1;
+    e.rows=has(71)?Math.max(1,+aamaFirst(data,71,1)||1):1;
+    e.colSp=+aamaFirst(data,44,0); e.rowSp=+aamaFirst(data,45,0);
+    e.attribsFollow=(+aamaFirst(data,66,0))===1;
+    e.attribs=[];
   }
   return e;
 }
 function parseAamaDxf(text){
   const pairs=aamaPairs(text);
   if (pairs.length<4) throw new Error('The DXF does not contain ASCII group-code pairs.');
-  let section='', block=null, poly=null;
+  let section='', block=null, poly=null, openInsert=null;
   const blocks=[], entities=[], header=[];
   for (let i=0;i<pairs.length;){
     if (pairs[i].code!==0){ i++; continue; }
@@ -2680,24 +2695,33 @@ function parseAamaDxf(text){
     let j=i+1; while(j<pairs.length&&pairs[j].code!==0) j++;
     const data=pairs.slice(i+1,j);
     if (type==='SECTION'){ section=String(aamaFirst(data,2,'')).toUpperCase(); i=j; continue; }
-    if (type==='ENDSEC'){ section=''; block=null; poly=null; i=j; continue; }
+    if (type==='ENDSEC'){ section=''; block=null; poly=null; openInsert=null; i=j; continue; }
     if (section==='HEADER'){ header.push({type,data}); i=j; continue; }
     if (section==='BLOCKS'&&type==='BLOCK'){
       if (block) blocks.push(block);
-      block={name:String(aamaFirst(data,2,aamaFirst(data,3,'PIECE'))),entities:[]}; poly=null; i=j; continue;
+      block={name:String(aamaFirst(data,2,aamaFirst(data,3,'PIECE'))),
+             base:{x:+aamaFirst(data,10,0),y:+aamaFirst(data,20,0)}, entities:[]};
+      poly=null; openInsert=null; i=j; continue;
     }
     if (section==='BLOCKS'&&type==='ENDBLK'){
-      if (block) blocks.push(block); block=null; poly=null; i=j; continue;
+      if (block) blocks.push(block); block=null; poly=null; openInsert=null; i=j; continue;
     }
     const target=block?block.entities:entities;
     if ((section==='BLOCKS'&&block)||section==='ENTITIES'){
       if (type==='POLYLINE'){
         poly={type,layer:String(aamaFirst(data,8,'0')).trim(),closed:((+aamaFirst(data,70,0))&1)!==0,vertices:[],data};
-        target.push(poly);
+        target.push(poly); openInsert=null;
       } else if (type==='VERTEX'&&poly){
         poly.vertices.push({x:+aamaFirst(data,10,0),y:+aamaFirst(data,20,0),bulge:+aamaFirst(data,42,0)});
-      } else if (type==='SEQEND') poly=null;
-      else { poly=null; if (!['BLOCK','ENDBLK'].includes(type)) target.push(aamaRecord(type,data)); }
+      } else if (type==='INSERT'){
+        // block-reference placement; ATTRIB…SEQEND only follows when group 66=1 —
+        // otherwise the very next record is unrelated and must not be swallowed
+        const ins=aamaRecord(type,data);
+        target.push(ins); poly=null; openInsert=ins.attribsFollow?ins:null;
+      } else if (type==='ATTRIB'&&openInsert){
+        openInsert.attribs.push({tag:String(aamaFirst(data,2,'')).trim(),text:String(aamaFirst(data,1,''))});
+      } else if (type==='SEQEND'){ poly=null; openInsert=null; }
+      else { poly=null; openInsert=null; if (!['BLOCK','ENDBLK'].includes(type)) target.push(aamaRecord(type,data)); }
     }
     i=j;
   }
@@ -2899,6 +2923,72 @@ function mdxfHeaderVar(pairs,name){
   }
   return null;
 }
+/* ---- BLOCK/INSERT placement resolution (vendor marker DXFs) ----
+   A block-based marker places pieces via BLOCK (geometry, once) + INSERT
+   (block name, insertion point, X/Y scale, rotation — mirror is just a
+   negative scale, no separate flag). Distinct 2x3 affine helpers, not
+   shapeOf's trig, because the composition/convention differ. */
+const M_IDENT = [1,0,0,1,0,0];
+const M_translate = (x,y) => [1,0,0,1,x,y];
+const M_scale = (sx,sy) => [sx,0,0,sy,0,0];
+const M_rotate = deg => { const r=deg*Math.PI/180, c=Math.cos(r), s=Math.sin(r); return [c,s,-s,c,0,0]; };
+// M_mul(m1,m2): combined(p) = m1(m2(p)) — m2 applied first
+const M_mul = (m1,m2) => { const [a1,b1,c1,d1,e1,f1]=m1,[a2,b2,c2,d2,e2,f2]=m2;
+  return [a1*a2+c1*b2, b1*a2+d1*b2, a1*c2+c1*d2, b1*c2+d1*d2, a1*e2+c1*f2+e1, b1*e2+d1*f2+f1]; };
+const M_apply = (m,p) => [m[0]*p[0]+m[2]*p[1]+m[4], m[1]*p[0]+m[3]*p[1]+m[5]];
+
+// Largest closed contour inside a BLOCK's own entities — separate from
+// aamaBoundary (that one has no any-layer fallback and doesn't check
+// e.closed; its contract is specific to AAMA pattern import).
+function blockLargestContour(block,layer='1'){
+  const all=(block.entities||[]).filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&e.vertices&&e.vertices.length>=3&&e.closed!==false);
+  let candidates=all.filter(e=>String(e.layer)===String(layer)), usedFallback=false;
+  if(!candidates.length&&all.length){ candidates=all; usedFallback=true; }
+  let bestPts=null,area=-1;
+  for(const e of candidates){ const f=flattenAamaBoundary(e.vertices,true); const a=shoelace(f.pts); if(a>area){area=a;bestPts=f.pts;} }
+  return bestPts?{pts:bestPts,usedFallback}:null;
+}
+const MDXF_MAX_DEPTH=8;
+function attribsToLabel(attribs){
+  if(!attribs||!attribs.length) return null;
+  const byTag={}; for(const a of attribs) byTag[a.tag.toLowerCase()]=a.text;
+  const pick=(...keys)=>{ for(const k of keys){ if(byTag[k]!=null&&byTag[k]!=='') return byTag[k]; } return null; };
+  const name=pick('piece name','name','piece'), size=pick('size name','size'),
+    bundle=pick('bundle','ply','plynum'), seq=pick('seq','sequence','cut seq','cutseq');
+  if(!name&&!size&&!bundle&&!seq) return null;
+  return {name:name||null, size:size||'', bundle:bundle?+bundle||1:1, seq:seq!=null?+seq:null, raw:attribs.map(a=>`${a.tag}:${a.text}`).join(' ')};
+}
+// Recursively resolves BLOCK+INSERT into placed, absolute (block-local-unit)
+// rings. Every failure is per-insert and non-fatal: it's counted and the
+// rest of the file keeps resolving. Array inserts place their base instance
+// and are reported separately — they're not fully dropped, just simplified.
+function resolveBlockInstances(dxf,contourLayer='1'){
+  const byName=new Map(dxf.blocks.map(b=>[b.name,b]));
+  const rings=[], unresolved=[], arrayInserts=[];
+  function walk(entities,parentT,visiting,depth){
+    for(const e of entities){
+      if(e.type!=='INSERT') continue;
+      if(depth>=MDXF_MAX_DEPTH){ unresolved.push({block:e.block,reason:'max-depth'}); continue; }
+      const block=byName.get(e.block);
+      if(!block){ unresolved.push({block:e.block,reason:'missing-block'}); continue; }
+      if(visiting.has(e.block)){ unresolved.push({block:e.block,reason:'circular-reference'}); continue; }
+      if(e.cols>1||e.rows>1) arrayInserts.push({block:e.block});
+      const base=block.base||{x:0,y:0};
+      const T=M_mul(parentT, M_mul(M_translate(e.x,e.y), M_mul(M_rotate(e.rot), M_mul(M_scale(e.sx,e.sy), M_translate(-base.x,-base.y)))));
+      const nested=(block.entities||[]).filter(x=>x.type==='INSERT');
+      const boundary=blockLargestContour(block,contourLayer);
+      if(boundary) rings.push({pts:boundary.pts.map(p=>M_apply(T,p)), blockName:e.block, attribs:e.attribs, usedFallback:boundary.usedFallback});
+      else if(!nested.length) unresolved.push({block:e.block,reason:'no-contour'});
+      if(nested.length){
+        visiting.add(e.block);
+        walk(block.entities,T,visiting,depth+1);
+        visiting.delete(e.block);
+      }
+    }
+  }
+  walk(dxf.entities, M_IDENT, new Set(), 0);
+  return {rings,unresolved,arrayInserts,blockDefCount:byName.size};
+}
 function inspectMarkerDxf(text,fileName='marker.dxf'){
   const pairs=aamaPairs(text), dxf=parseAamaDxf(text);
   // Seamline stamp: "Seamline Marker NAME | UNITS: CM | LEN x WID | entity order = cut order"
@@ -2917,24 +3007,37 @@ function inspectMarkerDxf(text,fileName='marker.dxf'){
   }
   let contours=closed.filter(e=>String(e.layer)==='1');
   if(!contours.length&&closed.length){ contours=closed; foreignLayers=new Set(closed.map(e=>String(e.layer))).size; }
-  if(!contours.length) throw new Error('No closed contour found — this DXF has no placeable marker geometry.');
+  const blockInfo=resolveBlockInstances(dxf,'1');
+  if(!contours.length&&!blockInfo.rings.length) throw new Error('No closed contour found — this DXF has no placeable marker geometry.');
   const labels=dxf.entities.filter(e=>e.type==='TEXT'&&String(e.layer)==='15'&&e.text.trim())
     .map(e=>{ const m=e.text.trim().match(/^(\d+)\s+(.+?)\s+(\S+)\s+b(\d+)$/);
       return {x:e.x,y:e.y,raw:e.text.trim(),seq:m?+m[1]:null,name:m?m[2]:e.text.trim(),size:m?m[3]:'',bundle:m?+m[4]:1}; });
-  const skipped=dxf.entities.filter(e=>!['POLYLINE','LWPOLYLINE','TEXT','SEQEND'].includes(e.type)).length+open.length;
+  // INSERT/ATTRIB entities that the block resolver actually consumed aren't
+  // "ignored" — only count what's left genuinely unhandled.
+  const consumedTypes=new Set(['POLYLINE','LWPOLYLINE','TEXT','SEQEND','INSERT','ATTRIB']);
+  const skipped=dxf.entities.filter(e=>!consumedTypes.has(e.type)).length+open.length;
   const width=stamp?stamp.width:ext?ext[20]:null;
-  return {fileName,stamp,extWidth:ext?ext[20]:null,width,contours,labels,openCount:open.length,skipped,foreignLayers,text};
+  return {fileName,stamp,extWidth:ext?ext[20]:null,width,contours,labels,openCount:open.length,skipped,foreignLayers,
+    blockRings:blockInfo.rings,unresolvedInserts:blockInfo.unresolved,arrayInserts:blockInfo.arrayInserts,blockDefCount:blockInfo.blockDefCount,text};
 }
 function buildMarkerDxfMarker(info,width,unitScale,flipY){
   const token=aamaHash(info.text), modelId='mdxf-'+token, scaleId='mdxf-scale-'+token;
-  // flatten each contour to absolute cm coordinates in Seamline's bottom-left frame
+  // flatten each top-level contour to absolute cm coordinates in Seamline's bottom-left frame
   const placedRings=info.contours.map(e=>{
     let pts=flattenAamaBoundary(e.vertices,true).pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale]);
     return pts;
   }).filter(r=>shoelace(r)>0.01);
-  if(!placedRings.length) throw new Error('Every contour degenerated after unit conversion — check the units setting.');
+  // BLOCK/INSERT-resolved rings are already placed in file units — same unit/flip step
+  const blockRings=(info.blockRings||[]).map(b=>({
+    r:b.pts.map(([x,y])=>[x*unitScale,flipY?width-y*unitScale:y*unitScale]),
+    presetLabel:attribsToLabel(b.attribs)
+  })).filter(b=>shoelace(b.r)>0.01);
+  if(!placedRings.length&&!blockRings.length) throw new Error('Every contour degenerated after unit conversion — check the units setting.');
   // attach each layer-15 label to the contour whose interior (or nearest centroid) holds it
-  const rings=placedRings.map(r=>({r,bb:bboxOf(r),c:centroid(r),label:null}));
+  const rings=[
+    ...placedRings.map(r=>({r,bb:bboxOf(r),c:centroid(r),label:null})),
+    ...blockRings.map(b=>({r:b.r,bb:bboxOf(b.r),c:centroid(b.r),label:b.presetLabel||null}))
+  ];
   for(const lb of info.labels){
     const p=[lb.x*unitScale,flipY?width-lb.y*unitScale:lb.y*unitScale];
     let best=null,bd=Infinity;
@@ -2949,7 +3052,7 @@ function buildMarkerDxfMarker(info,width,unitScale,flipY){
     const base=norm(g.r), h=aamaHash(base.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(';'));
     let def=defByHash.get(h);
     if(!def){
-      const key='M'+(++pno), name=g.label?g.label.name:'PIECE '+pno;
+      const key='M'+(++pno), name=(g.label&&g.label.name)?g.label.name:'PIECE '+pno;
       def={key,name,key0:modelId+'/'+key,scaleId,qty:1,rot:'free',pair:false,
         base,sizeBases:sizes.map(()=>base),area0:shoelace(base)};
       defByHash.set(h,def); defs.push(def);
@@ -2983,9 +3086,15 @@ async function refreshMarkerDxfImport(){
       $('mdxfFlip').checked=true;             // Seamline's exporter writes W − y
       if(info.stamp.width) $('mdxfWidth').value=info.stamp.width;
     } else if(info.extWidth) $('mdxfWidth').value=+info.extWidth.toFixed(1);
+    const blockCount=info.blockRings.length, unresolvedCount=info.unresolvedInserts.length;
+    const reasonCounts={}; for(const u of info.unresolvedInserts) reasonCounts[u.reason]=(reasonCounts[u.reason]|0)+1;
+    const reasonStr=Object.entries(reasonCounts).map(([r,n])=>`${r} ×${n}`).join(', ');
     box.innerHTML=`<b>${esc(info.stamp?info.stamp.name:f.name)}</b>${info.stamp?' · Seamline export ✓':' · <span style="color:var(--warn)">no Seamline stamp — foreign DXF, check units / width / Y origin</span>'}<br>`+
-      `${info.contours.length} placed contour${info.contours.length===1?'':'s'} · ${info.labels.length} label${info.labels.length===1?'':'s'}`+
+      `${info.contours.length+blockCount} placed contour${(info.contours.length+blockCount)===1?'':'s'} · ${info.labels.length} label${info.labels.length===1?'':'s'}`+
+      (blockCount?` · ${blockCount} block instance${blockCount===1?'':'s'} from ${info.blockDefCount} block definition${info.blockDefCount===1?'':'s'}`:'')+
       (info.foreignLayers?` · <span style="color:var(--warn)">contours taken from ${info.foreignLayers} non-standard layer${info.foreignLayers===1?'':'s'}</span>`:'')+
+      (unresolvedCount?`<br><span style="color:var(--warn)">${unresolvedCount} insert${unresolvedCount===1?'':'s'} skipped (${reasonStr}) — nothing else altered</span>`:'')+
+      (info.arrayInserts.length?`<br><span style="color:var(--warn)">${info.arrayInserts.length} array insert${info.arrayInserts.length===1?'':'s'} found — only the first instance is placed</span>`:'')+
       (info.skipped?`<br><span style="color:var(--warn)">${info.skipped} unsupported / open entit${info.skipped===1?'y':'ies'} ignored (nothing was altered)</span>`:'');
     $('mdxfApply').disabled=false;
   }catch(err){ box.innerHTML=`<span style="color:var(--bad)">${esc(err.message||'Could not read the DXF.')}</span>`; }
@@ -3005,8 +3114,9 @@ function applyMarkerDxfImport(){
       UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo; resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs();
     }else addDocument(marker,{dirty:true,name:marker.name});
     $('dlgMarkerDxf').close(); renderAll(); fitView(); persistWorkspace();
-    const placed=marker.pieces.length;
-    toast(`Marker DXF imported · ${placed} placed piece${placed===1?'':'s'}${target==='comparison'?' as comparison layer':''}${MDXF_IMPORT.skipped?` · ${MDXF_IMPORT.skipped} entities ignored`:''}`);
+    const placed=marker.pieces.length, unresolvedCount=MDXF_IMPORT.unresolvedInserts.length;
+    toast(`Marker DXF imported · ${placed} placed piece${placed===1?'':'s'}${target==='comparison'?' as comparison layer':''}`+
+      `${unresolvedCount?` · ${unresolvedCount} insert${unresolvedCount===1?'':'s'} skipped`:''}${MDXF_IMPORT.skipped?` · ${MDXF_IMPORT.skipped} entities ignored`:''}`);
   }catch(err){ toast(err.message||'Could not import the marker DXF','bad'); }
 }
 function openMarkerDxfDialog(){
@@ -3016,6 +3126,10 @@ function openMarkerDxfDialog(){
   $('mdxfSummary').textContent='Choose a DXF to inspect its contours.';
   $('dlgMarkerDxf').showModal();
 }
+// Read-only surface for interoperability checks and regression fixtures —
+// mirrors window.SeamlineAama's pattern for the marker-DXF (placed-layout) path.
+window.SeamlineMarkerDxf=Object.freeze({inspect:inspectMarkerDxf, resolveBlocks:resolveBlockInstances,
+  matrix:Object.freeze({mul:M_mul, apply:M_apply, translate:M_translate, scale:M_scale, rotate:M_rotate, ident:M_IDENT})});
 function zeroAamaRuleTable(name,sizes,sample){
   sizes=[...new Set((sizes||[]).map(String))]; if(!sizes.length) sizes=[sample||'BASE'];
   if(sizes.length===1) sizes.push(sizes[0]+'-ALT'); sample=sample||sizes[0];
