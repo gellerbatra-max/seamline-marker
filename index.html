@@ -701,6 +701,7 @@
       <h2>Cut Plan</h2>
       <span class="note">workspace mode — the plan and the resulting marker share one screen</span>
       <span style="flex:1"></span>
+      <button class="btn" id="pImport" title="Import a customer buy / cut-order file — paste from Excel or load a CSV">⇪ Import buy…</button>
       <button class="btn primary" id="pCalc">⚡ Calculate markers</button>
     </div>
     <div id="planBody"></div>
@@ -793,7 +794,7 @@
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, copy it 1:1 to the clipboard, or save the marker as JSON. On the <b>Advanced</b> tab, sequence the cut (<b>Auto sequence</b> = banded serpentine sweep; <b>Pick order</b> = click pieces in order; <b>Knife path</b> shows plunge points, direction and dry-haul) and <b>Generate Cut Data</b> as HPGL (.plt) for the cutter or DXF R12 for CAM import — entity order is the cut order.</li>
       <li><b>Fabric</b> tab — for spreading: <b>Mark defect zone</b> (drag over a flaw; pieces keep clear) and <b>Add splice</b> / <b>Auto splice</b> (roll joins no piece may straddle). Guides added over placed pieces flag them in red and block cut-data export until you move them clear (or <b>Nudge offenders</b>).</li>
-      <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
+      <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size — or <b>⇪ Import buy</b> a customer cut-order (paste from Excel or load a CSV; it maps the columns and fills the grid) — plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
     </ol>
     <h4>RULES</h4>
     <ul>
@@ -817,6 +818,17 @@
     <p style="margin-top:14px; color:var(--mut)">Part of the <b>Seamline</b> apparel suite · workflow modeled on the classic marker pipeline: order → placement → status → plot/cut.</p>
   </div>
   <div class="dlg-foot"><button class="btn primary" data-close="dlgHelp">Got it</button></div>
+</dialog>
+
+<!-- ---------- Import buy / cut-order ---------- -->
+<dialog id="dlgImport">
+  <div class="dlg-head">Import customer buy <button class="x" data-close="dlgImport">✕</button></div>
+  <div class="dlg-body" id="impBody"></div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgImport">Cancel</button>
+    <span style="flex:1"></span>
+    <button class="btn primary" id="impApply">Apply to plan</button>
+  </div>
 </dialog>
 
 <!-- ---------- Auto-splice ---------- -->
@@ -2940,7 +2952,154 @@ $('planBody').addEventListener('click', e=>{
     toast('Marker order loaded — nest it, then cut every spread from this plot');
   }
 });
+/* =====================================================================
+   TIER 5 — customer buy / cut-order import (ERP field-mapping analog).
+   Paste from Excel (tab-separated) or load a CSV; map columns to
+   Colour / Size / Qty (long) or pick the colour column (wide, sizes across
+   headers); fuzzy-match size labels to the model scale; fill the demand grid.
+   ===================================================================== */
+let IMP=null;
+function splitLine(line, delim){
+  if (delim!==','){ return line.split(delim); }
+  const out=[]; let cur='', q=false;                 // quoted-CSV aware
+  for (let i=0;i<line.length;i++){ const ch=line[i];
+    if (q){ if (ch==='"'){ if (line[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; }
+    else { if (ch==='"') q=true; else if (ch===',') { out.push(cur); cur=''; } else cur+=ch; }
+  }
+  out.push(cur); return out;
+}
+function parseTabular(text){
+  const lines=text.replace(/\r\n?/g,'\n').split('\n').filter(l=>l.trim()!=='');
+  if (!lines.length) return {rows:[], delim:'\t'};
+  const delim = lines[0].includes('\t') ? '\t' : (lines[0].includes(';') && !lines[0].includes(',') ? ';' : (lines[0].includes(',') ? ',' : '\t'));
+  const rows=lines.map(l=>splitLine(l,delim).map(c=>c.trim()));
+  const nc=Math.max(...rows.map(r=>r.length));
+  rows.forEach(r=>{ while(r.length<nc) r.push(''); });
+  return {rows, delim};
+}
+const normSize = s => String(s).toUpperCase().replace(/\s+/g,'');
+function sizeMatch(label){                            // label -> model size name, or null
+  const t=normSize(label);
+  return cpSizes().find(s=>normSize(s)===t) || null;
+}
+const isNum = v => v!=='' && !isNaN(+String(v).replace(/,/g,''));
+const toNum = v => Math.max(0, Math.round(+String(v).replace(/,/g,'')||0));
+// pick sensible defaults for a freshly-parsed table
+function guessImport(){
+  const rows=IMP.rows; if (!rows.length) return;
+  const head = IMP.header ? rows[0] : rows[0].map((_,i)=>'Col '+(i+1));
+  const nc=head.length;
+  // wide if ≥2 header cells match a model size
+  const sizeCols = head.map((h,i)=>sizeMatch(h)?i:-1).filter(i=>i>=0);
+  IMP.format = sizeCols.length>=2 ? 'wide' : 'long';
+  // column guesses by header keyword, else position
+  const find = re => head.findIndex(h=>re.test(h));
+  IMP.colorCol = Math.max(0, find(/colou?r|shade|colorway/i));
+  if (IMP.format==='long'){
+    IMP.sizeCol = Math.max(0, find(/^size$|size/i));
+    let q=find(/qty|quantity|units|pairs|pcs|order/i);
+    if (q<0){ // first mostly-numeric column that isn't color/size
+      const data=IMP.header?rows.slice(1):rows;
+      for (let c=0;c<nc;c++){ if (c===IMP.colorCol||c===IMP.sizeCol) continue;
+        if (data.filter(r=>isNum(r[c])).length > data.length*0.6){ q=c; break; } }
+    }
+    IMP.qtyCol = Math.max(0, q);
+    if (IMP.sizeCol===IMP.colorCol) IMP.sizeCol=Math.min(nc-1, IMP.colorCol+1);
+    if (IMP.qtyCol===IMP.colorCol||IMP.qtyCol===IMP.sizeCol) IMP.qtyCol=Math.min(nc-1, Math.max(IMP.sizeCol,IMP.colorCol)+1);
+  }
+}
+// build {colors:[{name,qty}], unmatched:[labels], seenSizes, overflow}
+function computeImport(){
+  const rows=IMP.rows; if (!rows.length) return {colors:[], unmatched:[], overflow:0};
+  const head = IMP.header ? rows[0] : null;
+  const data = IMP.header ? rows.slice(1) : rows;
+  const map=new Map(); const unmatched=new Set();
+  const add=(color,size,qty)=>{ if(!size||qty<=0) return;
+    color=color||'—'; if(!map.has(color)) map.set(color,{}); const q=map.get(color); q[size]=(q[size]||0)+qty; };
+  if (IMP.format==='wide'){
+    const sizeCols=[];
+    (head||rows[0].map((_,i)=>i)).forEach((h,i)=>{ const m=head?sizeMatch(h):null;
+      if (head){ if(m) sizeCols.push([i,m]); else if(i!==IMP.colorCol && rows.slice(1).some(r=>isNum(r[i]))) unmatched.add(h); }});
+    for (const r of data){ const color=r[IMP.colorCol]; for (const [ci,sz] of sizeCols) if (isNum(r[ci])) add(color,sz,toNum(r[ci])); }
+  } else {
+    for (const r of data){ const color=r[IMP.colorCol]; const raw=r[IMP.sizeCol]; const m=sizeMatch(raw);
+      if (m) add(color,m,toNum(r[IMP.qtyCol])); else if (raw) unmatched.add(raw); }
+  }
+  const colors=[...map.entries()].map(([name,qty])=>({name, qty}));
+  const overflow=Math.max(0, colors.length-8);
+  return {colors, unmatched:[...unmatched], overflow};
+}
+const delimName = d => d==='\t' ? 'tab' : d===';' ? 'semicolon' : 'comma';
+// Full dialog body — rendered once on open so the textarea keeps focus while typing.
+function renderImport(){
+  if (!IMP){ IMP={ raw:'', rows:[], header:true, format:'long', colorCol:0, sizeCol:1, qtyCol:2, delim:'\t' }; }
+  $('impBody').innerHTML =
+    `<div class="frow" style="align-items:flex-start"><label>Paste / CSV</label>
+       <div style="flex:1">
+         <textarea id="impText" rows="5" placeholder="Paste rows from Excel (or a customer buy), or load a CSV below…&#10;Style  Colour  Size  Qty" spellcheck="false" style="width:100%; font:12px ui-monospace,monospace">${esc(IMP.raw)}</textarea>
+         <div style="margin-top:6px"><input type="file" id="impFile" accept=".csv,.tsv,.txt,text/csv"></div>
+       </div></div>
+     <div id="impConfig"></div>`;
+  renderImportConfig();
+}
+// Mapping + preview only — safe to re-render on every parse/mapping change.
+function renderImportConfig(){
+  const c=$('impConfig'); if (!c) return;
+  if (!IMP.rows.length){ c.innerHTML=`<div class="wcap">Paste a customer buy above (or load a CSV). Long format = a Size and a Qty column; wide = one column per size.</div>`; return; }
+  const parsed=computeImport();
+  const head = IMP.header ? IMP.rows[0] : IMP.rows[0].map((_,i)=>'Col '+(i+1));
+  const colOpts = sel => head.map((h,i)=>`<option value="${i}"${sel===i?' selected':''}>${esc(h||('Col '+(i+1)))}</option>`).join('');
+  c.innerHTML =
+    `<div class="frow"><label>Matching model</label><span><b>${modelById(CP.modelId).name}</b> · sizes ${cpSizes().join(' · ')} · delimiter ${delimName(IMP.delim)}</span></div>
+     <div class="frow"><label>Layout</label><span>
+       <label class="orow" style="display:inline-flex"><input type="radio" name="impFmt" value="long"${IMP.format==='long'?' checked':''}> Long — one row per size</label>
+       &nbsp;&nbsp;<label class="orow" style="display:inline-flex"><input type="radio" name="impFmt" value="wide"${IMP.format==='wide'?' checked':''}> Wide — sizes across columns</label>
+       &nbsp;&nbsp;<label class="orow" style="display:inline-flex"><input type="checkbox" id="impHeader"${IMP.header?' checked':''}> First row is a header</label></span></div>
+     <div class="frow"><label>Colour column</label><select id="impColor">${colOpts(IMP.colorCol)}</select></div>`+
+    (IMP.format==='long' ? `
+       <div class="frow"><label>Size column</label><select id="impSize">${colOpts(IMP.sizeCol)}</select></div>
+       <div class="frow"><label>Qty column</label><select id="impQty">${colOpts(IMP.qtyCol)}</select></div>` : `
+       <div class="frow"><label>Sizes</label><span class="wcap" style="margin:0">taken from the header cells that match the model's sizes</span></div>`)+
+    `<fieldset class="lineset"><legend>Preview → demand grid</legend>${importPreviewHTML(parsed)}</fieldset>`;
+}
+function importPreviewHTML(p){
+  if (!p) return '';
+  if (!p.colors.length) return `<div class="wcap lowply">No matching rows yet — check the column mapping and that sizes match ${cpSizes().join('/')}.</div>`;
+  const sizes=cpSizes();
+  const rows=p.colors.slice(0,8).map(c=>`<tr><td>${esc(c.name)}</td>${sizes.map(s=>`<td>${c.qty[s]||''}</td>`).join('')}<td><b>${sizes.reduce((a,s)=>a+(c.qty[s]||0),0)}</b></td></tr>`).join('');
+  const tot=p.colors.slice(0,8).reduce((a,c)=>a+sizes.reduce((x,s)=>x+(c.qty[s]||0),0),0);
+  return `<table class="wsum"><tr><th>Colour</th>${sizes.map(s=>`<th>${s}</th>`).join('')}<th>Total</th></tr>${rows}</table>
+    <div class="wcap">${p.colors.length} colour${p.colors.length===1?'':'s'} · <b>${tot}</b> garments will fill the demand grid.
+    ${p.overflow?`<span class="lowply"> ⚠ ${p.overflow} colour(s) beyond the 8-colour limit will be dropped.</span>`:''}
+    ${p.unmatched.length?`<br><span class="lowply">⚠ unmatched sizes ignored: ${p.unmatched.map(esc).join(', ')}</span> — they don't match the ${modelById(CP.modelId).name} scale.`:''}</div>`;
+}
+function importParse(text){ IMP.raw=text; const r=parseTabular(text); IMP.rows=r.rows; IMP.delim=r.delim; if(r.rows.length) guessImport(); renderImportConfig(); }
+function applyImport(){
+  if (!IMP || !IMP.rows.length) return toast('Nothing to import — paste a buy first','warn');
+  const p=computeImport();
+  if (!p.colors.length) return toast('No rows matched the model sizes — check the mapping','warn');
+  CP.colors = p.colors.slice(0,8).map(c=>{ const qty={}; cpSizes().forEach(s=>{ if(c.qty[s]) qty[s]=c.qty[s]; }); return {name:c.name, qty}; });
+  CP.result=null; $('dlgImport').close(); renderPlan();
+  const tot=CP.colors.reduce((a,c)=>a+cpSizes().reduce((x,s)=>x+(c.qty[s]||0),0),0);
+  toast(`Imported ${CP.colors.length} colour(s) · ${tot} garments${p.unmatched.length?` · ${p.unmatched.length} unmatched size(s) skipped`:''}`, p.unmatched.length?'warn':undefined);
+}
+
 $('pCalc').onclick=calcCutPlan;
+$('pImport').onclick=()=>{ IMP=null; renderImport(); $('dlgImport').showModal(); };
+$('impApply').onclick=applyImport;
+$('impBody').addEventListener('input', e=>{
+  const t=e.target;
+  if (t.id==='impText'){ importParse(t.value); return; }   // config re-renders; textarea untouched
+  if (t.id==='impHeader'){ IMP.header=t.checked; guessImport(); renderImportConfig(); return; }
+  if (t.id==='impColor'){ IMP.colorCol=+t.value; renderImportConfig(); return; }
+  if (t.id==='impSize'){ IMP.sizeCol=+t.value; renderImportConfig(); return; }
+  if (t.id==='impQty'){ IMP.qtyCol=+t.value; renderImportConfig(); return; }
+});
+$('impBody').addEventListener('change', e=>{
+  if (e.target.name==='impFmt'){ IMP.format=e.target.value; renderImportConfig(); return; }
+  if (e.target.id==='impFile'){ const f=e.target.files[0]; if(!f) return;
+    const rd=new FileReader(); rd.onload=()=>{ const ta=$('impText'); if(ta) ta.value=String(rd.result); importParse(String(rd.result)); }; rd.readAsText(f); }
+});
 $('wsMarkerBtn').onclick=()=>setWorkspace('marker');
 $('wsCutplanBtn').onclick=openPlanDialog;
 
