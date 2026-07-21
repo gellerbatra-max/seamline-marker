@@ -453,6 +453,14 @@
   /* Easy Order wizard */
   #dlgOrder{max-width:640px}
   #dlgOrder .dlg-body{max-height:56vh; overflow:auto; min-height:220px}
+  #dlgAama{max-width:660px}
+  #dlgAama .dlg-body{max-height:62vh; overflow:auto}
+  .filepick{display:grid; grid-template-columns:150px 1fr; align-items:center; gap:8px 12px; margin-bottom:12px}
+  .filepick label{color:var(--mut); font-size:12px}
+  .filepick input[type=file]{min-width:0; width:100%; color:var(--ink); font-size:12px}
+  .aama-summary{background:var(--panel2); border:1px solid var(--edge); border-radius:8px; padding:10px 12px;
+    font-size:12px; line-height:1.55; color:var(--mut); margin-top:10px}
+  .aama-summary b{color:var(--ink)}
   .wsteps{display:flex; gap:4px; padding:12px 18px 0}
   .wstep{flex:1; text-align:center; font-size:10.5px; letter-spacing:.06em; color:var(--mut);
          padding:0 2px 6px; border-bottom:2px solid var(--edge); white-space:nowrap}
@@ -596,8 +604,10 @@
     <button class="tb" id="bOpen" title="Replace the active tab with a saved marker (.json)"><span class="ic">⌂</span>Open here…</button>
     <button class="tb" id="bOpenTab" title="Open a saved marker as a new editable document tab"><span class="ic">▱</span>Open in new tab…</button>
     <button class="tb" id="bCompare" title="Import a saved marker as a read-only comparison layer"><span class="ic">◫</span>Import comparison…</button>
+    <button class="tb" id="bAamaImport" title="Import apparel pattern pieces from an AAMA/ASTM DXF and its grading rule table"><span class="ic">⇧</span>Import AAMA…</button>
     <button class="tb" id="bLayers" title="Show the active and comparison layers"><span class="ic">▤</span>Layers</button>
     <div class="tsep"></div>
+    <button class="tb" id="bAamaExport" title="Export one AAMA package containing the placed-marker DXF and companion .rul grade-rule table"><span class="ic">⇩</span>AAMA package</button>
     <button class="tb" id="bExport" title="Export marker plot as SVG (1 unit = 1 cm)"><span class="ic">✧</span>Plot SVG</button>
     <button class="tb" id="bPng" title="Export marker as PNG image"><span class="ic">▣</span>PNG</button>
     <button class="tb" id="bCopy1" title="Copy the plot to the clipboard at true 1:1 scale (96 dpi paste targets)"><span class="ic">⧉</span>Copy 1:1</button>
@@ -841,6 +851,7 @@
       <li><b>Place pieces</b> — click a tray piece, then click the fabric; or hit <b>⚡ Auto-Nest</b> to pack everything automatically.</li>
       <li><b>Tabs &amp; comparison</b> — use <b>Open in new tab…</b> for another editable marker, or <b>Import comparison…</b> to overlay a read-only marker in the active field. The <b>Layers</b> dock controls visibility, opacity, overlay / side-by-side / difference view, and independent X/Y position. Each tab keeps its own marker, camera, history, Cut Plan, and layer setup; a dot on the tab means unsaved changes.</li>
       <li><b>Refine</b> — select a piece and use the right dock's <b>Piece</b> tab to rotate, flip, butt/slide, centre it in the width, or return it; or drag it on the fabric. <b>Compact</b> tightens the whole marker. The <b>Options</b> tab gathers grid/snap, rotation rule, buffer, width, end allowance and the theme. The ribbon tabs above the canvas (<b>File · Piece · Marker · Fabric · View</b>) mirror the classic Easy Marking layout — measure tools, marker flips, fit piece, zoom window, thumbnail and restore points live there.</li>
+      <li><b>AAMA / ASTM</b> — use <b>Import AAMA…</b> with a pattern DXF and its companion <b>.rul / .txt</b> grade-rule table. Seamline imports layer-1 piece boundaries, piece/size metadata, curve bulges, grading identifiers and delta rules into an editable marker tab. <b>AAMA package</b> exports one ZIP containing the placed marker as an ASTM D6673-style DXF plus its companion grading table.</li>
       <li><b>Output</b> — when the status chip reads <b>MADE</b>, export the plot as SVG (1 unit = 1 cm) or PNG, copy it 1:1 to the clipboard, or save the marker as JSON. On the <b>Advanced</b> tab, sequence the cut (<b>Auto sequence</b> = banded serpentine sweep; <b>Pick order</b> = click pieces in order; <b>Knife path</b> shows plunge points, direction and dry-haul) and <b>Generate Cut Data</b> as HPGL (.plt) for the cutter or DXF R12 for CAM import — entity order is the cut order.</li>
       <li><b>Fabric</b> tab — for spreading: <b>Mark defect zone</b> (drag over a flaw; pieces keep clear) and <b>Add splice</b> / <b>Auto splice</b> (roll joins no piece may straddle). Guides added over placed pieces flag them in red and block cut-data export until you move them clear (or <b>Nudge offenders</b>).</li>
       <li><b>Cut Plan</b> (<span class="k">P</span>) — for bulk production: enter demand per colour and size — or <b>⇪ Import buy</b> a customer cut-order (paste from Excel or load a CSV; it maps the columns and fills the grid) — plus ply limits, hit <b>Calculate markers</b>, and Seamline splits it into a marker set with spreads (colour × plies). <b>Auto-nest all markers</b> draws every layout and fills in actual lengths; <b>Mini-markers PDF</b> downloads one page per marker with the drawing and all details. Open any plan row as a marker order, export cut tickets as CSV.</li>
@@ -867,6 +878,25 @@
     <p style="margin-top:14px; color:var(--mut)">Part of the <b>Seamline</b> apparel suite · workflow modeled on the classic marker pipeline: order → placement → status → plot/cut.</p>
   </div>
   <div class="dlg-foot"><button class="btn primary" data-close="dlgHelp">Got it</button></div>
+</dialog>
+
+<!-- ---------- AAMA / ASTM DXF + grade-rule import ---------- -->
+<dialog id="dlgAama">
+  <div class="dlg-head">Import AAMA / ASTM pattern <button class="x" data-close="dlgAama">✕</button></div>
+  <div class="dlg-body">
+    <div class="wcap">Select the apparel DXF and its companion grade-rule table. Metric and English files are converted to Seamline centimetres; the source grading metadata remains attached for export.</div>
+    <div class="filepick">
+      <label for="aamaDxfFile">Pattern DXF</label><input type="file" id="aamaDxfFile" accept=".dxf,application/dxf,text/plain">
+      <label for="aamaRuleFile">Rule table</label><input type="file" id="aamaRuleFile" accept=".rul,.txt,text/plain">
+    </div>
+    <div class="frow"><label for="aamaWidth">Fabric width</label><span><input id="aamaWidth" type="number" min="20" max="500" step="0.1" value="160"> cm</span></div>
+    <div class="frow"><label for="aamaTarget">Open as</label><select id="aamaTarget"><option value="tab">new editable tab</option><option value="current">replace current tab</option></select></div>
+    <div id="aamaSummary" class="aama-summary">Choose a DXF to inspect its pieces. Add the matching rule table to create all graded sizes.</div>
+  </div>
+  <div class="dlg-foot">
+    <button class="btn" data-close="dlgAama">Cancel</button><span style="flex:1"></span>
+    <button class="btn primary" id="aamaApply" disabled>Import pattern</button>
+  </div>
 </dialog>
 
 <!-- ---------- Import buy / cut-order ---------- -->
@@ -1056,6 +1086,31 @@ for (const m of MODELS) for (const d of m.pieces){
 const defByKey = {};
 for (const m of MODELS) for (const d of m.pieces) defByKey[d.key0] = d;
 const modelById = id => MODELS.find(m=>m.id===id);
+const AAMA_RESOURCES={};
+
+// AAMA imports carry their own piece library and size scale inside the marker
+// file. Registering those resources makes imported documents behave exactly
+// like built-in orders while keeping JSON saves self-contained.
+function registerMarkerResources(marker){
+  const a=marker&&marker.aama;
+  if (!a || !a.scale || !a.model || !Array.isArray(a.defs)) return;
+  AAMA_RESOURCES[a.model.id]=a;
+  const names=(a.scale.names||[]).map(String);
+  const colors=names.map((_,i)=>shade('#C8845E', names.length<2?0:(i/(names.length-1)-.5)*.55));
+  const demo={}; if(names.length) demo[a.scale.base&&names.includes(a.scale.base)?a.scale.base:names[0]]=1;
+  SCALES[a.scale.id]={names,colors,cols:Math.min(8,Math.max(1,names.length)),base:a.scale.base||names[0],demo,
+    factors:()=>[1,1]};
+  for (const d of a.defs){
+    d.scaleId=a.scale.id;
+    d.area0=d.area0||shoelace(d.base||[]);
+    defByKey[d.key0]=d;
+  }
+  const model={id:a.model.id,name:a.model.name||a.styleName||'Imported AAMA style',tag:a.model.tag||'DXF',
+    scale:a.scale.id,pieces:a.defs};
+  const old=MODELS.find(m=>m.id===model.id);
+  if (old) Object.assign(old,model); else MODELS.push(model);
+  if (typeof CACHE!=='undefined') CACHE.clear();
+}
 
 /* ---------------- geometry core ---------------- */
 function shoelace(p){ let a=0; for (let i=0,n=p.length;i<n;i++){ const q=p[(i+1)%n]; a += p[i][0]*q[1]-q[0]*p[i][1]; } return Math.abs(a)/2; }
@@ -1115,9 +1170,10 @@ function shapeOf(defKey, sizeIdx, rot, fx, fy){
   let s = CACHE.get(k);
   if (s) return s;
   const def = defByKey[defKey];
-  const [sx, sy] = SCALES[def.scaleId].factors(sizeIdx, def);
+  const exact=def.sizeBases&&def.sizeBases[sizeIdx];
+  const [sx, sy] = exact ? [1,1] : SCALES[def.scaleId].factors(sizeIdx, def);
   const rad = rot*Math.PI/180, cos=Math.cos(rad), sin=Math.sin(rad);
-  let pts = def.base.map(([x,y])=>{
+  let pts = (exact||def.base).map(([x,y])=>{
     x*=sx; y*=sy;
     if (fx) x=-x; if (fy) y=-y;
     return [x*cos - y*sin, x*sin + y*cos];
@@ -1197,7 +1253,7 @@ function activateDocument(id){
   if (id===ACTIVE_DOC) return;
   captureActiveDoc();
   const d=DOCS.find(x=>x.id===id); if (!d) return;
-  ACTIVE_DOC=id; S=d.marker; CP=d.cutPlan;
+  ACTIVE_DOC=id; S=d.marker; CP=d.cutPlan; registerMarkerResources(S);
   const u=Object.assign(defaultDocUI(),d.ui||{});
   UI.vb={...u.vb}; UI.grid=u.grid; UI.snap=u.snap; UI.autobutt=u.autobutt;
   UI.layRule=u.layRule; UI.effort=u.effort; UI.fabricFilter=u.fabricFilter;
@@ -1253,6 +1309,10 @@ function buildOrderMarker(lines, name, width, buffer, endAllow=4){
         }
     }
   });
+  // Editing quantities on an imported order must not detach its custom piece
+  // definitions or grading table from the newly rebuilt marker.
+  const imported=marker.lines.map(L=>AAMA_RESOURCES[L.modelId]).find(Boolean);
+  if(imported) marker.aama=cloneJSON(imported);
   return marker;
 }
 function newOrder(lines, name, width, buffer){
@@ -1267,6 +1327,7 @@ function newOrder(lines, name, width, buffer){
 // markers saved before multi-model orders carry modelId/sizesQty at the top level;
 // markers saved before per-piece direction lack line.dir / piece.dir.
 function migrateMarker(m){
+  registerMarkerResources(m);
   if (!m.lines){
     m.lines=[{ modelId:m.modelId||'tshirt', sizesQty:m.sizesQty||{}, excl:[] }];
     delete m.modelId; delete m.sizesQty;
@@ -2526,6 +2587,335 @@ function returnAll(){
   pushUndo();
   for (const p of S.pieces) p.placed=false;
   UI.sel=null; renderAll(); persist();
+}
+
+/* =====================================================================
+   AAMA / ASTM D6673 PATTERN INTERCHANGE
+
+   The apparel exchange is a pair: an ASCII DXF (piece geometry in BLOCKS,
+   functional numeric layers) and an ASCII grade-rule table (.rul/.txt).
+   Import keeps the source table verbatim and also materializes every graded
+   size as editable Seamline geometry. Export writes an R13-compatible DXF
+   plus the companion rule table.
+   ===================================================================== */
+let AAMA_IMPORT=null;
+
+const aamaFirst=(data,code,fall='')=>{ const p=data.find(x=>x.code===code); return p?p.value:fall; };
+function aamaPairs(text){
+  const lines=String(text).replace(/^\uFEFF/,'').replace(/\r/g,'').split('\n');
+  const out=[];
+  for (let i=0;i+1<lines.length;i+=2){
+    const code=parseInt(lines[i].trim(),10);
+    if (!Number.isFinite(code)) continue;
+    out.push({code,value:lines[i+1].trimEnd()});
+  }
+  return out;
+}
+function aamaRecord(type,data){
+  const e={type,layer:String(aamaFirst(data,8,'0')).trim(),data};
+  if (type==='TEXT'||type==='MTEXT'||type==='ATTDEF'){
+    e.text=String(aamaFirst(data,1,'')); e.x=+aamaFirst(data,10,0); e.y=+aamaFirst(data,20,0);
+  } else if (type==='LINE'){
+    e.x1=+aamaFirst(data,10,0); e.y1=+aamaFirst(data,20,0);
+    e.x2=+aamaFirst(data,11,0); e.y2=+aamaFirst(data,21,0);
+  } else if (type==='POINT'){
+    e.x=+aamaFirst(data,10,0); e.y=+aamaFirst(data,20,0);
+  } else if (type==='LWPOLYLINE'){
+    e.closed=((+aamaFirst(data,70,0))&1)!==0; e.vertices=[]; let v=null;
+    for (const p of data){
+      if (p.code===10){ v={x:+p.value,y:0,bulge:0}; e.vertices.push(v); }
+      else if (p.code===20&&v) v.y=+p.value;
+      else if (p.code===42&&v) v.bulge=+p.value;
+    }
+  }
+  return e;
+}
+function parseAamaDxf(text){
+  const pairs=aamaPairs(text);
+  if (pairs.length<4) throw new Error('The DXF does not contain ASCII group-code pairs.');
+  let section='', block=null, poly=null;
+  const blocks=[], entities=[], header=[];
+  for (let i=0;i<pairs.length;){
+    if (pairs[i].code!==0){ i++; continue; }
+    const type=String(pairs[i].value).trim().toUpperCase();
+    let j=i+1; while(j<pairs.length&&pairs[j].code!==0) j++;
+    const data=pairs.slice(i+1,j);
+    if (type==='SECTION'){ section=String(aamaFirst(data,2,'')).toUpperCase(); i=j; continue; }
+    if (type==='ENDSEC'){ section=''; block=null; poly=null; i=j; continue; }
+    if (section==='HEADER'){ header.push({type,data}); i=j; continue; }
+    if (section==='BLOCKS'&&type==='BLOCK'){
+      if (block) blocks.push(block);
+      block={name:String(aamaFirst(data,2,aamaFirst(data,3,'PIECE'))),entities:[]}; poly=null; i=j; continue;
+    }
+    if (section==='BLOCKS'&&type==='ENDBLK'){
+      if (block) blocks.push(block); block=null; poly=null; i=j; continue;
+    }
+    const target=block?block.entities:entities;
+    if ((section==='BLOCKS'&&block)||section==='ENTITIES'){
+      if (type==='POLYLINE'){
+        poly={type,layer:String(aamaFirst(data,8,'0')).trim(),closed:((+aamaFirst(data,70,0))&1)!==0,vertices:[],data};
+        target.push(poly);
+      } else if (type==='VERTEX'&&poly){
+        poly.vertices.push({x:+aamaFirst(data,10,0),y:+aamaFirst(data,20,0),bulge:+aamaFirst(data,42,0)});
+      } else if (type==='SEQEND') poly=null;
+      else { poly=null; if (!['BLOCK','ENDBLK'].includes(type)) target.push(aamaRecord(type,data)); }
+    }
+    i=j;
+  }
+  if (block) blocks.push(block);
+  return {blocks,entities,header};
+}
+function aamaSystemText(entities){
+  const out={};
+  for (const e of entities||[]){
+    if (!['TEXT','MTEXT','ATTDEF'].includes(e.type)) continue;
+    const i=e.text.indexOf(':'); if(i<0) continue;
+    out[e.text.slice(0,i).trim().toLowerCase()]=e.text.slice(i+1).trim();
+  }
+  return out;
+}
+function parseAamaRules(text){
+  text=String(text||'').replace(/^\uFEFF/,'');
+  const field=name=>{ const m=text.match(new RegExp('^\\s*'+name.replace(/ /g,'\\s+')+'\\s*:\\s*(.*?)\\s*$','im')); return m?m[1].trim():''; };
+  const count=Math.max(0,+field('NUMBER OF SIZES')||0);
+  let sizes=[];
+  const sm=text.match(/SIZE\s+LIST\s*:/i);
+  if (sm){
+    const tail=text.slice(sm.index+sm[0].length).split(/RULE\s*:/i)[0];
+    sizes=tail.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);
+    if(count) sizes=sizes.slice(0,count);
+  }
+  const rules={};
+  for (const chunk of text.split(/RULE\s*:/i).slice(1)){
+    const m=chunk.match(/\bDELTA\b[\s,]+(-?\d+)([\s\S]*)/i); if(!m) continue;
+    const nums=(m[2].match(/[-+]?(?:\d+\.?\d*|\.\d+)/g)||[]).map(Number);
+    const deltas=[]; for(let i=0;i+1<nums.length&&(sizes.length===0||deltas.length<sizes.length);i+=2) deltas.push([nums[i],nums[i+1]]);
+    rules[String(+m[1])]=deltas;
+  }
+  return {raw:text,version:field('ASTM/D13 Proposal 1 VERSION')||'D 6673-04',author:field('AUTHOR'),
+    units:(field('UNITS')||'').toUpperCase(),tableName:field('GRADE RULE TABLE'),sampleSize:field('SAMPLE SIZE'),sizes,rules};
+}
+function flattenAamaBoundary(vertices,closed=true){
+  const pts=[], source=[]; if(!vertices||vertices.length<2) return {pts,source};
+  const segs=closed?vertices.length:vertices.length-1;
+  for(let i=0;i<segs;i++){
+    const a=vertices[i], b=vertices[(i+1)%vertices.length], bulge=+a.bulge||0;
+    pts.push([a.x,a.y]); source.push(i);
+    if(Math.abs(bulge)<1e-8) continue;
+    const dx=b.x-a.x,dy=b.y-a.y,chord=Math.hypot(dx,dy); if(chord<1e-8) continue;
+    const theta=4*Math.atan(bulge), off=chord*(1-bulge*bulge)/(4*bulge);
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,cx=mx-dy/chord*off,cy=my+dx/chord*off;
+    const a0=Math.atan2(a.y-cy,a.x-cx), n=Math.max(2,Math.min(48,Math.ceil(Math.abs(theta)/(Math.PI/18))));
+    const radius=Math.hypot(a.x-cx,a.y-cy);
+    for(let k=1;k<n;k++){ const ang=a0+theta*k/n; pts.push([cx+Math.cos(ang)*radius,cy+Math.sin(ang)*radius]); source.push(null); }
+  }
+  if(!closed){ const z=vertices[vertices.length-1]; pts.push([z.x,z.y]); source.push(vertices.length-1); }
+  return {pts,source};
+}
+function aamaBoundary(block){
+  const candidates=(block.entities||[]).filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&String(e.layer)==='1'&&e.vertices&&e.vertices.length>=3);
+  let best=null,area=-1;
+  for(const e of candidates){ const f=flattenAamaBoundary(e.vertices,e.closed!==false); const a=shoelace(f.pts); if(a>area){area=a;best=e;} }
+  return best;
+}
+function aamaRuleIds(block,vertices){
+  const ids=Array(vertices.length).fill(null);
+  for(const e of block.entities||[]){
+    if (!['TEXT','MTEXT','ATTDEF'].includes(e.type)||String(e.layer)!=='1'||!/^\s*#/.test(e.text)) continue;
+    const m=e.text.match(/^\s*#\s*(-?\d+)/); if(!m) continue;
+    let at=0,bd=Infinity;
+    vertices.forEach((v,i)=>{ const d=(v.x-e.x)**2+(v.y-e.y)**2; if(d<bd){bd=d;at=i;} });
+    ids[at]=String(+m[1]);
+  }
+  return ids;
+}
+function gradedAamaVertices(base,ids,table,sizeIndex){
+  const known=ids.map((id,i)=>id!=null&&table.rules[id]&&table.rules[id][sizeIndex] ? i : -1).filter(i=>i>=0);
+  if(!known.length) return base.map(v=>({...v}));
+  const deltaAt=i=>table.rules[ids[i]][sizeIndex];
+  const out=[];
+  for(let i=0;i<base.length;i++){
+    let d=ids[i]!=null&&table.rules[ids[i]]&&table.rules[ids[i]][sizeIndex] ? deltaAt(i) : null;
+    if(!d){
+      let pi=known[0],ni=known[0],pd=1e9,nd=1e9;
+      for(const k of known){ const back=(i-k+base.length)%base.length, fwd=(k-i+base.length)%base.length;
+        if(back<pd){pd=back;pi=k;} if(fwd<nd){nd=fwd;ni=k;} }
+      const a=deltaAt(pi),b=deltaAt(ni),t=(pd+nd)>0?pd/(pd+nd):0;
+      d=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+    }
+    out.push({x:base[i].x+d[0],y:base[i].y+d[1],bulge:base[i].bulge||0});
+  }
+  return out;
+}
+const aamaSlug=s=>String(s||'piece').replace(/[^A-Za-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,34)||'piece';
+function aamaHash(text){ let h=2166136261; for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);} return (h>>>0).toString(36); }
+function inspectAamaImport(dxfText,ruleText,dxfName='pattern.dxf'){
+  const dxf=parseAamaDxf(dxfText), table=ruleText?parseAamaRules(ruleText):null, style=aamaSystemText(dxf.entities);
+  let blocks=dxf.blocks.filter(b=>aamaBoundary(b));
+  if(!blocks.length){
+    blocks=dxf.entities.filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&String(e.layer)==='1'&&e.vertices?.length>=3)
+      .map((e,i)=>({name:'ENTITY-'+(i+1),entities:[e]}));
+  }
+  if(!blocks.length) throw new Error('No closed piece boundary was found on AAMA layer 1.');
+  const groups=new Map();
+  for(const b of blocks){
+    const meta=aamaSystemText(b.entities), name=meta['piece name']||b.name||'Piece';
+    if(!groups.has(name)) groups.set(name,[]); groups.get(name).push({block:b,meta,size:meta['size name']||''});
+  }
+  const blockSizes=[...new Set(blocks.map(b=>aamaSystemText(b.entities)['size name']).filter(Boolean))];
+  const sample=(table&&table.sampleSize)||style['sample size']||blockSizes[0]||'BASE';
+  const sizes=(table&&table.sizes.length?table.sizes:blockSizes.length?blockSizes:[sample]).map(String);
+  const units=((table&&table.units)||style.units||'METRIC').toUpperCase();
+  return {dxf,table,style,groups,sample,sizes,units,dxfText,dxfName};
+}
+function buildAamaMarker(info,width){
+  const token=aamaHash(info.dxfText+'|'+(info.table?.raw||'')), scaleId='aama-scale-'+token, modelId='aama-'+token;
+  const unitToCm=info.units==='ENGLISH'?2.54:.1;
+  const defs=[]; let pno=0;
+  for(const [pieceName,entries] of info.groups){
+    const baseEntry=entries.find(e=>e.size===info.sample)||entries[0], boundary=aamaBoundary(baseEntry.block);
+    if(!boundary) continue;
+    const baseVerts=boundary.vertices.map(v=>({...v})), baseIds=aamaRuleIds(baseEntry.block,baseVerts);
+    const sizeBases=[], sourceBySize=[];
+    for(let si=0;si<info.sizes.length;si++){
+      const explicit=entries.find(e=>e.size===info.sizes[si]), ev=explicit&&aamaBoundary(explicit.block);
+      const raw=ev ? ev.vertices.map(v=>({...v})) : info.table ? gradedAamaVertices(baseVerts,baseIds,info.table,si) : baseVerts.map(v=>({...v}));
+      const flat=flattenAamaBoundary(raw,ev?ev.closed!==false:boundary.closed!==false);
+      sizeBases.push(norm(flat.pts.map(([x,y])=>[x*unitToCm,y*unitToCm]))); sourceBySize.push(flat.source);
+    }
+    const baseIndex=Math.max(0,info.sizes.indexOf(info.sample)), meta=baseEntry.meta;
+    const q=(meta.quantity||'1,0').split(/[\s,]+/).map(Number), right=Math.max(0,q[0]||0),left=Math.max(0,q[1]||0);
+    const rot=+meta.rotation||0, dir=rot===90?'four':rot>0&&rot<180?'free':'two';
+    const flatBase=flattenAamaBoundary(baseVerts,boundary.closed!==false), ruleIds=flatBase.source.map(i=>i==null?null:baseIds[i]);
+    const key='P'+(++pno), key0=modelId+'/'+key;
+    defs.push({key,name:pieceName,key0,scaleId,qty:Math.max(1,right+left),rot:dir,pair:left>0&&right+left>1,
+      base:sizeBases[baseIndex]||sizeBases[0],sizeBases,area0:shoelace(sizeBases[baseIndex]||sizeBases[0]),
+      aama:{blockName:baseEntry.block.name,pieceName,quantity:meta.quantity||'1,0',ruleIds,sourceBySize,
+        systemText:meta,extraBoundaries:Math.max(0,baseEntry.block.entities.filter(e=>(e.type==='POLYLINE'||e.type==='LWPOLYLINE')&&String(e.layer)==='1').length-1)}});
+  }
+  if(!defs.length) throw new Error('The AAMA file did not produce any usable pattern pieces.');
+  const styleName=info.style['style name']||info.dxfName.replace(/\.dxf$/i,'')||'Imported AAMA style';
+  const aama={version:1,format:'ASTM D6673-04',sourceFile:info.dxfName,styleName,units:info.units,
+    styleMeta:info.style,scale:{id:scaleId,names:info.sizes,base:info.sample},
+    model:{id:modelId,name:styleName,tag:'DXF'},defs,
+    ruleTable:info.table?{...info.table}:null};
+  registerMarkerResources({aama});
+  const sizesQty={}; info.sizes.forEach(s=>sizesQty[s]=1);
+  const marker=buildOrderMarker([{modelId,sizesQty,excl:[],dir:{},fab:{}}],styleName,+width||160,0,4);
+  marker.aama=aama; registerMarkerResources(marker);
+  return marker;
+}
+async function refreshAamaImport(){
+  const dxfFile=$('aamaDxfFile').files[0], ruleFile=$('aamaRuleFile').files[0], box=$('aamaSummary');
+  $('aamaApply').disabled=true; AAMA_IMPORT=null;
+  if(!dxfFile){ box.textContent='Choose a DXF to inspect its pieces. Add the matching rule table to create all graded sizes.'; return; }
+  box.textContent='Reading pattern…';
+  try{
+    const [dxfText,ruleText]=await Promise.all([dxfFile.text(),ruleFile?ruleFile.text():Promise.resolve('')]);
+    const info=inspectAamaImport(dxfText,ruleText,dxfFile.name); AAMA_IMPORT=info;
+    const extra=[...info.groups.values()].reduce((n,g)=>n+g.reduce((a,e)=>a+Math.max(0,e.block.entities.filter(x=>(x.type==='POLYLINE'||x.type==='LWPOLYLINE')&&String(x.layer)==='1').length-1),0),0);
+    box.innerHTML=`<b>${esc(info.style['style name']||dxfFile.name)}</b><br>${info.groups.size} pattern piece${info.groups.size===1?'':'s'} · ${info.sizes.length} size${info.sizes.length===1?'':'s'} (${info.sizes.map(esc).join(' · ')}) · ${esc(info.units)}<br>`+
+      (info.table?`Rule table <b>${esc(info.table.tableName||ruleFile.name)}</b> · ${Object.keys(info.table.rules).length} delta rule${Object.keys(info.table.rules).length===1?'':'s'}`:`<span style="color:var(--warn)">No rule table selected — only DXF sizes / the sample size can be created.</span>`)+
+      (extra?`<br><span style="color:var(--warn)">${extra} secondary layer-1 boundary element${extra===1?'':'s'} will remain outside the editable outer contour.</span>`:'');
+    $('aamaApply').disabled=false;
+  }catch(err){ box.innerHTML=`<span style="color:var(--bad)">${esc(err.message||'Could not read the AAMA files.')}</span>`; }
+}
+function applyAamaImport(){
+  if(!AAMA_IMPORT) return;
+  try{
+    const marker=buildAamaMarker(AAMA_IMPORT,+$('aamaWidth').value||160), target=$('aamaTarget').value;
+    if(target==='current'){
+      const d=activeDoc(); if(d&&d.dirty&&!confirm(`Replace “${d.name}” and discard its unsaved changes?`)) return;
+      S=marker; d.marker=S; d.name=S.name; d.dirty=true; d.comparison=null; d.cutPlan=null; CP=null;
+      UI.undo=[]; UI.redo=[]; d.undo=UI.undo; d.redo=UI.redo; resetTransientUI(); syncActiveControls(); renderAll(); fitView(); renderDocumentTabs();
+    }else addDocument(marker,{dirty:true,name:marker.name});
+    $('dlgAama').close(); renderAll(); fitView(); persistWorkspace();
+    toast(`Imported ${marker.aama.defs.length} AAMA piece${marker.aama.defs.length===1?'':'s'} · ${marker.aama.scale.names.length} graded size${marker.aama.scale.names.length===1?'':'s'}`);
+  }catch(err){ toast(err.message||'Could not import the AAMA pattern','bad'); }
+}
+function openAamaDialog(){
+  $('aamaDxfFile').value=''; $('aamaRuleFile').value=''; $('aamaWidth').value=S?S.width:160;
+  $('aamaTarget').value='tab'; AAMA_IMPORT=null; $('aamaApply').disabled=true;
+  $('aamaSummary').textContent='Choose a DXF to inspect its pieces. Add the matching rule table to create all graded sizes.';
+  $('dlgAama').showModal();
+}
+// Read-only parser surface for interoperability checks and future integrations.
+window.SeamlineAama=Object.freeze({parseDxf:parseAamaDxf,parseRules:parseAamaRules,inspect:inspectAamaImport});
+function zeroAamaRuleTable(name,sizes,sample){
+  sizes=[...new Set((sizes||[]).map(String))]; if(!sizes.length) sizes=[sample||'BASE'];
+  if(sizes.length===1) sizes.push(sizes[0]+'-ALT'); sample=sample||sizes[0];
+  const now=new Date(),pad=n=>String(n).padStart(2,'0');
+  return `ASTM/D13 Proposal 1 VERSION:D 6673-04\r\nAUTHOR:Seamline_Marker\r\nCREATION DATE:${pad(now.getDate())}-${pad(now.getMonth()+1)}-${now.getFullYear()}\r\nCREATION TIME:${pad(now.getHours())}:${pad(now.getMinutes())}\r\nUNITS:METRIC\r\nGRADE RULE TABLE:${name}\r\nSAMPLE SIZE:${sample}\r\nNUMBER OF SIZES:${sizes.length}\r\nSIZE LIST:${sizes.join(' ')}\r\nRULE: DELTA 0 ${sizes.map(()=> '0,0').join(' ')}\r\n`;
+}
+const aamaAscii=s=>String(s??'').replace(/[^\x20-\x7E]/g,'-');
+function aamaZip(files){
+  const enc=new TextEncoder(), table=new Uint32Array(256);
+  for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c=(c&1)?0xEDB88320^(c>>>1):c>>>1; table[n]=c>>>0; }
+  const crc=bytes=>{ let c=0xFFFFFFFF; for(const b of bytes)c=table[(c^b)&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  const u16=n=>new Uint8Array([n&255,(n>>>8)&255]), u32=n=>new Uint8Array([n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255]);
+  const join=parts=>{ const out=new Uint8Array(parts.reduce((a,p)=>a+p.length,0)); let at=0; for(const p of parts){out.set(p,at);at+=p.length;} return out; };
+  const now=new Date(),time=(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1),date=((now.getFullYear()-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate();
+  const locals=[],central=[]; let offset=0;
+  for(const f of files){
+    const name=enc.encode(f.name),data=typeof f.data==='string'?enc.encode(f.data):f.data,sum=crc(data);
+    const local=join([u32(0x04034b50),u16(20),u16(0),u16(0),u16(time),u16(date),u32(sum),u32(data.length),u32(data.length),u16(name.length),u16(0),name,data]);
+    locals.push(local);
+    central.push(join([u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(time),u16(date),u32(sum),u32(data.length),u32(data.length),u16(name.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),name]));
+    offset+=local.length;
+  }
+  const directory=join(central),end=join([u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(directory.length),u32(offset),u16(0)]);
+  return new Blob([...locals,directory,end],{type:'application/zip'});
+}
+function exportAamaPackage(){
+  if(typeof validateMarker==='function'&&validateMarker()>0) return toast('Resolve splice / defect-zone violations before exporting','warn');
+  const placed=S.pieces.filter(p=>p.placed); if(!placed.length) return toast('Place or auto-nest pieces before AAMA export','warn');
+  const imported=S.aama, table=imported&&imported.ruleTable, units=(table?.units||imported?.units||'METRIC').toUpperCase();
+  const unit=units==='ENGLISH' ? 1/2.54 : 10, N=v=>(v*unit).toFixed(units==='ENGLISH'?4:2);
+  const style=aamaAscii(S.name||imported?.styleName||'MARKER'), tableName=aamaAscii(table?.tableName||style+'-RULES');
+  const sizes=table?.sizes?.length?table.sizes:[...new Set(S.lines.flatMap(L=>scaleOf(L.modelId).names))];
+  const sample=table?.sampleSize||imported?.scale?.base||sizes[0]||'BASE';
+  const ruleText=table?.raw?.trim()?table.raw.replace(/\r?\n/g,'\r\n')+'\r\n':zeroAamaRuleTable(tableName,sizes,sample);
+  const st=markerStats(), L=[],push=(...x)=>L.push(...x.map(String));
+  const textEntity=(layer,x,y,h,text)=>push('0','TEXT','8',layer,'10',N(x),'20',N(y),'30','0.0','40',N(h),'1',aamaAscii(text));
+  push('999',`Seamline AAMA/ASTM marker | ${style} | ${units}`,
+    '0','SECTION','2','HEADER','9','$ACADVER','1','AC1012','9','$EXTMIN','10','0.0','20','0.0','30','0.0',
+    '9','$EXTMAX','10',N(Math.max(st.len,1)),'20',N(S.width),'30','0.0','0','ENDSEC');
+  push('0','SECTION','2','TABLES','0','TABLE','2','LTYPE','70','1','0','LTYPE','2','CONTINUOUS','70','64','3','Solid line','72','65','73','0','40','0.0','0','ENDTAB',
+    '0','TABLE','2','LAYER','70','4');
+  for(const [layer,col] of [['1',1],['5',3],['7',5],['15',7]]) push('0','LAYER','2',layer,'70','64','62',col,'6','CONTINUOUS');
+  push('0','ENDTAB','0','ENDSEC','0','SECTION','2','BLOCKS');
+  const blocks=[];
+  placed.forEach((p,i)=>{
+    const def=defByKey[p.defKey], sh=instShape(p), poly=instPoly(p), block=`M${String(i+1).padStart(4,'0')}_${aamaSlug(def.name)}`;
+    blocks.push(block); push('0','BLOCK','8','0','2',block,'70','0','10','0.0','20','0.0','30','0.0','3',block,'1','');
+    push('0','POLYLINE','8','1','66','1','10','0.0','20','0.0','30','0.0','70','1');
+    for(const pt of poly) push('0','VERTEX','8','1','10',N(pt[0]),'20',N(S.width-pt[1]),'30','0.0');
+    push('0','SEQEND','8','1');
+    const cx=p.x+sh.c[0],cy=S.width-(p.y+sh.c[1]), fs=Math.max(.15,Math.min(.5,Math.min(sh.bb.w,sh.bb.h)/7));
+    textEntity('1',cx,cy,fs,`Piece Name:${def.aama?.pieceName||def.name}`);
+    textEntity('1',cx,cy-fs*1.4,fs,`Size Name:${sizeNm(p)}`);
+    textEntity('1',cx,cy-fs*2.8,fs,'Quantity:1,0');
+    textEntity('1',cx,cy-fs*4.2,fs,`Rotation:${pieceDir(p)==='four'?90:pieceDir(p)==='free'?1:180}`);
+    const ids=def.aama?.ruleIds||[];
+    poly.forEach((pt,vi)=>{ const id=ids[vi]; if(id!=null) textEntity('1',pt[0],S.width-pt[1],.08,`# ${id}`); });
+    if(!table) poly.forEach(pt=>textEntity('1',pt[0],S.width-pt[1],.08,'# 0'));
+    push('0','LINE','8','5','10',N(p.x),'20',N(cy),'30','0.0','11',N(p.x+sh.bb.w),'21',N(cy),'31','0.0');
+    push('0','LINE','8','7','10',N(p.x+sh.bb.w*.15),'20',N(cy),'30','0.0','11',N(p.x+sh.bb.w*.85),'21',N(cy),'31','0.0');
+    textEntity('15',cx,cy+fs*1.5,fs,`${i+1} ${def.name} ${sizeNm(p)} b${p.bundle}`);
+    push('0','ENDBLK','8','0');
+  });
+  push('0','ENDSEC','0','SECTION','2','ENTITIES');
+  const sys=[`Style Name:${style}`,`Creation Date:${new Date().toISOString().slice(0,10)}`,'Author:Seamline;Marker;2',
+    `Sample Size:${sample}`,`Grade Rule Table:${tableName}`,`Units:${units}`,'ASTM/D13Proposal 1 Version:D 6673-04'];
+  sys.forEach((t,i)=>textEntity('1',0,Math.max(0,S.width-i*.35),.22,t));
+  for(const b of blocks) push('0','INSERT','8','0','2',b,'10','0.0','20','0.0','30','0.0');
+  push('0','ENDSEC','0','EOF');
+  const base=(S.name||'marker').replace(/[^A-Za-z0-9._-]+/g,'-');
+  const dxfText=L.join('\r\n')+'\r\n';
+  download(base+'.aama.zip','application/zip',aamaZip([
+    {name:base+'.dxf',data:dxfText},{name:base+'.rul',data:ruleText}
+  ]));
+  toast(`AAMA package exported · ${placed.length} placed piece${placed.length===1?'':'s'} · ZIP contains DXF + RUL`);
 }
 
 /* =====================================================================
@@ -4231,6 +4621,11 @@ $('bOpenTab').onclick=()=>$('tabFileIn').click();
 $('tabFileIn').addEventListener('change',e=>{ if(e.target.files[0]) openJSONInTab(e.target.files[0]); e.target.value=''; });
 $('bCompare').onclick=()=>$('compareFileIn').click();
 $('compareFileIn').addEventListener('change',e=>{ if(e.target.files[0]) importComparison(e.target.files[0]); e.target.value=''; });
+$('bAamaImport').onclick=openAamaDialog;
+$('aamaDxfFile').addEventListener('change',refreshAamaImport);
+$('aamaRuleFile').addEventListener('change',refreshAamaImport);
+$('aamaApply').onclick=applyAamaImport;
+$('bAamaExport').onclick=exportAamaPackage;
 $('bLayers').onclick=()=>{ UI.dockTab='layers'; renderOrderDock(); };
 $('bSave').onclick=saveJSON;
 $('bExport').onclick=exportSVG;
